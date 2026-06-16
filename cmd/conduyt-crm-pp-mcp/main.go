@@ -26,7 +26,8 @@ const (
 func main() {
 	s := server.NewMCPServer(
 		"Conduyt",
-		"1.0.0",
+		// PATCH: keep the bundled MCP binary version aligned with this CLI release.
+		"1.1.2",
 		server.WithToolCapabilities(false),
 	)
 

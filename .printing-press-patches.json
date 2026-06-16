@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "applied_at": "2026-06-16",
+  "base_run_id": "20260509T181000Z-6513e1d0",
+  "base_printing_press_version": "4.2.0",
+  "patches": [
+    {
+      "id": "release-version-surface-1-1-2",
+      "summary": "Align CLI, bundled MCP, User-Agent, and GoReleaser version surfaces with release 1.1.2.",
+      "reason": "The installed Go module was v1.1.2, but --version and agent-context still reported 1.0.0 because direct go-install builds do not inject release ldflags and the GoReleaser ldflag path was stale.",
+      "files": [
+        ".goreleaser.yaml",
+        "cmd/conduyt-crm-pp-mcp/main.go",
+        "cmd/conduyt-pp-mcp/main.go",
+        "internal/client/client.go",
+        "internal/cli/root.go"
+      ]
+    }
+  ]
+}

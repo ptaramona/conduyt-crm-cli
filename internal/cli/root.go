@@ -18,7 +18,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "1.0.0"
+// PATCH: keep direct go-install builds honest when release ldflags are absent.
+var version = "1.1.2"
 
 type rootFlags struct {
 	asJSON        bool
