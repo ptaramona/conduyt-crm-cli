@@ -1,0 +1,7 @@
+# Build output
+/conduyt-crm-pp-cli
+/conduyt-crm-pp-mcp
+/conduyt-pp-mcp
+/dist/
+*.test
+.DS_Store
