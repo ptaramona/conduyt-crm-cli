@@ -3614,15 +3614,23 @@ paths:
           application/json:
             schema:
               type: object
+              description: "Profile/role/permissions only. To activate or deactivate a user, use the deactivate/reactivate endpoints — isActive is rejected here."
               properties:
                 firstName:
                   type: string
                 lastName:
                   type: string
+                email:
+                  type: string
+                phone:
+                  type: string
                 role:
                   type: string
-                isActive:
-                  type: boolean
+                  enum: [member, admin, owner]
+                permissions:
+                  type: array
+                  items:
+                    type: string
       responses:
         "200":
           description: User updated
@@ -3635,6 +3643,35 @@ paths:
       responses:
         "200":
           description: User removed
+
+  /users/{id}/deactivate:
+    post:
+      operationId: deactivateUser
+      summary: Deactivate a team member (optionally reassign their records)
+      tags: [Users]
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: reassign_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: User UUID to reassign the deactivated user's records to
+      responses:
+        "200":
+          description: User deactivated
+
+  /users/{id}/reactivate:
+    post:
+      operationId: reactivateUser
+      summary: Reactivate a previously deactivated team member
+      tags: [Users]
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: User reactivated
 
   # ──────────────────────────────────────────────
   # Settings

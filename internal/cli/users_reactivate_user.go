@@ -12,20 +12,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newUsersUpdateCmd(flags *rootFlags) *cobra.Command {
-	var bodyEmail string
-	var bodyFirstName string
-	var bodyLastName string
-	var bodyPermissions string
-	var bodyPhone string
-	var bodyRole string
+func newUsersReactivateUserCmd(flags *rootFlags) *cobra.Command {
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:         "update <id>",
-		Short:       "Update a team member",
-		Example:     "  conduyt-crm-pp-cli users update 550e8400-e29b-41d4-a716-446655440000",
-		Annotations: map[string]string{"pp:endpoint": "users.update", "pp:method": "PATCH", "pp:path": "/users/{id}"},
+		Use:         "user <id>",
+		Aliases:     []string{"create"},
+		Short:       "Reactivate a previously deactivated team member",
+		Example:     "  conduyt-crm-pp-cli users reactivate user 550e8400-e29b-41d4-a716-446655440000",
+		Annotations: map[string]string{"pp:endpoint": "reactivate.user", "pp:method": "POST", "pp:path": "/users/{id}/reactivate"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
@@ -37,7 +32,7 @@ func newUsersUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 
-			path := "/users/{id}"
+			path := "/users/{id}/reactivate"
 			path = replacePathParam(path, "id", args[0])
 			var body map[string]any
 			if stdinBody {
@@ -52,30 +47,8 @@ func newUsersUpdateCmd(flags *rootFlags) *cobra.Command {
 				body = jsonBody
 			} else {
 				body = map[string]any{}
-				if bodyEmail != "" {
-					body["email"] = bodyEmail
-				}
-				if bodyFirstName != "" {
-					body["firstName"] = bodyFirstName
-				}
-				if bodyLastName != "" {
-					body["lastName"] = bodyLastName
-				}
-				if bodyPermissions != "" {
-					var parsedPermissions any
-					if err := json.Unmarshal([]byte(bodyPermissions), &parsedPermissions); err != nil {
-						return fmt.Errorf("parsing --permissions JSON: %w", err)
-					}
-					body["permissions"] = parsedPermissions
-				}
-				if bodyPhone != "" {
-					body["phone"] = bodyPhone
-				}
-				if bodyRole != "" {
-					body["role"] = bodyRole
-				}
 			}
-			data, statusCode, err := c.Patch(path, body)
+			data, statusCode, err := c.Post(path, body)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -116,8 +89,8 @@ func newUsersUpdateCmd(flags *rootFlags) *cobra.Command {
 					filtered = compactFields(filtered)
 				}
 				envelope := map[string]any{
-					"action":   "patch",
-					"resource": "users",
+					"action":   "post",
+					"resource": "reactivate",
 					"path":     path,
 					"status":   statusCode,
 					"success":  statusCode >= 200 && statusCode < 300,
@@ -142,12 +115,6 @@ func newUsersUpdateCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlags(cmd.OutOrStdout(), data, flags)
 		},
 	}
-	cmd.Flags().StringVar(&bodyEmail, "email", "", "Email")
-	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name")
-	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
-	cmd.Flags().StringVar(&bodyPermissions, "permissions", "", "Permissions")
-	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
-	cmd.Flags().StringVar(&bodyRole, "role", "", "Role")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

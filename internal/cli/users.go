@@ -18,5 +18,7 @@ func newUsersCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newUsersListCmd(flags))
 	cmd.AddCommand(newUsersRemoveCmd(flags))
 	cmd.AddCommand(newUsersUpdateCmd(flags))
+	cmd.AddCommand(newUsersDeactivateCmd(flags))
+	cmd.AddCommand(newUsersReactivateCmd(flags))
 	return cmd
 }
