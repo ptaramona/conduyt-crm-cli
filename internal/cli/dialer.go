@@ -16,5 +16,6 @@ func newDialerCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newDialerGetHistoryCmd(flags))
 	cmd.AddCommand(newDialerGetTokenCmd(flags))
 	cmd.AddCommand(newDialerInitiateCallCmd(flags))
+	cmd.AddCommand(newDialerAiCallDispositionCmd(flags))
 	return cmd
 }

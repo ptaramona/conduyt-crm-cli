@@ -5267,6 +5267,157 @@ paths:
         "200":
           description: Deal insights
 
+  /ai/conversation-intelligence:
+    post:
+      operationId: aiConversationIntelligence
+      summary: AI analysis of a transcribed call (summary, sentiment, objections, follow-ups)
+      tags: [AI]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [callId]
+              properties:
+                callId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Conversation intelligence
+
+  /ai/daily-brief:
+    get:
+      operationId: aiDailyBrief
+      summary: AI daily brief — today's priorities for the current user
+      tags: [AI]
+      responses:
+        "200":
+          description: Daily brief
+
+  /ai/next-actions:
+    get:
+      operationId: aiNextActions
+      summary: AI-ranked next actions for a user
+      tags: [AI]
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: User to generate actions for (defaults to the authenticated user)
+      responses:
+        "200":
+          description: Next actions
+
+  /ai/feed:
+    get:
+      operationId: aiFeed
+      summary: Chronological stream of AI-surfaced events and insights
+      tags: [AI]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Max items to return (default 30)
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Only return items after this ISO timestamp
+      responses:
+        "200":
+          description: AI feed
+
+  /ai/usage:
+    get:
+      operationId: aiUsage
+      summary: AI usage and budget report (owner/admin only)
+      tags: [AI]
+      parameters:
+        - name: range
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [7, 30, 90]
+          description: Reporting window in days (7, 30, or 90; default 30)
+      responses:
+        "200":
+          description: AI usage report
+
+  /ai/insights:
+    post:
+      operationId: aiInsights
+      summary: AI-powered CRM analytics (8 query types)
+      tags: [AI]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [sms_drip_status, sms_responses_untouched, agent_followups, pipeline_health, email_performance, smart_view_summary, team_activity, contact_import_history]
+                  description: Insight query type. Type-specific parameters may be supplied in the body (use --stdin for complex payloads).
+      responses:
+        "200":
+          description: Insights result
+
+  /ai/tasks:
+    post:
+      operationId: aiRunTask
+      summary: Run an AI task (import+enroll, segment+act, pipeline cleanup). Defaults to a preview; mutating execution requires a human session.
+      tags: [AI]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [import_and_enroll, segment_and_act, pipeline_cleanup]
+                  description: Task type. Task-specific fields go in the body (use --stdin for the full payload).
+                dryRun:
+                  type: boolean
+                  default: true
+                  description: Preview without persisting (default true; agent/API-key callers can only preview)
+      responses:
+        "200":
+          description: Task result
+
+  /dialer/call/{id}/ai-disposition:
+    post:
+      operationId: aiCallDisposition
+      summary: AI-suggested call disposition from the call transcript
+      tags: [AI]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Call UUID to disposition
+      responses:
+        "200":
+          description: Suggested disposition
+
   # ──────────────────────────────────────────────
   # Admin (super-admin only)
   # ──────────────────────────────────────────────

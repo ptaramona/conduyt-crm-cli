@@ -19,5 +19,12 @@ func newAiCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newAiEnrichContactCmd(flags))
 	cmd.AddCommand(newAiImproveEmailCmd(flags))
 	cmd.AddCommand(newAiSummarizeContactCmd(flags))
+	cmd.AddCommand(newAiConversationIntelligenceCmd(flags))
+	cmd.AddCommand(newAiDailyBriefCmd(flags))
+	cmd.AddCommand(newAiFeedCmd(flags))
+	cmd.AddCommand(newAiInsightsCmd(flags))
+	cmd.AddCommand(newAiNextActionsCmd(flags))
+	cmd.AddCommand(newAiRunTaskCmd(flags))
+	cmd.AddCommand(newAiUsageCmd(flags))
 	return cmd
 }
