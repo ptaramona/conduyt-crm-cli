@@ -13,18 +13,19 @@ import (
 )
 
 func newAiInsightsCmd(flags *rootFlags) *cobra.Command {
-	var bodyType string
+	var bodyFilters string
+	var bodyQuery string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:         "insights",
-		Short:       "AI-powered CRM analytics (8 query types)",
-		Example:     "  conduyt-crm-pp-cli ai insights --type example-value",
-		Annotations: map[string]string{"pp:endpoint": "ai.insights", "pp:method": "POST", "pp:path": "/ai/insights"},
+		Use:   "insights",
+		Short: "AI-powered CRM analytics (8 query types)",
+		Example: "  conduyt-crm-pp-cli ai insights --query example-value",
+		Annotations: map[string]string{"pp:endpoint": "ai.insights", "pp:method": "POST", "pp:path": "/ai/insights", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !stdinBody {
-				if !cmd.Flags().Changed("type") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "type")
+				if !cmd.Flags().Changed("query") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "query")
 				}
 			}
 			c, err := flags.newClient()
@@ -46,8 +47,15 @@ func newAiInsightsCmd(flags *rootFlags) *cobra.Command {
 				body = jsonBody
 			} else {
 				body = map[string]any{}
-				if bodyType != "" {
-					body["type"] = bodyType
+				if bodyFilters != "" {
+					var parsedFilters any
+					if err := json.Unmarshal([]byte(bodyFilters), &parsedFilters); err != nil {
+						return fmt.Errorf("parsing --filters JSON: %w", err)
+					}
+					body["filters"] = parsedFilters
+				}
+				if bodyQuery != "" {
+					body["query"] = bodyQuery
 				}
 			}
 			data, statusCode, err := c.Post(path, body)
@@ -64,9 +72,7 @@ func newAiInsightsCmd(flags *rootFlags) *cobra.Command {
 						return nil
 					}
 				} else {
-					var wrapped struct {
-						Data []map[string]any `json:"data"`
-					}
+					var wrapped struct{ Data []map[string]any `json:"data"` }
 					if json.Unmarshal(data, &wrapped) == nil && len(wrapped.Data) > 0 {
 						if err := printAutoTable(cmd.OutOrStdout(), wrapped.Data); err != nil {
 							fmt.Fprintf(os.Stderr, "warning: table rendering failed, falling back to JSON: %v\n", err)
@@ -117,7 +123,8 @@ func newAiInsightsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlags(cmd.OutOrStdout(), data, flags)
 		},
 	}
-	cmd.Flags().StringVar(&bodyType, "type", "", "Insight query type. Type-specific parameters may be supplied in the body (use --stdin for complex payloads).")
+	cmd.Flags().StringVar(&bodyFilters, "filters", "", "Optional filters (dateRange {from,to}, provider, pipelineId, userId, smartListId); supply the subset relevant to the...")
+	cmd.Flags().StringVar(&bodyQuery, "query", "", "Insight query type")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

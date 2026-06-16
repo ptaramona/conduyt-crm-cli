@@ -5364,13 +5364,16 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
-              required: [type]
+              required: [query]
               properties:
-                type:
+                query:
                   type: string
                   enum: [sms_drip_status, sms_responses_untouched, agent_followups, pipeline_health, email_performance, smart_view_summary, team_activity, contact_import_history]
-                  description: Insight query type. Type-specific parameters may be supplied in the body (use --stdin for complex payloads).
+                  description: Insight query type
+                filters:
+                  type: object
+                  additionalProperties: true
+                  description: "Optional filters (dateRange {from,to}, provider, pipelineId, userId, smartListId); supply the subset relevant to the query. Use --stdin for nested filters."
       responses:
         "200":
           description: Insights result
