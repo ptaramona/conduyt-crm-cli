@@ -15,6 +15,30 @@
         "internal/client/client.go",
         "internal/cli/root.go"
       ]
+    },
+    {
+      "id": "body-contract-overrides-1-1-3",
+      "summary": "Align generated CLI commands and spec with live body contracts for contact tags, invoices, notifications, and automations.",
+      "reason": "The generated CLI spec had drifted from the live API validators: contact tag add required tagIds[], invoice create requires items, notification userId is optional with push/url supported, and automation kind defaults to native.",
+      "files": [
+        "spec.yaml",
+        "internal/cli/contacts_tags_add-contact.go",
+        "internal/cli/invoices_create.go",
+        "internal/cli/notifications_create.go",
+        "internal/cli/automations_create.go",
+        "internal/cli/which.go",
+        "internal/mcp/code_orch.go"
+      ]
+    },
+    {
+      "id": "stale-agent-artifact-cleanup-1-1-3",
+      "summary": "Remove stale static tool manifest and point the repo skill at the maintained CLI install path.",
+      "reason": "Runtime discovery now comes from the Cobra command tree via agent-context; the old static tools-manifest.json still advertised stale contracts and the skill pointed at the legacy Printing Press tree.",
+      "files": [
+        "SKILL.md",
+        "manifest.json",
+        "tools-manifest.json"
+      ]
     }
   ]
 }

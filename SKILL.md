@@ -16,19 +16,19 @@ metadata:
 
 ## Prerequisites: Install the CLI
 
-This skill drives the `conduyt-crm-pp-cli` binary. **You must verify the CLI is installed before invoking any command from this skill.** If it is missing, install it first:
-
-1. Install via the Printing Press installer:
-   ```bash
-   npx -y @mvanhorn/printing-press install conduyt-crm --cli-only
-   ```
-2. Verify: `conduyt-crm-pp-cli --version`
-3. Ensure `$GOPATH/bin` (or `$HOME/go/bin`) is on `$PATH`.
-
-If the `npx` install fails (no Node, offline, etc.), fall back to a direct Go install (requires Go 1.26.3 or newer):
+This skill drives the `conduyt-crm-pp-cli` binary. **You must verify the CLI is installed before invoking any command from this skill.** If it is missing, install the official maintained CLI first:
 
 ```bash
-go install github.com/mvanhorn/printing-press-library/library/sales-and-crm/conduyt-crm/cmd/conduyt-crm-pp-cli@latest
+go install github.com/ptaramona/conduyt-crm-cli/cmd/conduyt-crm-pp-cli@latest
+```
+
+Then verify `conduyt-crm-pp-cli --version` reports `1.1.3` or newer, and ensure `$GOPATH/bin` (or `$HOME/go/bin`) is on `$PATH`.
+
+The public Printing Press listing is a discovery shopfront and can lag behind this repo. For current contracts, prefer the official Go module above and runtime discovery via:
+
+```bash
+conduyt-crm-pp-cli agent-context --pretty
+conduyt-crm-pp-cli <command> --help
 ```
 
 If `--version` reports "command not found" after install, the install step did not put the binary on `$PATH`. Do not proceed with skill commands until verification succeeds.
@@ -105,6 +105,8 @@ Payloads are signed with HMAC-SHA256 using the webhook's secret. Retries
 follow exponential backoff: 1m, 5m, 15m, 1h, 6h, 24h, 72h (7 attempts).
 
 ## Command Reference
+
+This generated command reference is only a human overview. Agents should treat `conduyt-crm-pp-cli agent-context --pretty` and per-command `--help` output as the runtime source of truth for flags and contracts.
 
 **activities** — Activity feed and logging
 

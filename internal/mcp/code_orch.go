@@ -1110,9 +1110,9 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		ID:      "contacts.tags.add-contact",
 		Method:  "POST",
 		Path:    "/contacts/{id}/tags",
-		Summary: "Add a tag to a contact",
+		Summary: "Add one or more existing tags to a contact",
 		Positional: []string{"id", },
-		keywords: codeOrchKeywords("contacts", "add-contact", "Add a tag to a contact", "/contacts/{id}/tags"),
+		keywords: codeOrchKeywords("contacts", "add-contact", "Add one or more existing tags to a contact", "/contacts/{id}/tags"),
 	},
 	{
 		ID:      "contacts.tags.remove-contact",

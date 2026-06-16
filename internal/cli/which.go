@@ -157,7 +157,7 @@ var whichIndex = []whichEntry{
 	{Command: "contacts merge", Description: "Merge two contacts", Group: "contacts"},
 	{Command: "contacts update", Description: "Update a contact", Group: "contacts"},
 	{Command: "contacts score get-contact", Description: "Get a contact's lead score breakdown", Group: "contacts"},
-	{Command: "contacts tags add-contact", Description: "Add a tag to a contact", Group: "contacts"},
+	{Command: "contacts tags add-contact", Description: "Add one or more existing tags to a contact", Group: "contacts"},
 	{Command: "contacts tags remove-contact", Description: "Remove a tag from a contact", Group: "contacts"},
 	{Command: "conversations get", Description: "Get conversation thread for a contact", Group: "conversations"},
 	{Command: "conversations list", Description: "List conversation threads", Group: "conversations"},
