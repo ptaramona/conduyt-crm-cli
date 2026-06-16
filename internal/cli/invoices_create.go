@@ -30,12 +30,12 @@ func newInvoicesCreateCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "create",
 		Short:       "Create an invoice",
-		Example:     "  conduyt-crm-pp-cli invoices create --invoice-number example-value",
+		Example:     "  conduyt-crm-pp-cli invoices create",
 		Annotations: map[string]string{"pp:endpoint": "invoices.create", "pp:method": "POST", "pp:path": "/invoices"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !stdinBody {
-				if !cmd.Flags().Changed("invoice-number") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "invoice-number")
+				if !cmd.Flags().Changed("items") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "items")
 				}
 			}
 			c, err := flags.newClient()

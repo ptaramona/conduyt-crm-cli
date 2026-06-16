@@ -200,7 +200,7 @@ func newAutomationsCreateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().IntVar(&bodyExecutionWindowStart, "execution-window-start", 0, "Hour (0-23) to start executing")
 	cmd.Flags().IntVar(&bodyGraphVersion, "graph-version", 1, "Graph version")
 	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
-	cmd.Flags().StringVar(&bodyKind, "kind", "n8n", "Kind")
+	cmd.Flags().StringVar(&bodyKind, "kind", "native", "Kind")
 	cmd.Flags().StringVar(&bodyN8nWebhookUrl, "n8n-webhook-url", "", "N8n webhook url")
 	cmd.Flags().StringVar(&bodyN8nWorkflowId, "n8n-workflow-id", "", "N8n workflow id")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")

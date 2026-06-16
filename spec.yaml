@@ -602,7 +602,7 @@ paths:
   /contacts/{id}/tags:
     post:
       operationId: addContactTag
-      summary: Add a tag to a contact
+      summary: Add one or more existing tags to a contact (by tag UUID)
       tags: [Contacts]
       parameters:
         - $ref: "#/components/parameters/IdParam"
@@ -612,11 +612,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [tagId]
+              required: [tagIds]
               properties:
-                tagId:
-                  type: string
-                  format: uuid
+                tagIds:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+                  description: Tag UUIDs to add (tags must already exist)
       responses:
         "200":
           description: Tag added
@@ -3346,20 +3350,32 @@ paths:
           application/json:
             schema:
               type: object
-              required: [userId, type, title, message]
+              required: [type, title, message]
               properties:
+                type:
+                  type: string
+                  maxLength: 64
+                  description: "Notification type (free-form, e.g. 'task_assigned', 'deal_won', 'mention')"
+                title:
+                  type: string
+                  maxLength: 200
+                message:
+                  type: string
+                  maxLength: 1000
                 userId:
                   type: string
                   format: uuid
-                type:
+                  description: Target user UUID (defaults to the API key owner)
+                url:
                   type: string
-                  enum: [deal_won, deal_lost, deal_stalled, task_due, task_overdue, mention, system]
-                title:
-                  type: string
-                message:
-                  type: string
+                  maxLength: 500
+                  description: Deep-link URL when the notification is clicked
                 metadata:
                   type: object
+                  description: Additional key/value data
+                push:
+                  type: boolean
+                  description: Send a web push notification (default true)
       responses:
         "201":
           description: Notification created
@@ -6653,7 +6669,7 @@ components:
         kind:
           type: string
           enum: [native, n8n]
-          default: n8n
+          default: native
         triggerEvent:
           type: string
           description: "Event that triggers this automation (e.g., contact.created, deal.stage_changed)"
@@ -6767,7 +6783,7 @@ components:
 
     InvoiceCreate:
       type: object
-      required: [invoiceNumber]
+      required: [items]
       properties:
         invoiceNumber:
           type: string

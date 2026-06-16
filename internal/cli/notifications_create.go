@@ -15,8 +15,10 @@ import (
 func newNotificationsCreateCmd(flags *rootFlags) *cobra.Command {
 	var bodyMessage string
 	var bodyMetadata string
+	var bodyPush bool
 	var bodyTitle string
 	var bodyType string
+	var bodyUrl string
 	var bodyUserId string
 	var stdinBody bool
 
@@ -35,9 +37,6 @@ func newNotificationsCreateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if !cmd.Flags().Changed("type") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "type")
-				}
-				if !cmd.Flags().Changed("user-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "user-id")
 				}
 			}
 			c, err := flags.newClient()
@@ -69,11 +68,17 @@ func newNotificationsCreateCmd(flags *rootFlags) *cobra.Command {
 					}
 					body["metadata"] = parsedMetadata
 				}
+				if bodyPush != false {
+					body["push"] = bodyPush
+				}
 				if bodyTitle != "" {
 					body["title"] = bodyTitle
 				}
 				if bodyType != "" {
 					body["type"] = bodyType
+				}
+				if bodyUrl != "" {
+					body["url"] = bodyUrl
 				}
 				if bodyUserId != "" {
 					body["userId"] = bodyUserId
@@ -147,10 +152,12 @@ func newNotificationsCreateCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyMessage, "message", "", "Message")
-	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Metadata")
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Additional key/value data")
+	cmd.Flags().BoolVar(&bodyPush, "push", false, "Send a web push notification (default true)")
 	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")
-	cmd.Flags().StringVar(&bodyType, "type", "", "Type")
-	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "User id")
+	cmd.Flags().StringVar(&bodyType, "type", "", "Notification type (free-form, e.g. 'task_assigned', 'deal_won', 'mention')")
+	cmd.Flags().StringVar(&bodyUrl, "url", "", "Deep-link URL when the notification is clicked")
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "Target user UUID (defaults to the API key owner)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

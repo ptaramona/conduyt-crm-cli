@@ -13,22 +13,22 @@ import (
 )
 
 func newContactsTagsAddContactCmd(flags *rootFlags) *cobra.Command {
-	var bodyTagId string
+	var bodyTagIds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "add-contact <id>",
 		Aliases:     []string{"create"},
-		Short:       "Add a tag to a contact",
-		Example:     "  conduyt-crm-pp-cli contacts tags add-contact 550e8400-e29b-41d4-a716-446655440000 --tag-id 550e8400-e29b-41d4-a716-446655440000",
+		Short:       "Add one or more existing tags to a contact (by tag UUID)",
+		Example:     "  conduyt-crm-pp-cli contacts tags add-contact 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "tags.add-contact", "pp:method": "POST", "pp:path": "/contacts/{id}/tags"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("tag-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "tag-id")
+				if !cmd.Flags().Changed("tag-ids") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "tag-ids")
 				}
 			}
 			c, err := flags.newClient()
@@ -51,8 +51,12 @@ func newContactsTagsAddContactCmd(flags *rootFlags) *cobra.Command {
 				body = jsonBody
 			} else {
 				body = map[string]any{}
-				if bodyTagId != "" {
-					body["tagId"] = bodyTagId
+				if bodyTagIds != "" {
+					var parsedTagIds any
+					if err := json.Unmarshal([]byte(bodyTagIds), &parsedTagIds); err != nil {
+						return fmt.Errorf("parsing --tag-ids JSON: %w", err)
+					}
+					body["tagIds"] = parsedTagIds
 				}
 			}
 			data, statusCode, err := c.Post(path, body)
@@ -122,7 +126,7 @@ func newContactsTagsAddContactCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlags(cmd.OutOrStdout(), data, flags)
 		},
 	}
-	cmd.Flags().StringVar(&bodyTagId, "tag-id", "", "Tag id")
+	cmd.Flags().StringVar(&bodyTagIds, "tag-ids", "", "Tag UUIDs to add (tags must already exist)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
