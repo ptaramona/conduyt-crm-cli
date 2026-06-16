@@ -19,7 +19,7 @@ import (
 )
 
 // PATCH: keep direct go-install builds honest when release ldflags are absent.
-var version = "1.1.2"
+var version = "1.1.3"
 
 type rootFlags struct {
 	asJSON        bool

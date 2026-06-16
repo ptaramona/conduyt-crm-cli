@@ -230,7 +230,7 @@ func (c *Client) do(method, path string, params map[string]string, body any, hea
 		}
 		if req.Header.Get("User-Agent") == "" {
 			// PATCH: keep the default User-Agent aligned with the installed release.
-			req.Header.Set("User-Agent", "github.com/ptaramona/conduyt-crm-cli/1.1.2")
+			req.Header.Set("User-Agent", "github.com/ptaramona/conduyt-crm-cli/1.1.3")
 		}
 
 		resp, err := c.HTTPClient.Do(req)
