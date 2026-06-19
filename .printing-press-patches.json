@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "applied_at": "2026-06-16",
+  "applied_at": "2026-06-18",
   "base_run_id": "20260509T181000Z-6513e1d0",
   "base_printing_press_version": "4.2.0",
   "patches": [
@@ -39,6 +39,57 @@
         "manifest.json",
         "tools-manifest.json"
       ]
+    },
+    {
+      "id": "read-envelope-flatten-and-standardize",
+      "summary": "Flatten the API's nested {data:{data:[],meta}} read envelope and expose the payload under the canonical \"data\" key (with \"results\" kept as a back-compat alias) across all read commands.",
+      "reason": "Dogfood v1.1.3: deals list --pipeline appeared to return 0 rows because the raw nested envelope was wrapped again, burying items at results.data.data[]. Generator-level fix in the shared wrapWithProvenance so every read command (70+ resources) flattens to a single predictable depth and standardizes the payload key with the mutation envelope.",
+      "files": [
+        "internal/cli/helpers.go"
+      ],
+      "validated_outcome": "deals list --pipeline <id> returns rows at envelope.data[]; pagination meta surfaced at envelope.meta.pagination; HIRING pipeline filter correctly returns 0/total:0 while MKT returns 146669.",
+      "upstream_issue": "cli-printing-press#read-envelope-flatten / #standard-envelope"
+    },
+    {
+      "id": "pagination-meta-driven-all",
+      "summary": "Teach paginatedGet to unwrap nested data.data items and walk every page using the pagination meta (page/per_page/total) for offset-paginated APIs; route all progress/completion events to a centralized stderr writer.",
+      "reason": "Dogfood v1.1.3: deals list --all reported total:0/pages:1 (extractPaginatedItems only looked one level deep and there was no meta-driven page walk). Progress events also needed a hard stdout/stderr guarantee so JSON on stdout is never interleaved.",
+      "files": [
+        "internal/cli/helpers.go"
+      ],
+      "validated_outcome": "deals list --all --stage <30-deal stage> --per-page 10 walks 3 pages, collects 30 rows, emits complete{total:30,pages:3} on stderr, stdout parses as a single clean JSON document with zero interleaved progress lines.",
+      "upstream_issue": "cli-printing-press#pagination-nested-envelope / #pagination-meta-driven / #progress-events-stderr"
+    },
+    {
+      "id": "dryrun-mask-body",
+      "summary": "Mask request body values in --dry-run output by default (keys preserved for shape verification); add a --show-body flag to reveal the verbatim body for debugging.",
+      "reason": "Dogfood v1.1.3 (MED): dry-run printed full request bodies to stderr, which can carry finance amounts, customer PII, and notes into terminal scrollback and CI logs.",
+      "files": [
+        "internal/client/client.go",
+        "internal/cli/root.go"
+      ],
+      "validated_outcome": "deals create --dry-run prints values as type markers («string»/«number»); --show-body reveals real values.",
+      "upstream_issue": "cli-printing-press#dryrun-mask-body"
+    },
+    {
+      "id": "deals-list-pipeline-id-alias",
+      "summary": "Accept --pipeline-id as a hidden alias of --pipeline on deals list, matching deals create's --pipeline-id flag.",
+      "reason": "Dogfood v1.1.3 (MED): flag naming was inconsistent — create used --pipeline-id, list used --pipeline and rejected --pipeline-id.",
+      "files": [
+        "internal/cli/deals_list.go"
+      ],
+      "validated_outcome": "deals list --pipeline-id <id> returns the same rows as --pipeline <id>.",
+      "upstream_issue": "cli-printing-press#flag-alias-consistency"
+    },
+    {
+      "id": "doctor-health-path",
+      "summary": "Point the doctor reachability and credential probes at /auth/me instead of the bare versioned root (which 308-redirects to a 404 route).",
+      "reason": "Dogfood v1.1.3 (LOW): doctor reported 'api: reachable (HTTP 404 at /)'. /auth/me is a real authenticated GET, giving a clean 'reachable' verdict and a definitive valid/invalid credential check.",
+      "files": [
+        "internal/cli/doctor.go"
+      ],
+      "validated_outcome": "doctor --json now reports api: reachable and credentials: valid against live prod with a valid token.",
+      "upstream_issue": "cli-printing-press#doctor-health-path"
     }
   ]
 }

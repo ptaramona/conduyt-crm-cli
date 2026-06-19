@@ -126,7 +126,12 @@ func newDealsListCmd(flags *rootFlags) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
-	cmd.Flags().StringVar(&flagPipeline, "pipeline", "", "Filter by pipeline ID")
+	cmd.Flags().StringVar(&flagPipeline, "pipeline", "", "Filter by pipeline ID (alias: --pipeline-id)")
+	// PATCH(upstream cli-printing-press#flag-alias-consistency): `deals create`
+	// uses --pipeline-id, so accept it here too for discoverability. Both flags
+	// write the same variable; --pipeline-id is hidden to keep help output clean.
+	cmd.Flags().StringVar(&flagPipeline, "pipeline-id", "", "Filter by pipeline ID (alias of --pipeline)")
+	_ = cmd.Flags().MarkHidden("pipeline-id")
 	cmd.Flags().StringVar(&flagStage, "stage", "", "Filter by stage ID")
 	cmd.Flags().StringVar(&flagStatus, "status", "", "Status (one of: open, won, lost)")
 	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Assigned to")

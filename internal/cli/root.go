@@ -28,6 +28,7 @@ type rootFlags struct {
 	plain         bool
 	quiet         bool
 	dryRun        bool
+	showBody      bool
 	noCache       bool
 	noInput       bool
 	idempotent    bool
@@ -102,6 +103,7 @@ Run 'conduyt-crm-pp-cli doctor' to verify auth and connectivity.`,
 	rootCmd.PersistentFlags().StringVar(&flags.configPath, "config", "", "Config file path")
 	rootCmd.PersistentFlags().DurationVar(&flags.timeout, "timeout", 30*time.Second, "Request timeout")
 	rootCmd.PersistentFlags().BoolVar(&flags.dryRun, "dry-run", false, "Show request without sending")
+	rootCmd.PersistentFlags().BoolVar(&flags.showBody, "show-body", false, "In --dry-run, print the full request body verbatim (default masks values to avoid leaking PII)")
 	rootCmd.PersistentFlags().BoolVar(&flags.noCache, "no-cache", false, "Bypass response cache")
 	rootCmd.PersistentFlags().BoolVar(&flags.noInput, "no-input", false, "Disable all interactive prompts (for CI/agents)")
 	rootCmd.PersistentFlags().BoolVar(&flags.idempotent, "idempotent", false, "Treat already-existing create results as a successful no-op")
@@ -261,6 +263,7 @@ func (f *rootFlags) newClient() (*client.Client, error) {
 	}
 	c := client.New(cfg, f.timeout, f.rateLimit)
 	c.DryRun = f.dryRun
+	c.ShowBody = f.showBody
 	c.NoCache = f.noCache
 	return c, nil
 }

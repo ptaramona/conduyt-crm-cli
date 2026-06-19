@@ -24,6 +24,14 @@ import (
 
 var As = errors.As
 
+// PATCH(upstream cli-printing-press#progress-events-stderr): ErrOut centralizes
+// the diagnostic/progress stream so it can never collide with the JSON payload
+// on stdout. Every progress, page-fetch, and completion event is routed here.
+// Kept as a function (not a const os.Stderr ref) so tests can redirect it.
+var errOutWriter io.Writer = os.Stderr
+
+func ErrOut() io.Writer { return errOutWriter }
+
 // noColor is set by the --no-color flag
 var noColor bool
 
@@ -299,12 +307,16 @@ func paginatedGet(c interface {
 	// Fetch all pages
 	allItems := make([]json.RawMessage, 0)
 	page := 0
+	// PATCH(upstream cli-printing-press#progress-events-stderr): all progress
+	// and completion events are written to ErrOut (stderr), never stdout, so a
+	// consumer piping stdout always receives a single clean JSON payload. The
+	// JSON payload itself is emitted by the caller after this returns.
 	for {
 		page++
 		if humanFriendly {
-			fmt.Fprintf(os.Stderr, "fetching page %d...\n", page)
+			fmt.Fprintf(ErrOut(), "fetching page %d...\n", page)
 		} else {
-			fmt.Fprintf(os.Stderr, `{"event":"page_fetch","page":%d}`+"\n", page)
+			fmt.Fprintf(ErrOut(), `{"event":"page_fetch","page":%d}`+"\n", page)
 		}
 
 		data, err := c.GetWithHeaders(path, clean, headers)
@@ -316,47 +328,66 @@ func paginatedGet(c interface {
 		var items []json.RawMessage
 		if json.Unmarshal(data, &items) == nil {
 			allItems = append(allItems, items...)
-		} else {
-			// Response is an object - look for array inside
-			var obj map[string]json.RawMessage
-			if json.Unmarshal(data, &obj) == nil {
-				if nested, ok := extractPaginatedItems(obj); ok {
-					allItems = append(allItems, nested...)
-				}
-
-				// Check for next cursor
-				if nextCursorPath != "" {
-					if tokenRaw, ok := rawAtPath(obj, nextCursorPath); ok {
-						var token string
-						if json.Unmarshal(tokenRaw, &token) == nil && token != "" {
-							clean[cursorParam] = token
-							continue
-						}
-					}
-				}
-
-				// Check has_more
-				if hasMoreField != "" {
-					if moreRaw, ok := rawAtPath(obj, hasMoreField); ok {
-						var more bool
-						if json.Unmarshal(moreRaw, &more) == nil && more {
-							continue
-						}
-					}
-				}
-			}
-			// No more pages
+			// Direct array response: no envelope/meta to paginate with.
 			break
 		}
 
-		// For direct arrays, can't paginate without cursor
+		// Response is an object - look for the (possibly nested) array inside
+		var obj map[string]json.RawMessage
+		if json.Unmarshal(data, &obj) != nil {
+			break
+		}
+		if nested, ok := extractPaginatedItems(obj); ok {
+			allItems = append(allItems, nested...)
+		}
+
+		// Check for next cursor
+		if nextCursorPath != "" {
+			if tokenRaw, ok := rawAtPath(obj, nextCursorPath); ok {
+				var token string
+				if json.Unmarshal(tokenRaw, &token) == nil && token != "" {
+					clean[cursorParam] = token
+					continue
+				}
+			}
+		}
+
+		// Check has_more
+		if hasMoreField != "" {
+			if moreRaw, ok := rawAtPath(obj, hasMoreField); ok {
+				var more bool
+				if json.Unmarshal(moreRaw, &more) == nil && more {
+					continue
+				}
+			}
+		}
+
+		// PATCH(upstream cli-printing-press#pagination-meta-driven): page/total
+		// driven pagination. When the envelope carries a pagination meta block
+		// (page, per_page, total), keep requesting subsequent pages until we
+		// have collected `total` items. This is what makes `--all` actually
+		// fetch every page for offset-paginated APIs like Conduyt instead of
+		// stopping after page 1.
+		if cursorParam == "" && hasMoreField == "" {
+			if curPage, perPage, total, ok := extractPaginationMeta(obj); ok && perPage > 0 && total > 0 {
+				if curPage == 0 {
+					curPage = page
+				}
+				if len(allItems) < total && curPage*perPage < total {
+					clean["page"] = fmt.Sprintf("%d", curPage+1)
+					continue
+				}
+			}
+		}
+
+		// No more pages
 		break
 	}
 
 	if humanFriendly {
-		fmt.Fprintf(os.Stderr, "fetched %d items across %d pages\n", len(allItems), page)
+		fmt.Fprintf(ErrOut(), "fetched %d items across %d pages\n", len(allItems), page)
 	} else {
-		fmt.Fprintf(os.Stderr, `{"event":"complete","total":%d,"pages":%d}`+"\n", len(allItems), page)
+		fmt.Fprintf(ErrOut(), `{"event":"complete","total":%d,"pages":%d}`+"\n", len(allItems), page)
 	}
 	result, _ := json.Marshal(allItems)
 	return json.RawMessage(result), nil
@@ -368,6 +399,18 @@ func extractPaginatedItems(obj map[string]json.RawMessage) ([]json.RawMessage, b
 			var nested []json.RawMessage
 			if json.Unmarshal(arr, &nested) == nil {
 				return nested, true
+			}
+			// PATCH(upstream cli-printing-press#pagination-nested-envelope):
+			// Some APIs (Conduyt /deals, etc.) return a nested envelope where
+			// the items live one level deeper: {"data":{"data":[...],"meta":{...}}}.
+			// The OpenAPI PaginatedResponse schema documents this exact shape.
+			// When the named field is itself an object, recurse one level so we
+			// find the real items array instead of giving up and reporting 0.
+			var inner map[string]json.RawMessage
+			if json.Unmarshal(arr, &inner) == nil {
+				if items, ok := extractPaginatedItems(inner); ok {
+					return items, true
+				}
 			}
 		}
 	}
@@ -385,6 +428,38 @@ func extractPaginatedItems(obj map[string]json.RawMessage) ([]json.RawMessage, b
 		return onlyArray, true
 	}
 	return nil, false
+}
+
+// PATCH(upstream cli-printing-press#pagination-nested-envelope):
+// extractPaginationMeta digs out the pagination metadata object regardless of
+// nesting depth. It handles both top-level {"meta":{...}} and the nested
+// {"data":{"meta":{...}}} envelope the Conduyt API uses. Returns the parsed
+// page, perPage, total and whether a meta block was found.
+func extractPaginationMeta(obj map[string]json.RawMessage) (page, perPage, total int, found bool) {
+	var meta map[string]json.RawMessage
+	if raw, ok := obj["meta"]; ok && json.Unmarshal(raw, &meta) == nil {
+		found = true
+	} else if dataRaw, ok := obj["data"]; ok {
+		var inner map[string]json.RawMessage
+		if json.Unmarshal(dataRaw, &inner) == nil {
+			if raw, ok := inner["meta"]; ok && json.Unmarshal(raw, &meta) == nil {
+				found = true
+			}
+		}
+	}
+	if !found {
+		return 0, 0, 0, false
+	}
+	readInt := func(key string) int {
+		if raw, ok := meta[key]; ok {
+			var n int
+			if json.Unmarshal(raw, &n) == nil {
+				return n
+			}
+		}
+		return 0
+	}
+	return readInt("page"), readInt("per_page"), readInt("total"), true
 }
 
 func rawAtPath(obj map[string]json.RawMessage, path string) (json.RawMessage, bool) {
@@ -1220,6 +1295,14 @@ func printProvenance(cmd *cobra.Command, count int, prov DataProvenance) {
 // "invalid character '<'" while still passing the raw payload through to
 // the consumer.
 func wrapWithProvenance(data json.RawMessage, prov DataProvenance) (json.RawMessage, error) {
+	// PATCH(upstream cli-printing-press#read-envelope-flatten): flatten the
+	// API's nested data envelope before wrapping. The Conduyt list/get
+	// endpoints return {"data":{"data":[...],"meta":{...}}}. Wrapping that raw
+	// produced results.data.data[] (triple-nested) so agents reported "0 rows".
+	// We unwrap to the inner items array (and surface the pagination meta in
+	// the envelope) so the payload is always at a predictable single depth.
+	flat, pageMeta := unwrapAPIData(data)
+	data = flat
 	meta := map[string]any{"source": prov.Source}
 	if prov.SyncedAt != nil {
 		meta["synced_at"] = prov.SyncedAt.UTC().Format(time.RFC3339)
@@ -1233,15 +1316,61 @@ func wrapWithProvenance(data json.RawMessage, prov DataProvenance) (json.RawMess
 	if prov.Freshness != nil {
 		meta["freshness"] = prov.Freshness
 	}
-	var results any = json.RawMessage(data)
-	if !json.Valid(data) {
-		results = string(data)
+	// Surface server-side pagination metadata (page/per_page/total) in the
+	// envelope meta so agents can paginate without re-deriving counts.
+	if pageMeta != nil {
+		meta["pagination"] = pageMeta
 	}
+	var payload any = json.RawMessage(data)
+	if !json.Valid(data) {
+		payload = string(data)
+	}
+	// PATCH(upstream cli-printing-press#standard-envelope): emit the payload
+	// under "data" (the same key mutation verbs use) so every verb exposes its
+	// payload at one predictable path. "results" is retained as a deprecated
+	// alias for existing consumers and will be removed in a future major.
 	envelope := map[string]any{
-		"results": results,
+		"data":    payload,
+		"results": payload,
 		"meta":    meta,
 	}
 	return json.Marshal(envelope)
+}
+
+// PATCH(upstream cli-printing-press#read-envelope-flatten): unwrapAPIData
+// flattens the API's data envelope to the inner payload. It handles:
+//   - direct arrays / objects (returned unchanged)
+//   - {"data": <payload>} single-level envelope
+//   - {"data": {"data": [...], "meta": {...}}} nested paginated envelope
+//
+// It returns the flattened payload plus any pagination meta object found
+// (nil when absent). The payload is the inner items array for paginated
+// responses, or the inner object for detail responses.
+func unwrapAPIData(data json.RawMessage) (json.RawMessage, map[string]any) {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(data, &obj) != nil {
+		// Not an object (array or scalar) — nothing to unwrap.
+		return data, nil
+	}
+	dataRaw, ok := obj["data"]
+	if !ok {
+		return data, nil
+	}
+	// Is data an object that itself wraps {data, meta}?
+	var inner map[string]json.RawMessage
+	if json.Unmarshal(dataRaw, &inner) == nil {
+		if items, hasItems := inner["data"]; hasItems {
+			var pageMeta map[string]any
+			if metaRaw, hasMeta := inner["meta"]; hasMeta {
+				_ = json.Unmarshal(metaRaw, &pageMeta)
+			}
+			return items, pageMeta
+		}
+		// {"data": {<single object>}} — detail response, return the object.
+		return dataRaw, nil
+	}
+	// {"data": [...]} or {"data": <scalar>} — return the inner payload.
+	return dataRaw, nil
 }
 
 // defaultDBPath returns the canonical path for the local SQLite database.

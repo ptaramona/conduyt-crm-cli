@@ -27,9 +27,14 @@ type Client struct {
 	Config     *config.Config
 	HTTPClient *http.Client
 	DryRun     bool
-	NoCache    bool
-	cacheDir   string
-	limiter    *cliutil.AdaptiveLimiter
+	// PATCH(upstream cli-printing-press#dryrun-mask-body): when false (default),
+	// dry-run output masks the request body values instead of printing them
+	// verbatim, so finance/customer PII never lands in terminal scrollback or
+	// CI logs. Set via the --show-body flag for debugging.
+	ShowBody bool
+	NoCache  bool
+	cacheDir string
+	limiter  *cliutil.AdaptiveLimiter
 }
 
 // APIError carries HTTP status information for structured exit codes.
@@ -313,12 +318,24 @@ func (c *Client) dryRun(method, targetURL, path string, params map[string]string
 	}
 	_ = queryPrinted
 	if body != nil {
-		var pretty json.RawMessage
-		if json.Unmarshal(body, &pretty) == nil {
+		// PATCH(upstream cli-printing-press#dryrun-mask-body): never print raw
+		// request bodies by default — they routinely carry finance amounts,
+		// customer PII, tokens, and notes. Print a masked structural preview
+		// instead; --show-body opts into the full verbatim body for debugging.
+		if c.ShowBody {
+			var pretty json.RawMessage
+			if json.Unmarshal(body, &pretty) == nil {
+				enc := json.NewEncoder(os.Stderr)
+				enc.SetIndent("  ", "  ")
+				fmt.Fprintf(os.Stderr, "  Body:\n")
+				_ = enc.Encode(pretty)
+			}
+		} else {
+			masked := maskBodyForDryRun(body)
 			enc := json.NewEncoder(os.Stderr)
 			enc.SetIndent("  ", "  ")
-			fmt.Fprintf(os.Stderr, "  Body:\n")
-			enc.Encode(pretty)
+			fmt.Fprintf(os.Stderr, "  Body (masked — use --show-body to reveal):\n")
+			_ = enc.Encode(masked)
 		}
 	}
 	if authHeader != "" {
@@ -326,6 +343,46 @@ func (c *Client) dryRun(method, targetURL, path string, params map[string]string
 	}
 	fmt.Fprintf(os.Stderr, "\n(dry run - no request sent)\n")
 	return json.RawMessage(`{"dry_run": true}`), 0, nil
+}
+
+// PATCH(upstream cli-printing-press#dryrun-mask-body): maskBodyForDryRun
+// returns a structural preview of a request body with all scalar values
+// replaced by a redacted type marker. Keys are preserved so the caller can
+// still verify the request shape (which fields are set) without exposing the
+// underlying values. Nested objects and arrays are walked recursively.
+func maskBodyForDryRun(body []byte) any {
+	var parsed any
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "«unparseable body redacted»"
+	}
+	return maskValue(parsed)
+}
+
+func maskValue(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, val := range t {
+			out[k] = maskValue(val)
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, val := range t {
+			out[i] = maskValue(val)
+		}
+		return out
+	case string:
+		return "«string»"
+	case float64:
+		return "«number»"
+	case bool:
+		return "«bool»"
+	case nil:
+		return nil
+	default:
+		return "«value»"
+	}
 }
 
 func (c *Client) ConfiguredTimeout() time.Duration {
