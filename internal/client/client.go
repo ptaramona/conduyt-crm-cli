@@ -118,26 +118,73 @@ func (c *Client) cacheKey(path string, params map[string]string, headers map[str
 }
 
 // authFingerprint returns a hash of the effective Authorization credential for a
-// request: the per-request Authorization header if present, otherwise the
-// client's configured auth header. Hashing avoids writing the raw token into the
-// (opaque) cache key derivation path. An empty credential yields a stable
-// "anon" sentinel so unauthenticated reads still share a cache bucket.
+// request, computed with the SAME precedence do() uses to build the outgoing
+// request. do() applies, in order (later writes win):
+//  1. cfg.AuthHeader()                  -> req.Header.Set("Authorization", ...) when non-empty
+//  2. cfg.Headers["Authorization"]      -> can override #1
+//  3. headerOverrides["Authorization"]  -> can override #1 and #2
+//
+// PATCH(upstream cli-printing-press#cache-auth-fingerprint): the previous
+// implementation only considered the per-call header override and
+// cfg.AuthHeader(), ignoring cfg.Headers["Authorization"]. A config that
+// carried a static Authorization via Headers (with no bearer env) therefore
+// fingerprinted as "anon" while the request actually went out under that static
+// credential — and swapping that static Authorization to a different tenant for
+// the same path/params collided on the same cache file. We now mirror do()'s
+// real precedence so the fingerprint always hashes the credential that is
+// actually sent.
+//
+// Explicit-presence tracking matters: an Authorization key that is present but
+// empty (e.g. headerOverrides["Authorization"] == "") is an explicit override
+// in do() — it Sets an empty header rather than falling back — so it must NOT
+// silently revert the fingerprint to a lower-precedence credential. Only an
+// absent key falls through to the next source.
+//
+// Hashing avoids writing the raw token into the (opaque) cache key derivation
+// path. An empty effective credential yields a stable "anon" sentinel so
+// unauthenticated reads still share a cache bucket.
 func authFingerprint(headers map[string]string, cfg *config.Config) string {
 	auth := ""
-	for k, v := range headers {
-		if strings.EqualFold(k, "Authorization") {
-			auth = v
-			break
+	have := false
+
+	// #1: cfg.AuthHeader() — do() only Sets this when non-empty.
+	if cfg != nil {
+		if v := cfg.AuthHeader(); v != "" {
+			auth, have = v, true
 		}
 	}
-	if auth == "" && cfg != nil {
-		auth = cfg.AuthHeader()
+
+	// #2: cfg.Headers["Authorization"] — do() ranges Config.Headers and Sets
+	// every key, so a present Authorization key (even empty) overrides #1.
+	if cfg != nil {
+		if v, ok := lookupHeaderCI(cfg.Headers, "Authorization"); ok {
+			auth, have = v, true
+		}
 	}
-	if auth == "" {
+
+	// #3: headerOverrides["Authorization"] — applied last in do(), wins over all.
+	if v, ok := lookupHeaderCI(headers, "Authorization"); ok {
+		auth, have = v, true
+	}
+
+	if !have || auth == "" {
 		return "anon"
 	}
 	h := sha256.Sum256([]byte(auth))
 	return hex.EncodeToString(h[:8])
+}
+
+// lookupHeaderCI returns the value of the first header key matching name
+// case-insensitively, and whether such a key was present. Mirrors the way
+// do() iterates and Sets header maps (Go's http.Header.Set canonicalizes,
+// so a same-named key at any case is an override).
+func lookupHeaderCI(headers map[string]string, name string) (string, bool) {
+	for k, v := range headers {
+		if strings.EqualFold(k, name) {
+			return v, true
+		}
+	}
+	return "", false
 }
 
 func (c *Client) readCache(path string, params map[string]string, headers map[string]string) (json.RawMessage, bool) {
