@@ -1357,20 +1357,65 @@ func unwrapAPIData(data json.RawMessage) (json.RawMessage, map[string]any) {
 		return data, nil
 	}
 	// Is data an object that itself wraps {data, meta}?
+	//
+	// PATCH(upstream cli-printing-press#unwrap-no-drop): the previous logic
+	// treated ANY inner object containing a "data" key as a nested paginated
+	// envelope and returned ONLY inner["data"] — silently dropping siblings.
+	// A legitimate detail payload like {"data":{"event":"x","data":{...}}}
+	// has a real "data" field plus siblings ("event"), and must NOT be
+	// reshaped to just {...}. Only flatten the second level when it is
+	// RECOGNIZABLY a paginated envelope:
+	//   (a) inner.data is an array AND inner.meta is present (page items+meta), OR
+	//   (b) inner contains ONLY data/meta keys (envelope with no resource fields).
+	// Otherwise the inner object is the actual resource — return it intact.
 	var inner map[string]json.RawMessage
 	if json.Unmarshal(dataRaw, &inner) == nil {
-		if items, hasItems := inner["data"]; hasItems {
+		if items, hasItems := inner["data"]; hasItems && isPaginatedEnvelope(inner, items) {
 			var pageMeta map[string]any
 			if metaRaw, hasMeta := inner["meta"]; hasMeta {
 				_ = json.Unmarshal(metaRaw, &pageMeta)
 			}
 			return items, pageMeta
 		}
-		// {"data": {<single object>}} — detail response, return the object.
+		// {"data": {<resource object>}} — detail response, return it whole so
+		// no sibling fields are lost.
 		return dataRaw, nil
 	}
 	// {"data": [...]} or {"data": <scalar>} — return the inner payload.
 	return dataRaw, nil
+}
+
+// isPaginatedEnvelope reports whether an inner object (already known to carry a
+// "data" key) is a paginated list envelope rather than a resource that merely
+// happens to own a field named "data". It is recognizably an envelope when
+// either the items value is a JSON array AND a "meta" sibling is present, or the
+// object's only keys are "data" and/or "meta" (no resource fields to drop).
+func isPaginatedEnvelope(inner map[string]json.RawMessage, items json.RawMessage) bool {
+	_, hasMeta := inner["meta"]
+	if hasMeta && isJSONArray(items) {
+		return true
+	}
+	for k := range inner {
+		if k != "data" && k != "meta" {
+			return false
+		}
+	}
+	return true
+}
+
+// isJSONArray reports whether raw is a JSON array (first non-space byte is '[').
+func isJSONArray(raw json.RawMessage) bool {
+	for _, b := range raw {
+		switch b {
+		case ' ', '\t', '\n', '\r':
+			continue
+		case '[':
+			return true
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 // defaultDBPath returns the canonical path for the local SQLite database.

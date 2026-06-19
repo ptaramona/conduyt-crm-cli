@@ -78,13 +78,13 @@ func (c *Client) Get(path string, params map[string]string) (json.RawMessage, er
 func (c *Client) GetWithHeaders(path string, params map[string]string, headers map[string]string) (json.RawMessage, error) {
 	// Check cache for GET requests
 	if !c.NoCache && !c.DryRun && c.cacheDir != "" {
-		if cached, ok := c.readCache(path, params); ok {
+		if cached, ok := c.readCache(path, params, headers); ok {
 			return cached, nil
 		}
 	}
 	result, _, err := c.do("GET", path, params, nil, headers)
 	if err == nil && !c.NoCache && !c.DryRun && c.cacheDir != "" {
-		c.writeCache(path, params, result)
+		c.writeCache(path, params, headers, result)
 	}
 	return result, err
 }
@@ -94,17 +94,54 @@ func (c *Client) ProbeGet(path string) (int, error) {
 	return status, err
 }
 
-func (c *Client) cacheKey(path string, params map[string]string) string {
+// cacheKey derives an opaque cache filename from the request path, params, AND
+// an auth fingerprint. PATCH(upstream cli-printing-press#cache-auth-fingerprint):
+// the key previously hashed only path+params, so two requests to the same path
+// with DIFFERENT credentials (revoked vs valid token, or different tenants)
+// collided on one cache file — a successful read under one identity could be
+// served to another. Folding a fingerprint of the auth header(s) into the key
+// scopes the cache per-credential so cross-identity reads can never collide.
+func (c *Client) cacheKey(path string, params map[string]string, headers map[string]string) string {
 	key := path
-	for k, v := range params {
-		key += k + "=" + v
+	// Sort params so map iteration order can't change the key.
+	pkeys := make([]string, 0, len(params))
+	for k := range params {
+		pkeys = append(pkeys, k)
 	}
+	sort.Strings(pkeys)
+	for _, k := range pkeys {
+		key += "\x00p:" + k + "=" + params[k]
+	}
+	key += "\x00auth:" + authFingerprint(headers, c.Config)
 	h := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(h[:8])
 }
 
-func (c *Client) readCache(path string, params map[string]string) (json.RawMessage, bool) {
-	cacheFile := filepath.Join(c.cacheDir, c.cacheKey(path, params)+".json")
+// authFingerprint returns a hash of the effective Authorization credential for a
+// request: the per-request Authorization header if present, otherwise the
+// client's configured auth header. Hashing avoids writing the raw token into the
+// (opaque) cache key derivation path. An empty credential yields a stable
+// "anon" sentinel so unauthenticated reads still share a cache bucket.
+func authFingerprint(headers map[string]string, cfg *config.Config) string {
+	auth := ""
+	for k, v := range headers {
+		if strings.EqualFold(k, "Authorization") {
+			auth = v
+			break
+		}
+	}
+	if auth == "" && cfg != nil {
+		auth = cfg.AuthHeader()
+	}
+	if auth == "" {
+		return "anon"
+	}
+	h := sha256.Sum256([]byte(auth))
+	return hex.EncodeToString(h[:8])
+}
+
+func (c *Client) readCache(path string, params map[string]string, headers map[string]string) (json.RawMessage, bool) {
+	cacheFile := filepath.Join(c.cacheDir, c.cacheKey(path, params, headers)+".json")
 	info, err := os.Stat(cacheFile)
 	if err != nil || time.Since(info.ModTime()) > 5*time.Minute {
 		return nil, false
@@ -116,9 +153,9 @@ func (c *Client) readCache(path string, params map[string]string) (json.RawMessa
 	return json.RawMessage(data), true
 }
 
-func (c *Client) writeCache(path string, params map[string]string, data json.RawMessage) {
+func (c *Client) writeCache(path string, params map[string]string, headers map[string]string, data json.RawMessage) {
 	os.MkdirAll(c.cacheDir, 0o755)
-	cacheFile := filepath.Join(c.cacheDir, c.cacheKey(path, params)+".json")
+	cacheFile := filepath.Join(c.cacheDir, c.cacheKey(path, params, headers)+".json")
 	os.WriteFile(cacheFile, []byte(data), 0o644)
 }
 

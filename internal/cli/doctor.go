@@ -134,6 +134,15 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 				if clientErr != nil {
 					report["api"] = fmt.Sprintf("client init error: %s", clientErr)
 				} else {
+					// PATCH(upstream cli-printing-press#doctor-nocache): the
+					// GET cache key is path+params only (no Authorization
+					// header), so a prior successful /auth/me read would let a
+					// later doctor run with a revoked, invalid, or different-
+					// tenant token return "credentials: valid" WITHOUT hitting
+					// the API — hiding the exact auth/tenant failure doctor
+					// exists to surface. Force both probes to bypass the cache
+					// so the verdict always reflects a live server response.
+					c.NoCache = true
 					// PATCH(upstream cli-printing-press#doctor-health-path):
 					// pinging the bare versioned root ("/" → /api/v1/) 308-redirects
 					// to a non-API route and lands on HTTP 404, which made doctor

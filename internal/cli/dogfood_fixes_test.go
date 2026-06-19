@@ -43,6 +43,56 @@ func TestUnwrapAPIData_SingleObject(t *testing.T) {
 	}
 }
 
+// TestUnwrapAPIData_DetailWithDataSiblingPreserved is the Finding 2 regression:
+// a detail resource that legitimately owns a "data" field alongside sibling
+// fields must NOT be reshaped to only its inner "data". The flattener used to
+// treat any inner object with a "data" key as a paginated envelope and drop the
+// siblings ("event" here), corrupting the no-drop standardization guarantee.
+func TestUnwrapAPIData_DetailWithDataSiblingPreserved(t *testing.T) {
+	// {"data":{"event":"x","data":{...}}} — inner "data" is an object, no meta,
+	// and there is a sibling "event". The whole inner resource must survive.
+	in := json.RawMessage(`{"data":{"event":"contact.created","id":"wh_1","data":{"contact_id":"c_9","name":"Ada"}}}`)
+	flat, meta := unwrapAPIData(in)
+	if meta != nil {
+		t.Fatalf("detail response should carry no pagination meta, got %v", meta)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(flat, &obj); err != nil {
+		t.Fatalf("payload not an object: %v (got %s)", err, flat)
+	}
+	if obj["event"] != "contact.created" {
+		t.Fatalf("sibling field 'event' was dropped: got %v (full %s)", obj["event"], flat)
+	}
+	if obj["id"] != "wh_1" {
+		t.Fatalf("sibling field 'id' was dropped: got %v (full %s)", obj["id"], flat)
+	}
+	inner, ok := obj["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("inner 'data' object was lost or reshaped: got %T (full %s)", obj["data"], flat)
+	}
+	if inner["contact_id"] != "c_9" {
+		t.Fatalf("inner data.contact_id mangled: got %v", inner["contact_id"])
+	}
+}
+
+// TestUnwrapAPIData_EnvelopeOnlyDataMetaFlattened guards the legitimate
+// flatten path: an inner object whose ONLY keys are data/meta is a genuine
+// envelope and should still be flattened to its items even without an array.
+func TestUnwrapAPIData_EnvelopeOnlyDataMetaFlattened(t *testing.T) {
+	in := json.RawMessage(`{"data":{"data":[{"id":"a"}],"meta":{"total":1}}}`)
+	flat, meta := unwrapAPIData(in)
+	var items []map[string]any
+	if err := json.Unmarshal(flat, &items); err != nil {
+		t.Fatalf("want flattened array, got %s (%v)", flat, err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("want 1 item, got %d", len(items))
+	}
+	if meta == nil || meta["total"] != float64(1) {
+		t.Fatalf("want meta total=1, got %v", meta)
+	}
+}
+
 func TestUnwrapAPIData_BareArrayUnchanged(t *testing.T) {
 	in := json.RawMessage(`[{"id":"a"}]`)
 	flat, meta := unwrapAPIData(in)
