@@ -118,73 +118,94 @@ func (c *Client) cacheKey(path string, params map[string]string, headers map[str
 }
 
 // authFingerprint returns a hash of the effective Authorization credential for a
-// request, computed with the SAME precedence do() uses to build the outgoing
-// request. do() applies, in order (later writes win):
-//  1. cfg.AuthHeader()                  -> req.Header.Set("Authorization", ...) when non-empty
-//  2. cfg.Headers["Authorization"]      -> can override #1
-//  3. headerOverrides["Authorization"]  -> can override #1 and #2
-//
-// PATCH(upstream cli-printing-press#cache-auth-fingerprint): the previous
-// implementation only considered the per-call header override and
-// cfg.AuthHeader(), ignoring cfg.Headers["Authorization"]. A config that
-// carried a static Authorization via Headers (with no bearer env) therefore
-// fingerprinted as "anon" while the request actually went out under that static
-// credential — and swapping that static Authorization to a different tenant for
-// the same path/params collided on the same cache file. We now mirror do()'s
-// real precedence so the fingerprint always hashes the credential that is
-// actually sent.
-//
-// Explicit-presence tracking matters: an Authorization key that is present but
-// empty (e.g. headerOverrides["Authorization"] == "") is an explicit override
-// in do() — it Sets an empty header rather than falling back — so it must NOT
-// silently revert the fingerprint to a lower-precedence credential. Only an
-// absent key falls through to the next source.
+// request. It is computed from the SAME value do() actually transmits, because
+// both call the single source of truth — effectiveAuthorization — so the
+// fingerprint and the wire credential cannot diverge by construction.
 //
 // Hashing avoids writing the raw token into the (opaque) cache key derivation
 // path. An empty effective credential yields a stable "anon" sentinel so
 // unauthenticated reads still share a cache bucket.
 func authFingerprint(headers map[string]string, cfg *config.Config) string {
-	auth := ""
-	have := false
-
-	// #1: cfg.AuthHeader() — do() only Sets this when non-empty.
+	authVal := ""
 	if cfg != nil {
-		if v := cfg.AuthHeader(); v != "" {
-			auth, have = v, true
-		}
+		authVal = cfg.AuthHeader()
 	}
-
-	// #2: cfg.Headers["Authorization"] — do() ranges Config.Headers and Sets
-	// every key, so a present Authorization key (even empty) overrides #1.
-	if cfg != nil {
-		if v, ok := lookupHeaderCI(cfg.Headers, "Authorization"); ok {
-			auth, have = v, true
-		}
-	}
-
-	// #3: headerOverrides["Authorization"] — applied last in do(), wins over all.
-	if v, ok := lookupHeaderCI(headers, "Authorization"); ok {
-		auth, have = v, true
-	}
-
-	if !have || auth == "" {
+	auth := effectiveAuthorization(authVal, cfg, headers)
+	if auth == "" {
 		return "anon"
 	}
 	h := sha256.Sum256([]byte(auth))
 	return hex.EncodeToString(h[:8])
 }
 
-// lookupHeaderCI returns the value of the first header key matching name
-// case-insensitively, and whether such a key was present. Mirrors the way
-// do() iterates and Sets header maps (Go's http.Header.Set canonicalizes,
-// so a same-named key at any case is an override).
-func lookupHeaderCI(headers map[string]string, name string) (string, bool) {
-	for k, v := range headers {
-		if strings.EqualFold(k, name) {
-			return v, true
+// effectiveAuthorization computes the EXACT Authorization value net/http will
+// transmit for a request, and is the single shared source of truth used by both
+// the cache fingerprint (authFingerprint) and the request builder (do()). It
+// replays do()'s header-build sequence onto a real http.Header so that
+// canonicalization and last-write-wins precedence are produced by the net/http
+// machinery itself — not re-implemented — eliminating any chance of divergence.
+//
+// Precedence (later writes win, matching do()):
+//  1. authHeader (cfg.AuthHeader() resolved by do()) — Set only when non-empty.
+//  2. cfg.Headers — every key Set, so a present Authorization overrides #1.
+//  3. headerOverrides — every key Set, wins over all.
+//
+// Case-variant DUPLICATE keys (e.g. both "Authorization" and "authorization" in
+// one map) are the edge this addresses: http.Header.Set canonicalizes every key
+// to "Authorization", so they collapse to one slot. Go map iteration order is
+// nondeterministic, which would make the surviving value a coin-flip in do().
+// To make BOTH the request and the fingerprint deterministic, each source map is
+// applied in a stable order: its case-insensitive Authorization variants are
+// sorted by raw key and Set in that order, so the lexicographically-last variant
+// deterministically wins. do() builds its request header the same way (via
+// applyAuthSources), so the transmitted credential is exactly this value.
+//
+// An explicitly-present but empty Authorization (e.g. headerOverrides
+// ["Authorization"] == "") is an explicit empty Set, not a fallback: it
+// overrides any lower-precedence credential and yields "" (anon), never a silent
+// revert. http.Header.Get("") returns "" so this falls out naturally.
+func effectiveAuthorization(authHeader string, cfg *config.Config, headerOverrides map[string]string) string {
+	h := http.Header{}
+	applyAuthSources(h, authHeader, cfg, headerOverrides)
+	return h.Get("Authorization")
+}
+
+// applyAuthSources replays, onto h, the exact Authorization-affecting Set calls
+// do() performs, in do()'s precedence order and with deterministic resolution of
+// case-variant duplicate keys within each source map. Shared by do() and
+// effectiveAuthorization so the wire credential and the cache fingerprint are
+// always derived from one code path.
+func applyAuthSources(h http.Header, authHeader string, cfg *config.Config, headerOverrides map[string]string) {
+	// #1: cfg.AuthHeader() — do() Sets this only when non-empty.
+	if authHeader != "" {
+		h.Set("Authorization", authHeader)
+	}
+	// #2: cfg.Headers, then #3: headerOverrides — each Set deterministically.
+	if cfg != nil {
+		setAuthDeterministic(h, cfg.Headers)
+	}
+	setAuthDeterministic(h, headerOverrides)
+}
+
+// setAuthDeterministic Sets the Authorization header from m, resolving
+// case-variant duplicate keys ("Authorization" vs "authorization") in a stable
+// order so the result does not depend on Go's nondeterministic map iteration.
+// Variants are applied sorted by raw key; the lexicographically-last variant
+// wins, matching the deterministic value do() now writes via this same helper.
+func setAuthDeterministic(h http.Header, m map[string]string) {
+	variants := make([]string, 0)
+	for k := range m {
+		if strings.EqualFold(k, "Authorization") {
+			variants = append(variants, k)
 		}
 	}
-	return "", false
+	if len(variants) == 0 {
+		return
+	}
+	sort.Strings(variants)
+	for _, k := range variants {
+		h.Set("Authorization", m[k])
+	}
 }
 
 func (c *Client) readCache(path string, params map[string]string, headers map[string]string) (json.RawMessage, bool) {
@@ -305,17 +326,31 @@ func (c *Client) do(method, path string, params map[string]string, body any, hea
 			req.URL.RawQuery = q.Encode()
 		}
 
-		if authHeader != "" {
-			req.Header.Set("Authorization", authHeader)
-		}
+		// Non-Authorization headers: apply config + overrides as before. We skip
+		// Authorization keys here and resolve them through the shared
+		// applyAuthSources helper below, so the credential actually transmitted is
+		// byte-for-byte the one cacheKey fingerprints (no divergence possible).
 		if c.Config != nil {
 			for k, v := range c.Config.Headers {
+				if strings.EqualFold(k, "Authorization") {
+					continue
+				}
 				req.Header.Set(k, v)
 			}
 		}
 		// Per-endpoint header overrides (e.g., different API version per resource)
 		for k, v := range headerOverrides {
+			if strings.EqualFold(k, "Authorization") {
+				continue
+			}
 			req.Header.Set(k, v)
+		}
+		// Authorization, resolved via the single shared source of truth so the
+		// sent credential always matches the cache fingerprint, including the
+		// case-variant duplicate-key edge.
+		applyAuthSources(req.Header, authHeader, c.Config, headerOverrides)
+		if req.Header.Get("Authorization") == "" {
+			req.Header.Del("Authorization")
 		}
 		if req.Header.Get("User-Agent") == "" {
 			// PATCH: keep the default User-Agent aligned with the installed release.
@@ -422,8 +457,11 @@ func (c *Client) dryRun(method, targetURL, path string, params map[string]string
 			_ = enc.Encode(masked)
 		}
 	}
-	if authHeader != "" {
-		fmt.Fprintf(os.Stderr, "  %s: %s\n", "Authorization", maskToken(authHeader))
+	// Preview the EXACT Authorization the live path would send (resolved through
+	// the shared helper, so config/override Authorization — including case-variant
+	// duplicates — is reflected, not just the bearer/AuthHeader value).
+	if eff := effectiveAuthorization(authHeader, c.Config, headerOverrides); eff != "" {
+		fmt.Fprintf(os.Stderr, "  %s: %s\n", "Authorization", maskToken(eff))
 	}
 	fmt.Fprintf(os.Stderr, "\n(dry run - no request sent)\n")
 	return json.RawMessage(`{"dry_run": true}`), 0, nil
