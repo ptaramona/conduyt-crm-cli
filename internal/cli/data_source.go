@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -49,6 +50,30 @@ func isNetworkError(err error) bool {
 // Returns nil, nil if the database file does not exist (no sync has been run).
 func openStoreForRead(ctx context.Context, cliName string) (*store.Store, error) {
 	dbPath := defaultDBPath(cliName)
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return nil, nil
+	}
+	return store.OpenWithContext(ctx, dbPath)
+}
+
+// scopedCachePath returns the path of the auto-mode write-through cache,
+// namespaced by the client's (origin + effective-auth) fingerprint. This is
+// SEPARATE from the explicit-sync store (defaultDBPath) so a different API key
+// or origin can never read another's auto-cached rows: the filename itself
+// differs. Empty scope (no client) falls back to a per-process-unusable name so
+// nothing leaks into the shared store. See client.CacheScope.
+func scopedCachePath(scope string) string {
+	home, _ := os.UserHomeDir()
+	if scope == "" {
+		scope = "noscope"
+	}
+	return filepath.Join(home, ".local", "share", "conduyt-crm-pp-cli", "cache", "auto-"+scope+".db")
+}
+
+// openScopedCacheForRead opens the scoped auto-cache for reading. Returns nil,
+// nil when the file does not exist (nothing auto-cached for this origin/key).
+func openScopedCacheForRead(ctx context.Context, scope string) (*store.Store, error) {
+	dbPath := scopedCachePath(scope)
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -105,19 +130,32 @@ func resolveRead(ctx context.Context, c *client.Client, flags *rootFlags, resour
 		return data, attachFreshness(DataProvenance{Source: "live"}, flags), nil
 
 	default: // "auto"
+		// --no-cache forces live-only: never write-through, never fall back to a
+		// persisted store. A network failure surfaces as an error rather than
+		// silently serving any cached (and potentially cross-tenant) data.
+		if flags.noCache {
+			data, err := c.GetWithHeaders(path, params, headers)
+			if err != nil {
+				return nil, DataProvenance{}, err
+			}
+			return data, attachFreshness(DataProvenance{Source: "live"}, flags), nil
+		}
+		scope := c.CacheScope()
 		data, err := c.GetWithHeaders(path, params, headers)
 		if err == nil {
-			writeThroughCache(ctx, resourceType, data)
+			writeThroughCache(ctx, scope, resourceType, data)
 			return data, attachFreshness(DataProvenance{Source: "live"}, flags), nil
 		}
 		if !isNetworkError(err) {
 			// HTTP 4xx/5xx errors propagate — not a fallback case
 			return nil, DataProvenance{}, err
 		}
-		// Network error — try local fallback
-		fallbackData, fallbackProv, fallbackErr := resolveLocal(ctx, resourceType, isList, path, params, "api_unreachable")
+		// Network error — fall back ONLY to this origin/key's scoped auto-cache,
+		// never the shared sync store, so a DNS/timeout can't serve prior-tenant
+		// rows written under a different key or origin.
+		fallbackData, fallbackProv, fallbackErr := resolveScopedCache(ctx, scope, resourceType, isList, path, params, "api_unreachable")
 		if fallbackErr != nil {
-			return nil, DataProvenance{}, fmt.Errorf("API unreachable and no local data. Run 'conduyt-crm-pp-cli sync' to enable offline access.\n\nOriginal error: %w", err)
+			return nil, DataProvenance{}, fmt.Errorf("API unreachable and no local data for this origin/key. Run 'conduyt-crm-pp-cli sync' to enable offline access.\n\nOriginal error: %w", err)
 		}
 		return fallbackData, attachFreshness(fallbackProv, flags), nil
 	}
@@ -141,27 +179,39 @@ func resolvePaginatedRead(ctx context.Context, c *client.Client, flags *rootFlag
 		return data, attachFreshness(DataProvenance{Source: "live"}, flags), nil
 
 	default: // "auto"
+		// --no-cache forces live-only (see resolveRead for rationale).
+		if flags.noCache {
+			data, err := paginatedGet(c, path, params, headers, fetchAll, cursorParam, nextCursorPath, hasMoreField)
+			if err != nil {
+				return nil, DataProvenance{}, err
+			}
+			return data, attachFreshness(DataProvenance{Source: "live"}, flags), nil
+		}
+		scope := c.CacheScope()
 		data, err := paginatedGet(c, path, params, headers, fetchAll, cursorParam, nextCursorPath, hasMoreField)
 		if err == nil {
-			writeThroughCache(ctx, resourceType, data)
+			writeThroughCache(ctx, scope, resourceType, data)
 			return data, attachFreshness(DataProvenance{Source: "live"}, flags), nil
 		}
 		if !isNetworkError(err) {
 			return nil, DataProvenance{}, err
 		}
-		fallbackData, fallbackProv, fallbackErr := resolveLocal(ctx, resourceType, true, path, params, "api_unreachable")
+		fallbackData, fallbackProv, fallbackErr := resolveScopedCache(ctx, scope, resourceType, true, path, params, "api_unreachable")
 		if fallbackErr != nil {
-			return nil, DataProvenance{}, fmt.Errorf("API unreachable and no local data. Run 'conduyt-crm-pp-cli sync' to enable offline access.\n\nOriginal error: %w", err)
+			return nil, DataProvenance{}, fmt.Errorf("API unreachable and no local data for this origin/key. Run 'conduyt-crm-pp-cli sync' to enable offline access.\n\nOriginal error: %w", err)
 		}
 		return fallbackData, attachFreshness(fallbackProv, flags), nil
 	}
 }
 
-// writeThroughCache upserts live API results into the local SQLite store so
-// FTS search covers everything the user has looked up — not just explicit syncs.
-// Best-effort: failures are silently ignored (the live result already succeeded).
-func writeThroughCache(ctx context.Context, resourceType string, data json.RawMessage) {
-	db, err := store.OpenWithContext(ctx, defaultDBPath("conduyt-crm-pp-cli"))
+// writeThroughCache upserts live API results into the per-origin/per-key SCOPED
+// auto-cache (scopedCachePath) so an auto-mode network-error fallback can serve
+// the same account's prior reads — and ONLY that account's. The scope namespaces
+// the file by (origin + effective auth), so a different key/origin writes to a
+// different file and can never read these rows back. Best-effort: failures are
+// silently ignored (the live result already succeeded).
+func writeThroughCache(ctx context.Context, scope string, resourceType string, data json.RawMessage) {
+	db, err := store.OpenWithContext(ctx, scopedCachePath(scope))
 	if err != nil {
 		return
 	}
@@ -213,7 +263,30 @@ func resolveLocal(ctx context.Context, resourceType string, isList bool, path st
 		return nil, DataProvenance{}, fmt.Errorf("no local data. Run 'conduyt-crm-pp-cli sync' first")
 	}
 	defer db.Close()
+	return readStore(db, resourceType, isList, path, params, reason)
+}
 
+// resolveScopedCache reads from the auto-mode scoped cache (scopedCachePath),
+// which is namespaced by the client's (origin + effective-auth) fingerprint.
+// This is the ONLY persisted store the auto network-error fallback consults, so
+// a fallback can never surface rows written under a different key or origin (the
+// Finding-1 cross-tenant leak). Identical read semantics to resolveLocal.
+func resolveScopedCache(ctx context.Context, scope string, resourceType string, isList bool, path string, params map[string]string, reason string) (json.RawMessage, DataProvenance, error) {
+	db, err := openScopedCacheForRead(ctx, scope)
+	if err != nil {
+		return nil, DataProvenance{}, fmt.Errorf("opening local cache: %w", err)
+	}
+	if db == nil {
+		return nil, DataProvenance{}, fmt.Errorf("no cached data for this origin/key")
+	}
+	defer db.Close()
+	return readStore(db, resourceType, isList, path, params, reason)
+}
+
+// readStore performs the common list/get-by-id read against an already-open
+// store and builds local provenance. Shared by resolveLocal (sync store) and
+// resolveScopedCache (per-origin/key auto cache).
+func readStore(db *store.Store, resourceType string, isList bool, path string, params map[string]string, reason string) (json.RawMessage, DataProvenance, error) {
 	prov := localProvenance(db, resourceType, reason)
 
 	// Warn if endpoint had filters that local reads can't reproduce

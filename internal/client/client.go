@@ -5,6 +5,8 @@ package client
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
@@ -91,12 +93,21 @@ func newHTTPClient(timeout time.Duration, jar http.CookieJar) *http.Client {
 //     disables that injection path for redirects exactly as do() disables it for
 //     the initial request.
 //
-//  2. Authorization forwarding to a DIFFERENT host. net/http re-sends our
+//  2. Authorization forwarding to a DIFFERENT origin. net/http re-sends our
 //     Authorization header across redirects; if a redirect points to another
-//     host (origin), continuing to send the caller's bearer/Basic credential
-//     leaks it to that host. We strip Authorization (and the cookie-bearing
-//     headers net/http itself already strips on cross-host hops) whenever the
-//     redirect target host differs from the previous request's host.
+//     origin, continuing to send the caller's bearer/Basic credential leaks it
+//     to that origin. We compare every redirected request against the INITIAL
+//     request's origin (via[0]) — NOT the previous hop — and strip Authorization
+//     whenever the target host or scheme differs from that initial origin.
+//
+//     Comparing to the previous hop is unsafe: net/http copies the original
+//     request's headers onto every hop, so a chain origin -> sub.host -> sub.host
+//     re-attaches the original Authorization on the 2nd redirect and a
+//     previous-hop check (sub.host == sub.host) would wave it through, leaking
+//     the token to the foreign origin reached on hop 1. Anchoring to via[0]
+//     closes that: once we leave the initial origin, Authorization stays
+//     stripped for the remainder of the chain. We also strip on a scheme
+//     downgrade/change (https -> http) to the same host.
 //
 // net/http's own default CheckRedirect also caps the redirect chain at 10; we
 // preserve that cap so this does not become an open-ended follow.
@@ -106,10 +117,13 @@ func secureRedirect(req *http.Request, via []*http.Request) error {
 	}
 	// Never let a Location URL's userinfo become a Basic Authorization header.
 	req.URL.User = nil
-	// Do not carry Authorization across an origin (host) change.
+	// Do not carry Authorization off the INITIAL request's origin. via[0] is the
+	// original request; every redirect is measured against it, not the prior hop.
 	if len(via) > 0 {
-		prev := via[len(via)-1]
-		if prev.URL != nil && !strings.EqualFold(req.URL.Host, prev.URL.Host) {
+		initial := via[0]
+		if initial.URL != nil &&
+			(!strings.EqualFold(req.URL.Host, initial.URL.Host) ||
+				!strings.EqualFold(req.URL.Scheme, initial.URL.Scheme)) {
 			req.Header.Del("Authorization")
 		}
 	}
@@ -129,6 +143,53 @@ func New(cfg *config.Config, timeout time.Duration, rateLimit float64) *Client {
 // RateLimit returns the current effective rate limit in req/s. Returns 0 if disabled.
 func (c *Client) RateLimit() float64 {
 	return c.limiter.Rate()
+}
+
+// CacheScope returns a stable, opaque fingerprint that isolates the auto-mode
+// write-through cache by (normalized origin) + (effective Authorization). Two
+// invocations that would put a DIFFERENT credential on the wire, or hit a
+// DIFFERENT origin, get DIFFERENT scopes — so a cached row written under key/
+// origin A can never be read back under key/origin B (the cross-tenant leak in
+// data_source.go's auto path). The returned value is a hex SHA-256 digest, so
+// it never embeds the raw token or URL in a filename.
+//
+// The fingerprint mirrors exactly what do() transmits:
+//   - origin = scheme://host[:port] of BaseURL, lowercased, default ports
+//     normalized away; the API base path is INCLUDED because two tenants can
+//     share a host but differ by base path (e.g. /api/v1 vs /t/acme/api/v1).
+//   - auth = the effective Authorization header applyAuthorization() would set
+//     (env bearer < config header < — per-call overrides are request-scoped and
+//     deliberately excluded so the cache key is stable across endpoints; an
+//     empty auth still scopes distinctly from a populated one).
+func (c *Client) CacheScope() string {
+	origin := normalizeOrigin(c.BaseURL)
+	// Effective Authorization without per-call header overrides (nil): the cache
+	// is keyed by the account-level credential, not per-endpoint version headers.
+	auth, _ := c.authHeader()
+	effAuth := effectiveAuthorization(auth, c.Config, nil)
+	h := sha256.New()
+	// Length-prefix each field so "ab"+"c" can never collide with "a"+"bc".
+	fmt.Fprintf(h, "origin:%d:%s|auth:%d:%s", len(origin), origin, len(effAuth), effAuth)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// normalizeOrigin reduces a BaseURL to a canonical scheme://host[:port]/base-path
+// string for cache scoping. Unparseable input falls back to a lowercased,
+// trimmed copy so distinct raw strings still map to distinct scopes (fail
+// closed: never collapse two inputs into one scope).
+func normalizeOrigin(baseURL string) string {
+	u, err := url.Parse(strings.TrimRight(baseURL, "/"))
+	if err != nil || u.Host == "" {
+		return strings.ToLower(strings.TrimSpace(baseURL))
+	}
+	scheme := strings.ToLower(u.Scheme)
+	host := strings.ToLower(u.Host)
+	// Strip default ports so https://h and https://h:443 share a scope.
+	if (scheme == "https" && strings.HasSuffix(host, ":443")) ||
+		(scheme == "http" && strings.HasSuffix(host, ":80")) {
+		host = host[:strings.LastIndex(host, ":")]
+	}
+	return scheme + "://" + host + strings.TrimRight(u.Path, "/")
 }
 
 func (c *Client) Get(path string, params map[string]string) (json.RawMessage, error) {

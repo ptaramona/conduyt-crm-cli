@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/ptaramona/conduyt-crm-cli/internal/config"
@@ -292,6 +293,94 @@ func TestRedirectPreservesAuthorizationSameHost(t *testing.T) {
 	}
 	if landedAuth != "Bearer keep-me" {
 		t.Fatalf("same-host redirect dropped Authorization: got %q, want the original bearer", landedAuth)
+	}
+}
+
+// TestRedirectStripsAuthorizationAcrossMultiHopSameSubdomain is the Finding-2
+// HIGH regression: origin -> subdomain -> SAME-subdomain. net/http copies the
+// original request's headers onto EVERY hop, so on hop 2 (subdomain -> same
+// subdomain) the original Authorization is re-attached. A previous-hop check
+// (host unchanged from hop 1) would wave it through, re-leaking the token to the
+// foreign origin reached on hop 1. Anchoring the comparison to via[0] (the
+// initial origin) keeps Authorization stripped for the whole chain once we leave
+// the initial host.
+func TestRedirectStripsAuthorizationAcrossMultiHopSameSubdomain(t *testing.T) {
+	var hop2Auth string
+	hop2Auth = "unset"
+
+	// "Subdomain" host. /b1 redirects to /b2 on the SAME host; /b2 records auth.
+	subMux := http.NewServeMux()
+	var subURL string
+	subSrv := httptest.NewServer(subMux)
+	defer subSrv.Close()
+	subURL = subSrv.URL
+	subMux.HandleFunc("/b1", func(w http.ResponseWriter, r *http.Request) {
+		// hop 2: redirect to the SAME (sub) host.
+		http.Redirect(w, r, subURL+"/b2", http.StatusFound)
+	})
+	subMux.HandleFunc("/b2", func(w http.ResponseWriter, r *http.Request) {
+		hop2Auth = r.Header.Get("Authorization")
+		w.Write([]byte(`{"ok":true}`))
+	})
+
+	// Origin (the initial host). hop 1: redirect off-origin to the sub host.
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, subURL+"/b1", http.StatusFound)
+	}))
+	defer origin.Close()
+
+	c := &Client{
+		BaseURL:    origin.URL,
+		Config:     &config.Config{AuthHeaderVal: "Bearer secret-token"},
+		HTTPClient: newHTTPClient(0, nil),
+		NoCache:    true,
+	}
+	if _, err := c.Get("/start", nil); err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if hop2Auth != "" {
+		t.Fatalf("Authorization %q re-leaked on the 2nd redirect hop (same-subdomain); once off the initial origin it must stay stripped", hop2Auth)
+	}
+}
+
+// TestNormalizeOriginScoping proves CacheScope distinguishes origins/keys and is
+// stable, so the auto-cache filename cannot collide across tenants. It also
+// confirms default-port normalization (https vs :443) maps to one scope.
+func TestNormalizeOriginScoping(t *testing.T) {
+	scope := func(baseURL, auth string) string {
+		c := &Client{BaseURL: baseURL, Config: &config.Config{AuthHeaderVal: auth}}
+		return c.CacheScope()
+	}
+
+	a := scope("https://conduyt.app/api/v1", "Bearer key-A")
+	b := scope("https://conduyt.app/api/v1", "Bearer key-B")
+	if a == b {
+		t.Fatal("different keys on the same origin must yield different cache scopes")
+	}
+
+	origin2 := scope("https://other.example.com/api/v1", "Bearer key-A")
+	if origin2 == a {
+		t.Fatal("different origins with the same key must yield different cache scopes")
+	}
+
+	// Same logical origin, default port spelled out: must collapse to one scope.
+	if scope("https://conduyt.app/api/v1", "Bearer key-A") != scope("https://conduyt.app:443/api/v1", "Bearer key-A") {
+		t.Fatal("default https port (:443) should normalize to the same scope")
+	}
+
+	// Different API base path on the same host = different tenant = different scope.
+	if scope("https://conduyt.app/api/v1", "Bearer key-A") == scope("https://conduyt.app/t/acme/api/v1", "Bearer key-A") {
+		t.Fatal("different base paths on the same host must yield different cache scopes")
+	}
+
+	// Stability.
+	if scope("https://conduyt.app/api/v1", "Bearer key-A") != a {
+		t.Fatal("CacheScope must be stable for identical inputs")
+	}
+
+	// The scope never embeds the raw token.
+	if got := scope("https://conduyt.app/api/v1", "Bearer super-secret-token"); strings.Contains(got, "super-secret-token") {
+		t.Fatalf("cache scope must not embed the raw token, got %q", got)
 	}
 }
 
