@@ -5,9 +5,6 @@ package client
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
@@ -17,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -33,10 +29,36 @@ type Client struct {
 	// verbatim, so finance/customer PII never lands in terminal scrollback or
 	// CI logs. Set via the --show-body flag for debugging.
 	ShowBody bool
-	NoCache  bool
-	cacheDir string
-	limiter  *cliutil.AdaptiveLimiter
+	// NoCache is retained for flag/call-site compatibility (the global
+	// --no-cache flag binds to it, and several commands set it). It is now a
+	// no-op: see the PATCH note on the cache removal below. GET reads ALWAYS hit
+	// the API, so "bypass cache" is already the only behavior.
+	NoCache bool
+	limiter *cliutil.AdaptiveLimiter
 }
+
+// PATCH(upstream cli-printing-press#disable-persistent-get-cache):
+//
+// The persistent, cross-invocation on-disk GET cache (~/.cache/conduyt-crm-pp-cli)
+// has been REMOVED. It was a performance optimization, not a feature, and it kept
+// generating correctness edges round after round: to be safe the cache key had to
+// reproduce — byte-for-byte — the exact Authorization credential AND target origin
+// that net/http would transmit, across every auth source (env bearer, config
+// headers, per-call overrides, case-variant duplicate header keys, URL userinfo,
+// and redirect-injected userinfo) and every BaseURL (scheme/host/port/base-path).
+// Any divergence between "what we fingerprinted" and "what the wire actually sent"
+// is a cross-credential or cross-origin cache-poisoning bug.
+//
+// Proving that equivalence complete is fragile by construction. We prefer provable
+// correctness over the optimization, so the persistent cache is gone entirely:
+// reads always hit the live API. That deletes the whole class — there is no shared
+// cache file two different credentials or origins can collide on, because there is
+// no shared cache file at all. It also removes the moot auth-fingerprint machinery
+// (cacheKey/authFingerprint/effectiveAuthorization/applyAuthSources/userinfo
+// derivation) that existed only to scope that cache.
+//
+// The doctor NoCache fix, the response flattener, and all six original v1.1.3
+// dogfood bug fixes work fully without the cache — none depended on it.
 
 // APIError carries HTTP status information for structured exit codes.
 type APIError struct {
@@ -51,18 +73,55 @@ func (e *APIError) Error() string {
 }
 
 func newHTTPClient(timeout time.Duration, jar http.CookieJar) *http.Client {
-	return &http.Client{Timeout: timeout, Jar: jar}
+	return &http.Client{
+		Timeout:       timeout,
+		Jar:           jar,
+		CheckRedirect: secureRedirect,
+	}
+}
+
+// secureRedirect runs before net/http sends each REDIRECTED request. It closes
+// two credential-leak classes that the initial-request sanitization in do()
+// cannot reach, because net/http follows redirects internally inside Do():
+//
+//  1. URL-userinfo Basic injection on redirects. If a Location URL carries
+//     userinfo (https://attacker:creds@host/...), net/http would inject a Basic
+//     Authorization header derived from it on the redirected request — an
+//     Authorization we never computed. Clearing req.URL.User on every hop
+//     disables that injection path for redirects exactly as do() disables it for
+//     the initial request.
+//
+//  2. Authorization forwarding to a DIFFERENT host. net/http re-sends our
+//     Authorization header across redirects; if a redirect points to another
+//     host (origin), continuing to send the caller's bearer/Basic credential
+//     leaks it to that host. We strip Authorization (and the cookie-bearing
+//     headers net/http itself already strips on cross-host hops) whenever the
+//     redirect target host differs from the previous request's host.
+//
+// net/http's own default CheckRedirect also caps the redirect chain at 10; we
+// preserve that cap so this does not become an open-ended follow.
+func secureRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return fmt.Errorf("stopped after 10 redirects")
+	}
+	// Never let a Location URL's userinfo become a Basic Authorization header.
+	req.URL.User = nil
+	// Do not carry Authorization across an origin (host) change.
+	if len(via) > 0 {
+		prev := via[len(via)-1]
+		if prev.URL != nil && !strings.EqualFold(req.URL.Host, prev.URL.Host) {
+			req.Header.Del("Authorization")
+		}
+	}
+	return nil
 }
 
 func New(cfg *config.Config, timeout time.Duration, rateLimit float64) *Client {
-	homeDir, _ := os.UserHomeDir()
-	cacheDir := filepath.Join(homeDir, ".cache", "conduyt-crm-pp-cli")
 	httpClient := newHTTPClient(timeout, nil)
 	return &Client{
 		BaseURL:    strings.TrimRight(cfg.BaseURL, "/"),
 		Config:     cfg,
 		HTTPClient: httpClient,
-		cacheDir:   cacheDir,
 		limiter:    cliutil.NewAdaptiveLimiter(rateLimit),
 	}
 }
@@ -76,209 +135,17 @@ func (c *Client) Get(path string, params map[string]string) (json.RawMessage, er
 	return c.GetWithHeaders(path, params, nil)
 }
 
+// GetWithHeaders performs a GET against the live API. There is no persistent
+// cache: reads always hit the server, which is what makes per-credential and
+// per-origin correctness unconditional (see the cache-removal PATCH note above).
 func (c *Client) GetWithHeaders(path string, params map[string]string, headers map[string]string) (json.RawMessage, error) {
-	// Check cache for GET requests
-	if !c.NoCache && !c.DryRun && c.cacheDir != "" {
-		if cached, ok := c.readCache(path, params, headers); ok {
-			return cached, nil
-		}
-	}
 	result, _, err := c.do("GET", path, params, nil, headers)
-	if err == nil && !c.NoCache && !c.DryRun && c.cacheDir != "" {
-		c.writeCache(path, params, headers, result)
-	}
 	return result, err
 }
 
 func (c *Client) ProbeGet(path string) (int, error) {
 	_, status, err := c.do("GET", path, nil, nil, nil)
 	return status, err
-}
-
-// cacheKey derives an opaque cache filename from the request path, params, AND
-// an auth fingerprint. PATCH(upstream cli-printing-press#cache-auth-fingerprint):
-// the key previously hashed only path+params, so two requests to the same path
-// with DIFFERENT credentials (revoked vs valid token, or different tenants)
-// collided on one cache file — a successful read under one identity could be
-// served to another. Folding a fingerprint of the auth header(s) into the key
-// scopes the cache per-credential so cross-identity reads can never collide.
-func (c *Client) cacheKey(path string, params map[string]string, headers map[string]string) string {
-	key := path
-	// Sort params so map iteration order can't change the key.
-	pkeys := make([]string, 0, len(params))
-	for k := range params {
-		pkeys = append(pkeys, k)
-	}
-	sort.Strings(pkeys)
-	for _, k := range pkeys {
-		key += "\x00p:" + k + "=" + params[k]
-	}
-	key += "\x00auth:" + authFingerprint(c.BaseURL, headers, c.Config)
-	h := sha256.Sum256([]byte(key))
-	return hex.EncodeToString(h[:8])
-}
-
-// authFingerprint returns a hash of the effective Authorization credential for a
-// request. It is computed from the SAME value do() actually transmits, because
-// both call the single source of truth — effectiveAuthorization — so the
-// fingerprint and the wire credential cannot diverge by construction.
-//
-// rawURL is the request URL (c.BaseURL); its userinfo, if any, is the
-// lowest-precedence credential net/http would otherwise inject as a Basic
-// header. Folding it in here is what closes the class: two BaseURLs with
-// different userinfo (https://userA:pass@host vs https://userB:pass@host) and no
-// explicit Authorization now fingerprint DIFFERENTLY instead of colliding on
-// "anon", and the explicit-empty→anon guarantee holds because an explicit
-// Authorization always overrides URL userinfo.
-//
-// Hashing avoids writing the raw token into the (opaque) cache key derivation
-// path. An empty effective credential yields a stable "anon" sentinel so
-// unauthenticated reads still share a cache bucket.
-func authFingerprint(rawURL string, headers map[string]string, cfg *config.Config) string {
-	authVal := ""
-	if cfg != nil {
-		authVal = cfg.AuthHeader()
-	}
-	auth := effectiveAuthorization(rawURL, authVal, cfg, headers)
-	if auth == "" {
-		return "anon"
-	}
-	h := sha256.Sum256([]byte(auth))
-	return hex.EncodeToString(h[:8])
-}
-
-// effectiveAuthorization computes the EXACT Authorization value net/http will
-// transmit for a request, and is the single shared source of truth used by both
-// the cache fingerprint (authFingerprint) and the request builder (do()). It
-// replays do()'s header-build sequence onto a real http.Header so that
-// canonicalization and last-write-wins precedence are produced by the net/http
-// machinery itself — not re-implemented — eliminating any chance of divergence.
-//
-// Precedence (later writes win, matching do()):
-//  0. URL userinfo (rawURL's user:pass) — the Basic header net/http would
-//     otherwise inject. LOWEST precedence: net/http only injects it when
-//     Authorization is empty, so any explicit credential below overrides it.
-//  1. authHeader (cfg.AuthHeader() resolved by do()) — Set only when non-empty.
-//  2. cfg.Headers — every key Set, so a present Authorization overrides #1.
-//  3. headerOverrides — every key Set, wins over all.
-//
-// Case-variant DUPLICATE keys (e.g. both "Authorization" and "authorization" in
-// one map) are the edge this addresses: http.Header.Set canonicalizes every key
-// to "Authorization", so they collapse to one slot. Go map iteration order is
-// nondeterministic, which would make the surviving value a coin-flip in do().
-// To make BOTH the request and the fingerprint deterministic, each source map is
-// applied in a stable order: its case-insensitive Authorization variants are
-// sorted by raw key and Set in that order, so the lexicographically-last variant
-// deterministically wins. do() builds its request header the same way (via
-// applyAuthSources), so the transmitted credential is exactly this value.
-//
-// An explicitly-present but empty Authorization (e.g. headerOverrides
-// ["Authorization"] == "") is an explicit empty Set, not a fallback: it
-// overrides any lower-precedence credential and yields "" (anon), never a silent
-// revert. http.Header.Get("") returns "" so this falls out naturally.
-func effectiveAuthorization(rawURL, authHeader string, cfg *config.Config, headerOverrides map[string]string) string {
-	h := http.Header{}
-	applyAuthSources(h, rawURL, authHeader, cfg, headerOverrides)
-	return h.Get("Authorization")
-}
-
-// applyAuthSources replays, onto h, the exact Authorization-affecting Set calls
-// do() performs, in do()'s precedence order and with deterministic resolution of
-// case-variant duplicate keys within each source map. Shared by do() and
-// effectiveAuthorization so the wire credential and the cache fingerprint are
-// always derived from one code path.
-//
-// rawURL is folded in FIRST (lowest precedence) as the Basic header net/http
-// would inject from the URL's userinfo. Because do() now clears req.URL.User
-// before calling the HTTP client, net/http can no longer inject this itself —
-// so applyAuthSources is the SOLE producer of the URL-userinfo credential too,
-// and effectiveAuthorization is authoritative for cacheKey, dryRun, AND wire.
-func applyAuthSources(h http.Header, rawURL, authHeader string, cfg *config.Config, headerOverrides map[string]string) {
-	// #0: URL userinfo (lowest precedence) — replicate net/http's
-	// client.go injection exactly: Basic base64(username:password), using the
-	// UNESCAPED userinfo values. Overridden by any explicit credential below.
-	if user := userinfoAuthorization(rawURL); user != "" {
-		h.Set("Authorization", user)
-	}
-	// #1: cfg.AuthHeader() — do() Sets this only when non-empty.
-	if authHeader != "" {
-		h.Set("Authorization", authHeader)
-	}
-	// #2: cfg.Headers, then #3: headerOverrides — each Set deterministically.
-	if cfg != nil {
-		setAuthDeterministic(h, cfg.Headers)
-	}
-	setAuthDeterministic(h, headerOverrides)
-}
-
-// userinfoAuthorization returns the Basic Authorization header net/http would
-// inject from rawURL's userinfo component, or "" if rawURL has no userinfo (or
-// is unparseable). It mirrors net/http/client.go: "Basic " +
-// base64(username + ":" + password) using the URL's UNESCAPED username and
-// password. A userinfo with an empty username AND no password ("@host") yields
-// no credential, matching net/http (url.User == nil in that case).
-func userinfoAuthorization(rawURL string) string {
-	if rawURL == "" {
-		return ""
-	}
-	u, err := url.Parse(rawURL)
-	if err != nil || u.User == nil {
-		return ""
-	}
-	username := u.User.Username()
-	password, _ := u.User.Password()
-	raw := username + ":" + password
-	return "Basic " + base64.StdEncoding.EncodeToString([]byte(raw))
-}
-
-// setAuthDeterministic Sets the Authorization header from m, resolving
-// case-variant duplicate keys ("Authorization" vs "authorization") in a stable
-// order so the result does not depend on Go's nondeterministic map iteration.
-// Variants are applied sorted by raw key; the lexicographically-last variant
-// wins, matching the deterministic value do() now writes via this same helper.
-func setAuthDeterministic(h http.Header, m map[string]string) {
-	variants := make([]string, 0)
-	for k := range m {
-		if strings.EqualFold(k, "Authorization") {
-			variants = append(variants, k)
-		}
-	}
-	if len(variants) == 0 {
-		return
-	}
-	sort.Strings(variants)
-	for _, k := range variants {
-		h.Set("Authorization", m[k])
-	}
-}
-
-func (c *Client) readCache(path string, params map[string]string, headers map[string]string) (json.RawMessage, bool) {
-	cacheFile := filepath.Join(c.cacheDir, c.cacheKey(path, params, headers)+".json")
-	info, err := os.Stat(cacheFile)
-	if err != nil || time.Since(info.ModTime()) > 5*time.Minute {
-		return nil, false
-	}
-	data, err := os.ReadFile(cacheFile)
-	if err != nil {
-		return nil, false
-	}
-	return json.RawMessage(data), true
-}
-
-func (c *Client) writeCache(path string, params map[string]string, headers map[string]string, data json.RawMessage) {
-	os.MkdirAll(c.cacheDir, 0o755)
-	cacheFile := filepath.Join(c.cacheDir, c.cacheKey(path, params, headers)+".json")
-	os.WriteFile(cacheFile, []byte(data), 0o644)
-}
-
-// invalidateCache wholesale-removes the cache directory so the next read
-// after a mutation cannot return a stale snapshot. Selective per-resource
-// invalidation rejected: cache keys are opaque sha256 hashes.
-func (c *Client) invalidateCache() {
-	if c.cacheDir == "" {
-		return
-	}
-	_ = os.RemoveAll(c.cacheDir)
 }
 
 func (c *Client) Post(path string, body any) (json.RawMessage, int, error) {
@@ -311,6 +178,56 @@ func (c *Client) Patch(path string, body any) (json.RawMessage, int, error) {
 
 func (c *Client) PatchWithHeaders(path string, body any, headers map[string]string) (json.RawMessage, int, error) {
 	return c.do("PATCH", path, nil, body, headers)
+}
+
+// applyAuthorization writes the effective Authorization header onto h using do()'s
+// precedence (later writes win): cfg.AuthHeader() < cfg.Headers["Authorization"] <
+// headerOverrides["Authorization"]. Case-variant duplicate keys within a single
+// source map ("Authorization" vs "authorization") are resolved deterministically
+// (sorted by raw key, lexicographically-last variant wins) so the credential put
+// on the wire never depends on Go's nondeterministic map iteration order. An
+// explicitly-present empty Authorization is an explicit empty Set, not a fallback.
+//
+// This is the SOLE producer of the wire Authorization: do() strips req.URL.User
+// before sending, so net/http cannot inject a URL-userinfo Basic header we did not
+// write here.
+func applyAuthorization(h http.Header, authHeader string, cfg *config.Config, headerOverrides map[string]string) {
+	if authHeader != "" {
+		h.Set("Authorization", authHeader)
+	}
+	if cfg != nil {
+		setAuthDeterministic(h, cfg.Headers)
+	}
+	setAuthDeterministic(h, headerOverrides)
+}
+
+// setAuthDeterministic Sets the Authorization header from m, resolving
+// case-variant duplicate keys ("Authorization" vs "authorization") in a stable
+// order so the result does not depend on Go's nondeterministic map iteration.
+// Variants are applied sorted by raw key; the lexicographically-last variant wins.
+func setAuthDeterministic(h http.Header, m map[string]string) {
+	variants := make([]string, 0)
+	for k := range m {
+		if strings.EqualFold(k, "Authorization") {
+			variants = append(variants, k)
+		}
+	}
+	if len(variants) == 0 {
+		return
+	}
+	sort.Strings(variants)
+	for _, k := range variants {
+		h.Set("Authorization", m[k])
+	}
+}
+
+// effectiveAuthorization computes the Authorization value do() will transmit,
+// using applyAuthorization (the shared builder). Used by --dry-run to preview the
+// exact credential without sending a request.
+func effectiveAuthorization(authHeader string, cfg *config.Config, headerOverrides map[string]string) string {
+	h := http.Header{}
+	applyAuthorization(h, authHeader, cfg, headerOverrides)
+	return h.Get("Authorization")
 }
 
 // do executes an HTTP request. headerOverrides, when non-nil, override global
@@ -370,10 +287,9 @@ func (c *Client) do(method, path string, params map[string]string, body any, hea
 			req.URL.RawQuery = q.Encode()
 		}
 
-		// Non-Authorization headers: apply config + overrides as before. We skip
-		// Authorization keys here and resolve them through the shared
-		// applyAuthSources helper below, so the credential actually transmitted is
-		// byte-for-byte the one cacheKey fingerprints (no divergence possible).
+		// Non-Authorization headers: apply config + overrides. Authorization keys
+		// are skipped here and resolved through the shared applyAuthorization
+		// helper below so the credential transmitted is deterministic.
 		if c.Config != nil {
 			for k, v := range c.Config.Headers {
 				if strings.EqualFold(k, "Authorization") {
@@ -389,18 +305,13 @@ func (c *Client) do(method, path string, params map[string]string, body any, hea
 			}
 			req.Header.Set(k, v)
 		}
-		// CLOSE THE CLASS: strip any userinfo from the request URL so net/http
-		// can NEVER inject an Authorization header we did not compute. After this,
-		// effectiveAuthorization (via applyAuthSources) is the SOLE source of the
-		// wire Authorization — the URL's userinfo is folded in by applyAuthSources
-		// at its correct (lowest) precedence using targetURL, and net/http sees a
-		// URL with no User so its own injection path is disabled. This makes the
-		// fingerprint authoritative for cacheKey, dryRun, AND the wire at once.
+		// Strip any userinfo from the request URL so net/http can NEVER inject an
+		// Authorization header we did not compute. applyAuthorization below is the
+		// sole producer of the wire Authorization. (Redirected requests are
+		// sanitized separately by secureRedirect on the http.Client.)
 		req.URL.User = nil
-		// Authorization, resolved via the single shared source of truth so the
-		// sent credential always matches the cache fingerprint, including the
-		// case-variant duplicate-key edge AND URL userinfo.
-		applyAuthSources(req.Header, targetURL, authHeader, c.Config, headerOverrides)
+		// Authorization, resolved via the shared deterministic helper.
+		applyAuthorization(req.Header, authHeader, c.Config, headerOverrides)
 		if req.Header.Get("Authorization") == "" {
 			req.Header.Del("Authorization")
 		}
@@ -425,9 +336,6 @@ func (c *Client) do(method, path string, params map[string]string, body any, hea
 		// Success
 		if resp.StatusCode < 400 {
 			c.limiter.OnSuccess()
-			if method != http.MethodGet && !c.DryRun {
-				c.invalidateCache()
-			}
 			return json.RawMessage(respBody), resp.StatusCode, nil
 		}
 
@@ -511,9 +419,8 @@ func (c *Client) dryRun(method, targetURL, path string, params map[string]string
 	}
 	// Preview the EXACT Authorization the live path would send (resolved through
 	// the shared helper, so config/override Authorization — including case-variant
-	// duplicates AND URL userinfo — is reflected, not just the bearer/AuthHeader
-	// value).
-	if eff := effectiveAuthorization(targetURL, authHeader, c.Config, headerOverrides); eff != "" {
+	// duplicates — is reflected, not just the bearer/AuthHeader value).
+	if eff := effectiveAuthorization(authHeader, c.Config, headerOverrides); eff != "" {
 		fmt.Fprintf(os.Stderr, "  %s: %s\n", "Authorization", maskToken(eff))
 	}
 	fmt.Fprintf(os.Stderr, "\n(dry run - no request sent)\n")
