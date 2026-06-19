@@ -6,6 +6,7 @@ package client
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -112,7 +113,7 @@ func (c *Client) cacheKey(path string, params map[string]string, headers map[str
 	for _, k := range pkeys {
 		key += "\x00p:" + k + "=" + params[k]
 	}
-	key += "\x00auth:" + authFingerprint(headers, c.Config)
+	key += "\x00auth:" + authFingerprint(c.BaseURL, headers, c.Config)
 	h := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(h[:8])
 }
@@ -122,15 +123,23 @@ func (c *Client) cacheKey(path string, params map[string]string, headers map[str
 // both call the single source of truth — effectiveAuthorization — so the
 // fingerprint and the wire credential cannot diverge by construction.
 //
+// rawURL is the request URL (c.BaseURL); its userinfo, if any, is the
+// lowest-precedence credential net/http would otherwise inject as a Basic
+// header. Folding it in here is what closes the class: two BaseURLs with
+// different userinfo (https://userA:pass@host vs https://userB:pass@host) and no
+// explicit Authorization now fingerprint DIFFERENTLY instead of colliding on
+// "anon", and the explicit-empty→anon guarantee holds because an explicit
+// Authorization always overrides URL userinfo.
+//
 // Hashing avoids writing the raw token into the (opaque) cache key derivation
 // path. An empty effective credential yields a stable "anon" sentinel so
 // unauthenticated reads still share a cache bucket.
-func authFingerprint(headers map[string]string, cfg *config.Config) string {
+func authFingerprint(rawURL string, headers map[string]string, cfg *config.Config) string {
 	authVal := ""
 	if cfg != nil {
 		authVal = cfg.AuthHeader()
 	}
-	auth := effectiveAuthorization(authVal, cfg, headers)
+	auth := effectiveAuthorization(rawURL, authVal, cfg, headers)
 	if auth == "" {
 		return "anon"
 	}
@@ -146,6 +155,9 @@ func authFingerprint(headers map[string]string, cfg *config.Config) string {
 // machinery itself — not re-implemented — eliminating any chance of divergence.
 //
 // Precedence (later writes win, matching do()):
+//  0. URL userinfo (rawURL's user:pass) — the Basic header net/http would
+//     otherwise inject. LOWEST precedence: net/http only injects it when
+//     Authorization is empty, so any explicit credential below overrides it.
 //  1. authHeader (cfg.AuthHeader() resolved by do()) — Set only when non-empty.
 //  2. cfg.Headers — every key Set, so a present Authorization overrides #1.
 //  3. headerOverrides — every key Set, wins over all.
@@ -164,9 +176,9 @@ func authFingerprint(headers map[string]string, cfg *config.Config) string {
 // ["Authorization"] == "") is an explicit empty Set, not a fallback: it
 // overrides any lower-precedence credential and yields "" (anon), never a silent
 // revert. http.Header.Get("") returns "" so this falls out naturally.
-func effectiveAuthorization(authHeader string, cfg *config.Config, headerOverrides map[string]string) string {
+func effectiveAuthorization(rawURL, authHeader string, cfg *config.Config, headerOverrides map[string]string) string {
 	h := http.Header{}
-	applyAuthSources(h, authHeader, cfg, headerOverrides)
+	applyAuthSources(h, rawURL, authHeader, cfg, headerOverrides)
 	return h.Get("Authorization")
 }
 
@@ -175,7 +187,19 @@ func effectiveAuthorization(authHeader string, cfg *config.Config, headerOverrid
 // case-variant duplicate keys within each source map. Shared by do() and
 // effectiveAuthorization so the wire credential and the cache fingerprint are
 // always derived from one code path.
-func applyAuthSources(h http.Header, authHeader string, cfg *config.Config, headerOverrides map[string]string) {
+//
+// rawURL is folded in FIRST (lowest precedence) as the Basic header net/http
+// would inject from the URL's userinfo. Because do() now clears req.URL.User
+// before calling the HTTP client, net/http can no longer inject this itself —
+// so applyAuthSources is the SOLE producer of the URL-userinfo credential too,
+// and effectiveAuthorization is authoritative for cacheKey, dryRun, AND wire.
+func applyAuthSources(h http.Header, rawURL, authHeader string, cfg *config.Config, headerOverrides map[string]string) {
+	// #0: URL userinfo (lowest precedence) — replicate net/http's
+	// client.go injection exactly: Basic base64(username:password), using the
+	// UNESCAPED userinfo values. Overridden by any explicit credential below.
+	if user := userinfoAuthorization(rawURL); user != "" {
+		h.Set("Authorization", user)
+	}
 	// #1: cfg.AuthHeader() — do() Sets this only when non-empty.
 	if authHeader != "" {
 		h.Set("Authorization", authHeader)
@@ -185,6 +209,26 @@ func applyAuthSources(h http.Header, authHeader string, cfg *config.Config, head
 		setAuthDeterministic(h, cfg.Headers)
 	}
 	setAuthDeterministic(h, headerOverrides)
+}
+
+// userinfoAuthorization returns the Basic Authorization header net/http would
+// inject from rawURL's userinfo component, or "" if rawURL has no userinfo (or
+// is unparseable). It mirrors net/http/client.go: "Basic " +
+// base64(username + ":" + password) using the URL's UNESCAPED username and
+// password. A userinfo with an empty username AND no password ("@host") yields
+// no credential, matching net/http (url.User == nil in that case).
+func userinfoAuthorization(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || u.User == nil {
+		return ""
+	}
+	username := u.User.Username()
+	password, _ := u.User.Password()
+	raw := username + ":" + password
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(raw))
 }
 
 // setAuthDeterministic Sets the Authorization header from m, resolving
@@ -345,10 +389,18 @@ func (c *Client) do(method, path string, params map[string]string, body any, hea
 			}
 			req.Header.Set(k, v)
 		}
+		// CLOSE THE CLASS: strip any userinfo from the request URL so net/http
+		// can NEVER inject an Authorization header we did not compute. After this,
+		// effectiveAuthorization (via applyAuthSources) is the SOLE source of the
+		// wire Authorization — the URL's userinfo is folded in by applyAuthSources
+		// at its correct (lowest) precedence using targetURL, and net/http sees a
+		// URL with no User so its own injection path is disabled. This makes the
+		// fingerprint authoritative for cacheKey, dryRun, AND the wire at once.
+		req.URL.User = nil
 		// Authorization, resolved via the single shared source of truth so the
 		// sent credential always matches the cache fingerprint, including the
-		// case-variant duplicate-key edge.
-		applyAuthSources(req.Header, authHeader, c.Config, headerOverrides)
+		// case-variant duplicate-key edge AND URL userinfo.
+		applyAuthSources(req.Header, targetURL, authHeader, c.Config, headerOverrides)
 		if req.Header.Get("Authorization") == "" {
 			req.Header.Del("Authorization")
 		}
@@ -459,8 +511,9 @@ func (c *Client) dryRun(method, targetURL, path string, params map[string]string
 	}
 	// Preview the EXACT Authorization the live path would send (resolved through
 	// the shared helper, so config/override Authorization — including case-variant
-	// duplicates — is reflected, not just the bearer/AuthHeader value).
-	if eff := effectiveAuthorization(authHeader, c.Config, headerOverrides); eff != "" {
+	// duplicates AND URL userinfo — is reflected, not just the bearer/AuthHeader
+	// value).
+	if eff := effectiveAuthorization(targetURL, authHeader, c.Config, headerOverrides); eff != "" {
 		fmt.Fprintf(os.Stderr, "  %s: %s\n", "Authorization", maskToken(eff))
 	}
 	fmt.Fprintf(os.Stderr, "\n(dry run - no request sent)\n")
