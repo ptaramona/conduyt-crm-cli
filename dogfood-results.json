@@ -1,10 +1,11 @@
 {
-  "dir": "/Users/TaramonaFamily/printing-press/library/conduyt-crm",
-  "spec_path": "/Users/TaramonaFamily/Desktop/Cerebro/domains/conduyt/projects/conduyt-app/code/public/openapi.yaml",
+  "dir": "\u003ccli-dir\u003e/conduyt-crm-pp-cli",
+  "spec_path": "\u003ccli-dir\u003e/spec.yaml",
+  "spec_source": "bundled",
   "verdict": "PASS",
   "path_check": {
-    "tested": 8,
-    "valid": 8,
+    "tested": 7,
+    "valid": 7,
     "valid_pct": 100
   },
   "auth_check": {
@@ -18,19 +19,27 @@
     "pass": true,
     "detail": "browser-session auth not required"
   },
+  "oauth_scope_coverage_check": {
+    "checked": 0,
+    "covered": 0,
+    "skipped": true,
+    "detail": "no OAuth-scoped endpoints in spec"
+  },
   "dead_flags": {
-    "total": 19,
+    "total": 23,
     "dead": 0
   },
   "dead_functions": {
-    "total": 54,
+    "total": 73,
     "dead": 0
   },
   "pipeline_check": {
     "sync_calls_domain": true,
     "search_calls_domain": false,
-    "domain_tables": 1,
-    "detail": "sync uses domain-specific Upsert methods; search uses generic Search only; 1 domain tables found"
+    "domain_tables": 4,
+    "sync_file_emitted": true,
+    "sync_resources_present": true,
+    "detail": "sync uses domain-specific Upsert methods; search uses generic Search only; 4 domain tables found"
   },
   "example_check": {
     "tested": 10,
@@ -40,8 +49,8 @@
   },
   "wiring_check": {
     "command_tree": {
-      "defined": 423,
-      "registered": 423
+      "defined": 929,
+      "registered": 929
     },
     "config_consistency": {
       "consistent": true
@@ -54,9 +63,8 @@
     }
   },
   "novel_features_check": {
-    "planned": 0,
-    "found": 0,
-    "skipped": true
+    "planned": 7,
+    "found": 7
   },
   "mcp_surface_parity": {
     "state": "runtime_walking",
@@ -64,22 +72,28 @@
     "detail": "MCP surface mirrors the Cobra tree at runtime"
   },
   "reimplementation_check": {
-    "checked": 0,
-    "exempted_via_store": 0,
-    "skipped": true
+    "checked": 7,
+    "exempted_via_store": 3
+  },
+  "description_drift_check": {
+    "expected": "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has."
   },
   "source_client_check": {
     "checked": 0,
     "skipped": true
   },
   "print_json_filtered_check": {
-    "checked": 417
+    "checked": 912
   },
   "test_presence": {
-    "checked": 0
+    "checked": 1
   },
   "naming_check": {
-    "checked": 417
+    "checked": 912
+  },
+  "sync_param_drop_check": {
+    "checked": 0,
+    "skipped": true
   },
   "issues": null
 }

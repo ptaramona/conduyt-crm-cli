@@ -9,7 +9,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X github.com/ptaramona/conduyt-crm-cli/internal/cli.version={{ .Version }}
+      - -s -w -X conduyt-crm-pp-cli/internal/cli.version={{ .Version }}
     targets:
       - darwin_amd64
       - darwin_arm64
@@ -23,7 +23,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w
+      - -s -w -X main.version={{ .Version }}
     targets:
       - darwin_amd64
       - darwin_arm64
@@ -42,10 +42,10 @@ checksum:
 brews:
   - name: conduyt-crm-pp-cli
     repository:
-      owner: conduyt
+      owner: ptaramona
       name: homebrew-tap
-    homepage: "https://github.com/conduyt/conduyt-crm-pp-cli"
-    description: "The Conduyt CRM API provides programmatic access to your CRM data including contacts, companies, deals, pipelines,..."
+    homepage: "https://github.com/ptaramona/conduyt-crm-pp-cli"
+    description: "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has."
     install: |
       bin.install "conduyt-crm-pp-cli"
       bin.install "conduyt-crm-pp-mcp"

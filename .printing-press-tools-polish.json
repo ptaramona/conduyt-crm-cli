@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-07-12T01:46:36.366008Z",
+  "cli_dir": "\u003ccli-dir\u003e/conduyt-crm-pp-cli",
+  "findings": [
+    {
+      "kind": "thin-short",
+      "command": "list",
+      "file": "teach.go",
+      "line": 692,
+      "evidence": "List recorded learnings",
+      "status": "accepted",
+      "note": "DO-NOT-EDIT generated file (teach.go, self-learning surface); Short is brief but precise for a local-store read; richer default belongs in the generator template — retro candidate"
+    }
+  ],
+  "progress": {
+    "last_processed_finding_id": "thin-short:list:teach.go:692"
+  }
+}
