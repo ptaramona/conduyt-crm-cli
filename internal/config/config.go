@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 )
 
 type Config struct {

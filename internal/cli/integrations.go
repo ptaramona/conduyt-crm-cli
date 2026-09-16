@@ -22,11 +22,10 @@ func newIntegrationsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newIntegrationsDisconnectCmd(flags))
 	cmd.AddCommand(newIntegrationsGetHealthCmd(flags))
 	cmd.AddCommand(newIntegrationsGetSlackChannelsCmd(flags))
-	cmd.AddCommand(newIntegrationsGetSlackOauthCallbackCmd(flags))
-	cmd.AddCommand(newIntegrationsGetSlackOauthInstallCmd(flags))
 	cmd.AddCommand(newIntegrationsGetZapierSampleDataCmd(flags))
 	cmd.AddCommand(newIntegrationsListCmd(flags))
 	cmd.AddCommand(newIntegrationsListZapierSubscriptionsCmd(flags))
+	cmd.AddCommand(newIntegrationsPostDppIngestCmd(flags))
 	cmd.AddCommand(newIntegrationsPostSlackSettingsCmd(flags))
 	cmd.AddCommand(newIntegrationsPostSlackTestCmd(flags))
 	return cmd

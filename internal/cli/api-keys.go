@@ -18,6 +18,7 @@ func newApiKeysCmd(flags *rootFlags) *cobra.Command {
 
 	cmd.AddCommand(newApiKeysCheckCmd(flags))
 	cmd.AddCommand(newApiKeysCreateCmd(flags))
+	cmd.AddCommand(newApiKeysGetIdCmd(flags))
 	cmd.AddCommand(newApiKeysListCmd(flags))
 	cmd.AddCommand(newApiKeysRevokeCmd(flags))
 	cmd.AddCommand(newApiKeysUpdateCmd(flags))

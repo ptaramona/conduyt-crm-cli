@@ -16,5 +16,6 @@ func newContactsGdprExportCmd(flags *rootFlags) *cobra.Command {
 	}
 
 	cmd.AddCommand(newContactsGdprExportGetContactsIdCmd(flags))
+	cmd.AddCommand(newContactsGdprExportGetContactsIdFilesFileIdDownloadCmd(flags))
 	return cmd
 }

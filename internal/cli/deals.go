@@ -32,6 +32,7 @@ func newDealsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newDealsUpdateCmd(flags))
 	cmd.AddCommand(newDealsActivitiesCmd(flags))
 	cmd.AddCommand(newDealsContactsCmd(flags))
+	cmd.AddCommand(newDealsHandoffFilesCmd(flags))
 	cmd.AddCommand(newDealsHistoryCmd(flags))
 	cmd.AddCommand(newDealsTagsCmd(flags))
 	cmd.AddCommand(newDealsTasksCmd(flags))

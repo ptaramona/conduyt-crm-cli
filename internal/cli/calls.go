@@ -19,6 +19,7 @@ func newCallsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newCallsCreateRecordCmd(flags))
 	cmd.AddCommand(newCallsGetCmd(flags))
 	cmd.AddCommand(newCallsListCmd(flags))
+	cmd.AddCommand(newCallsPostVoiceDropCmd(flags))
 	cmd.AddCommand(newCallsUpdateCmd(flags))
 	return cmd
 }

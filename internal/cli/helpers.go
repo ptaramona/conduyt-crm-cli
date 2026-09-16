@@ -5,12 +5,12 @@ package cli
 
 import (
 	"bytes"
-	"github.com/ptaramona/conduyt-crm-cli/internal/client"
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ptaramona/conduyt-crm-cli/internal/client"
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"io"

@@ -23,5 +23,6 @@ func newConversationsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newConversationsPatchContactIdCmd(flags))
 	cmd.AddCommand(newConversationsComplianceCmd(flags))
 	cmd.AddCommand(newConversationsStateCmd(flags))
+	cmd.AddCommand(newConversationsSuggestionCmd(flags))
 	return cmd
 }

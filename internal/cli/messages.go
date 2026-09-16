@@ -20,5 +20,6 @@ func newMessagesCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newMessagesGetSmsCmd(flags))
 	cmd.AddCommand(newMessagesListCmd(flags))
 	cmd.AddCommand(newMessagesSendSmsCmd(flags))
+	cmd.AddCommand(newMessagesMediaCmd(flags))
 	return cmd
 }

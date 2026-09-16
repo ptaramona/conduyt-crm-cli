@@ -17,6 +17,8 @@ func newSmsCmd(flags *rootFlags) *cobra.Command {
 	}
 
 	cmd.AddCommand(newSmsGetSendLogsCmd(flags))
+	cmd.AddCommand(newSmsGetTransportsCmd(flags))
+	cmd.AddCommand(newSmsGetWhatsappTemplatesCmd(flags))
 	cmd.AddCommand(newSmsPostSendLogsCmd(flags))
 	return cmd
 }

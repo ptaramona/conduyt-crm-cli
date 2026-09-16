@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
+	mcplib "github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 	"github.com/ptaramona/conduyt-crm-cli/internal/store"
-	mcplib "github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 )
 
 func TestMCPPathResolutionMatchesCLIResolverWithHomeEnv(t *testing.T) {

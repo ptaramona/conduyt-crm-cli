@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 	mcplib "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 )
 
 func shellOutToCLI(cliPath func() (string, error), commandPath []string, blockedStructuredArgs map[string]bool, allowedStructuredArgs map[string]bool, positionals []positionalArg, readOnly bool, positionalWriteSinks map[int]bool) server.ToolHandlerFunc {

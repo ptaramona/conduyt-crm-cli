@@ -17,8 +17,12 @@ func newEmailDomainsCmd(flags *rootFlags) *cobra.Command {
 	}
 
 	cmd.AddCommand(newEmailDomainsAddCmd(flags))
+	cmd.AddCommand(newEmailDomainsDeleteReplyCaptureCmd(flags))
 	cmd.AddCommand(newEmailDomainsGetCmd(flags))
+	cmd.AddCommand(newEmailDomainsGetReplyCaptureCmd(flags))
 	cmd.AddCommand(newEmailDomainsGetStatusCmd(flags))
+	cmd.AddCommand(newEmailDomainsPostReplyCaptureCmd(flags))
+	cmd.AddCommand(newEmailDomainsPostReplyCaptureVerifyCmd(flags))
 	cmd.AddCommand(newEmailDomainsRemoveCmd(flags))
 	cmd.AddCommand(newEmailDomainsUpdateCmd(flags))
 	cmd.AddCommand(newEmailDomainsVerifyCmd(flags))
