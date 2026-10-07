@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newBulkUpdateDealsCmd(flags *rootFlags) *cobra.Command {
-	var bodyData string
-	var bodyIds string
+	var bodyUpdates string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -31,11 +30,8 @@ func newBulkUpdateDealsCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("data") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "data")
-				}
-				if !cmd.Flags().Changed("ids") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "ids")
+				if !cmd.Flags().Changed("updates") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "updates")
 				}
 			}
 			path := "/bulk/deals/update"
@@ -58,19 +54,12 @@ func newBulkUpdateDealsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyData != "" {
-					var parsedData any
-					if err := json.Unmarshal([]byte(bodyData), &parsedData); err != nil {
-						return fmt.Errorf("parsing --data JSON: %w", err)
+				if bodyUpdates != "" {
+					var parsedUpdates any
+					if err := json.Unmarshal([]byte(bodyUpdates), &parsedUpdates); err != nil {
+						return fmt.Errorf("parsing --updates JSON: %w", err)
 					}
-					bodyMap["data"] = parsedData
-				}
-				if bodyIds != "" {
-					parsedIds, parseErr := cliutil.ParseStringList(bodyIds)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --ids list: %w", parseErr)
-					}
-					bodyMap["ids"] = parsedIds
+					bodyMap["updates"] = parsedUpdates
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -88,6 +77,10 @@ func newBulkUpdateDealsCmd(flags *rootFlags) *cobra.Command {
 			var partialFailure *partialFailureReport
 			if !flags.dryRun && statusCode >= 200 && statusCode < 300 {
 				partialFailure = detectPartialFailure(data)
+				if partialFailure == nil {
+					// pp-patch: /bulk/deals/update answers 200 with a per-item outcome; failed items are not an HTTP error.
+					partialFailure = detectBulkItemFailures(data)
+				}
 				if partialFailure != nil {
 					fmt.Fprintf(os.Stderr, "warning: partial failure detected in %s response: %s\n", "bulk", partialFailure.Message)
 					if len(partialFailure.ResourceNames) > 0 {
@@ -216,9 +209,48 @@ func newBulkUpdateDealsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyData, "data", "", "Data")
-	cmd.Flags().StringVar(&bodyIds, "ids", "", "Ids")
+	cmd.Flags().StringVar(&bodyUpdates, "updates", "", "JSON array of 1 to 100 items, each {\"id\": <deal uuid>, ...fields to change for that deal}")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
+}
+
+// detectBulkItemFailures reads the 200 body of POST /bulk/deals/update
+// ({"data":{"summary":{...},"results":[{"id","success","error"}]}}) and reports
+// every item that failed, so a partly or wholly failed batch exits with the
+// repo's partial-failure code instead of 0 (unless --allow-partial-failure).
+func detectBulkItemFailures(data []byte) *partialFailureReport {
+	var body struct {
+		Data struct {
+			Summary struct {
+				Failed int `json:"failed"`
+			} `json:"summary"`
+			Results []struct {
+				ID      string `json:"id"`
+				Success *bool  `json:"success"`
+				Error   string `json:"error"`
+			} `json:"results"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(data, &body); err != nil {
+		return nil
+	}
+	var failed []string
+	for _, r := range body.Data.Results {
+		if r.Success != nil && !*r.Success {
+			failed = append(failed, fmt.Sprintf("%s: %s", r.ID, r.Error))
+		}
+	}
+	n := len(failed)
+	if body.Data.Summary.Failed > n {
+		n = body.Data.Summary.Failed
+	}
+	if n == 0 {
+		return nil
+	}
+	msg := fmt.Sprintf("%d of %d deal update(s) failed", n, len(body.Data.Results))
+	if len(failed) > 0 {
+		msg += " (" + strings.Join(failed, "; ") + ")"
+	}
+	return &partialFailureReport{Field: "results", Message: msg}
 }

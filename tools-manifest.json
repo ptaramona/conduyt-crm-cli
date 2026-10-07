@@ -1861,22 +1861,15 @@
     },
     {
       "name": "bulk_update-deals",
-      "description": "Bulk update deals. Required: data, ids.",
+      "description": "Bulk update deals. Required: updates.",
       "method": "POST",
       "path": "/bulk/deals/update",
       "params": [
         {
-          "name": "data",
-          "type": "object",
+          "name": "updates",
+          "type": "array",
           "location": "body",
-          "description": "Data",
-          "required": true
-        },
-        {
-          "name": "ids",
-          "type": "string_csv_array",
-          "location": "body",
-          "description": "Ids",
+          "description": "Updates",
           "required": true
         }
       ]
