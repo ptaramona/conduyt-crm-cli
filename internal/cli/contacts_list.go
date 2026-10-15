@@ -15,7 +15,7 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 	var flagPage string
 	var flagPerPage int
 	var flagSearch string
-	var flagEmail string
+	var flagEmail []string
 	var flagTag string
 	var flagTags string
 	var flagSource string
@@ -81,8 +81,12 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if flagEmail != "" {
-				path = appendArrayQueryParam(path, "email", flagEmail, "form", true)
+			if cmd.Flags().Changed("email") {
+				var err error
+				path, err = appendRepeatableArrayQueryParam(path, "email", flagEmail)
+				if err != nil {
+					return usageErr(err)
+				}
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "contacts", path, map[string]string{
 				"page":         formatCLIParamValue(flagPage),
@@ -152,7 +156,7 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
 	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
-	cmd.Flags().StringVar(&flagEmail, "email", "", "Exact email lookup, repeatable (?email=a@x.com&email=b@y.com; form style, exploded).")
+	cmd.Flags().StringArrayVar(&flagEmail, "email", nil, "Exact email lookup, repeatable (--email a@x.com --email b@y.com; a comma list or JSON array is also accepted). Each address is at most 254 characters; an empty or invalid value, or more than 20 distinct addresses, is a 400; a 422 means the unready-index lookup exceeded its stored-spelling bind budget.")
 	cmd.Flags().StringVar(&flagTag, "tag", "", "Filter by single tag name")
 	cmd.Flags().StringVar(&flagTags, "tags", "", "Filter by comma-separated tag names")
 	cmd.Flags().StringVar(&flagSource, "source", "", "Source")

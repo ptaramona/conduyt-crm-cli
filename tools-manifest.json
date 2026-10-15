@@ -3863,7 +3863,7 @@
           "name": "email",
           "type": "array",
           "location": "query",
-          "description": "Exact email lookup, repeatable (?email=a@x.com\u0026email=b@y.com; form style, exploded). Each value is trimmed and lower-cased, must be a valid address of at most 254 characters, and matches the contact's primary email or any secondary email slot (email_2 and up). Duplicates collapse; at most 20 addresses. An invalid or empty value, or more than 20, is a 400. Combines with every other filter (AND), inside the caller's account and visibility. Accounts whose identifier index is still being built answer from a slower lookup; a single address held by more than 5,000 contacts there is a 422."
+          "description": "Exact email lookup, repeatable (?email=a@x.com\u0026email=b@y.com; form style, exploded). Each value is trimmed and lower-cased, must be a valid address of at most 254 characters, and matches the contact's primary email or any secondary email slot (email_2 and up). Duplicates collapse; at most 20 distinct addresses. An invalid or empty value, or more than 20 distinct addresses, is a 400. Combines with every other filter (AND), inside the caller's account and visibility. Accounts whose identifier index is still being built answer from a slower lookup; if the stored spellings of the requested addresses exceed that lookup's bind budget (a count of spellings, not of contacts, and other filters do not reduce it), the answer is a 422 until the identifier backfill completes."
         },
         {
           "name": "tag",

@@ -80,6 +80,54 @@ func appendArrayQueryParam(path, name, raw, style string, explode bool) string {
 	return path + separator + encoded
 }
 
+// appendRepeatableArrayQueryParam is the repeatable-flag form of appendArrayQueryParam for exploded form-style arrays
+// (hand-fix, see .printing-press-patches/contacts-list-email-param.md). Every occurrence of the flag is flattened (a
+// plain value, a comma list or a JSON array), and one query key is added per value. A flag that was supplied but yields
+// nothing (empty or blank value, empty comma item, `[]`, a blank JSON element) is an error, never absence: an explicit
+// empty filter must not turn into an unfiltered request.
+func appendRepeatableArrayQueryParam(path, name string, occurrences []string) (string, error) {
+	var values []string
+	for _, raw := range occurrences {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return path, fmt.Errorf("--%s was given an empty value", name)
+		}
+		var decoded []any
+		if strings.HasPrefix(raw, "[") && json.Unmarshal([]byte(raw), &decoded) == nil {
+			if len(decoded) == 0 {
+				return path, fmt.Errorf("--%s was given an empty array", name)
+			}
+			for _, v := range decoded {
+				item := strings.TrimSpace(formatCLIParamValue(v))
+				if item == "" {
+					return path, fmt.Errorf("--%s array contains an empty value", name)
+				}
+				values = append(values, item)
+			}
+			continue
+		}
+		for _, item := range strings.Split(raw, ",") {
+			item = strings.TrimSpace(item)
+			if item == "" {
+				return path, fmt.Errorf("--%s contains an empty item (check for a stray comma)", name)
+			}
+			values = append(values, item)
+		}
+	}
+	if len(values) == 0 {
+		return path, fmt.Errorf("--%s was given no values", name)
+	}
+	query := url.Values{}
+	for _, v := range values {
+		query.Add(name, v)
+	}
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+	return path + separator + query.Encode(), nil
+}
+
 // noColor is set by the --no-color flag
 var noColor bool
 
