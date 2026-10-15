@@ -7,12 +7,24 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 )
 
 // PATCH /dialer/settings (app main ce2d3cdff, 2026-10-15): the typed body now carries wrapupAutoReleaseSeconds (0 = off, otherwise 30..3600).
 // spec.yaml holds the typed schema, so the generated command takes --wrapup-auto-release-seconds. The API owns the 0-or-30..3600 rule (400).
 func runDialerPatchSettings(t *testing.T, args ...string) (body map[string]any, hits int) {
+	t.Helper()
+	body, hits, err := runDialerPatchSettingsErr(t, "", args...)
+	if err != nil {
+		t.Fatalf("dialer patch-settings %v: %v", args, err)
+	}
+	return
+}
+
+// stdin non-empty: the args should include --stdin; the body is read from it.
+func runDialerPatchSettingsErr(t *testing.T, stdin string, args ...string) (body map[string]any, hits int, err error) {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits++
@@ -34,10 +46,9 @@ func runDialerPatchSettings(t *testing.T, args ...string) (body map[string]any, 
 	cmd := newDialerPatchSettingsCmd(&rootFlags{noCache: true})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
+	cmd.SetIn(strings.NewReader(stdin))
 	cmd.SetArgs(args)
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("dialer patch-settings %v: %v", args, err)
-	}
+	err = cmd.Execute()
 	return
 }
 
@@ -96,4 +107,41 @@ func TestToolsManifestCarriesWrapupSeconds(t *testing.T) {
 		}
 	}
 	t.Error("dialer_patch-settings has no int body param wrapupAutoReleaseSeconds in tools-manifest.json")
+}
+
+// Hand-fix: the raw decimal text is validated before any request, on the flag path and on the --stdin path.
+func TestDialerPatchSettingsWrapupInvalidFlagValuesSendNothing(t *testing.T) {
+	for _, v := range []string{"29", "1", "3601", "99999", "100000", "-1", "-30", "12.5", "30.0", "1e2", "0x1e", "0X1E", "0b11", "030x", "+30", "", "  ", "abc", "3 0"} {
+		_, hits, err := runDialerPatchSettingsErr(t, "", "--wrapup-auto-release-seconds", v)
+		if err == nil {
+			t.Errorf("%q: no error", v)
+		}
+		if hits != 0 {
+			t.Errorf("%q: %d requests sent", v, hits)
+		}
+	}
+}
+
+func TestDialerPatchSettingsWrapupStdinValidation(t *testing.T) {
+	for _, v := range []string{"29", "3601", "-1", "12.5", "1e2", "1E2", "3e1", "30.0", `"30"`, `""`, "null", "true", "[30]", "0x1e"} {
+		_, hits, err := runDialerPatchSettingsErr(t, `{"wrapupAutoReleaseSeconds": `+v+`}`, "--stdin")
+		if err == nil {
+			t.Errorf("stdin %s: no error", v)
+		}
+		if hits != 0 {
+			t.Errorf("stdin %s: %d requests sent", v, hits)
+		}
+	}
+	for _, v := range []string{"0", "30", "300", "3600"} {
+		body, hits, err := runDialerPatchSettingsErr(t, `{"pauseSeconds": 5, "wrapupAutoReleaseSeconds": `+v+`}`, "--stdin")
+		want, _ := strconv.Atoi(v)
+		if err != nil || hits != 1 || body["wrapupAutoReleaseSeconds"] != float64(want) || body["pauseSeconds"] != 5.0 {
+			t.Errorf("stdin %s: err=%v hits=%d body=%v", v, err, hits, body)
+		}
+	}
+	// a body without the field is passed through untouched
+	body, hits, err := runDialerPatchSettingsErr(t, `{"pauseSeconds": 7}`, "--stdin")
+	if err != nil || hits != 1 || len(body) != 1 || body["pauseSeconds"] != 7.0 {
+		t.Errorf("no-field stdin: err=%v hits=%d body=%v", err, hits, body)
+	}
 }
