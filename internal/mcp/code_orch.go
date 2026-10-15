@@ -22,9 +22,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 	mcplib "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 )
 
 // RegisterCodeOrchestrationTools registers the two agent-facing tools that
@@ -2250,7 +2250,7 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		Summary:        "Returns a paginated list of contacts.",
 		Positional:     []string{},
 		TemplateParams: []codeOrchParamBinding{},
-		QueryParams:    []codeOrchParamBinding{{PublicName: "per_page", WireName: "per_page"}, {PublicName: "search", WireName: "search"}, {PublicName: "tag", WireName: "tag"}, {PublicName: "tags", WireName: "tags"}, {PublicName: "source", WireName: "source"}, {PublicName: "company", WireName: "company"}, {PublicName: "assigned_to", WireName: "assigned_to"}, {PublicName: "created_from", WireName: "created_from"}, {PublicName: "created_to", WireName: "created_to"}, {PublicName: "updated_from", WireName: "updated_from"}, {PublicName: "updated_to", WireName: "updated_to"}, {PublicName: "min_score", WireName: "min_score"}, {PublicName: "smart_view", WireName: "smart_view"}, {PublicName: "sort", WireName: "sort"}, {PublicName: "order", WireName: "order"}},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "per_page", WireName: "per_page"}, {PublicName: "search", WireName: "search"}, {PublicName: "email", WireName: "email"}, {PublicName: "tag", WireName: "tag"}, {PublicName: "tags", WireName: "tags"}, {PublicName: "source", WireName: "source"}, {PublicName: "company", WireName: "company"}, {PublicName: "assigned_to", WireName: "assigned_to"}, {PublicName: "created_from", WireName: "created_from"}, {PublicName: "created_to", WireName: "created_to"}, {PublicName: "updated_from", WireName: "updated_from"}, {PublicName: "updated_to", WireName: "updated_to"}, {PublicName: "min_score", WireName: "min_score"}, {PublicName: "smart_view", WireName: "smart_view"}, {PublicName: "sort", WireName: "sort"}, {PublicName: "order", WireName: "order"}},
 		keywords:       codeOrchKeywords("contacts", "list", "Returns a paginated list of contacts.", "/contacts"),
 	},
 	{
@@ -7490,8 +7490,29 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 	// remaining params used as the request body below.
 	query := map[string]string{}
 	if ep.Method == "GET" || ep.Method == "DELETE" {
+		// Scalars ride the query map; arrays are exploded form-style (one key per element, url.Values.Add) onto
+		// the path, because the map holds one string per key and would otherwise carry a JSON-valued param.
+		arrays := neturl.Values{}
 		for k, v := range params {
-			query[codeOrchWireQueryName(ep.QueryParams, k)] = formatMCPParamValue(v)
+			wire := codeOrchWireQueryName(ep.QueryParams, k)
+			if arr, ok := v.([]any); ok {
+				codeOrchAddArrayQuery(arrays, wire, arr)
+				continue
+			}
+			sv := formatMCPParamValue(v)
+			if sv == "" {
+				// client.do drops empty map values; an explicit empty scalar must reach the API as name= (its 400), not vanish.
+				arrays.Add(wire, "")
+				continue
+			}
+			query[wire] = sv
+		}
+		if enc := arrays.Encode(); enc != "" {
+			sep := "?"
+			if strings.Contains(path, "?") {
+				sep = "&"
+			}
+			path += sep + enc
 		}
 	} else {
 		// Route spec-declared in:query params to the query string for write
@@ -7610,6 +7631,19 @@ func codeOrchSplitQuery(queryParams []codeOrchParamBinding, params map[string]an
 		}
 	}
 	return uv.Encode()
+}
+
+// codeOrchAddArrayQuery adds one query key per array element (exploded form style). An empty array adds one empty
+// value, never nothing, so an explicit empty filter reaches the API as `name=` (its 400) instead of silently
+// becoming an unfiltered request.
+func codeOrchAddArrayQuery(uv neturl.Values, name string, arr []any) {
+	if len(arr) == 0 {
+		uv.Add(name, "")
+		return
+	}
+	for _, e := range arr {
+		uv.Add(name, formatMCPParamValue(e))
+	}
 }
 
 func codeOrchWireQueryName(queryParams []codeOrchParamBinding, name string) string {

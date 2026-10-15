@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -83,6 +84,9 @@ type mcpParamBinding struct {
 	Location           string
 	BodyPath           []string
 	Format             string
+	QueryArray         bool
+	QueryStyle         string
+	QueryExplode       bool
 	RequestContentType string
 	Default            string
 }
@@ -126,6 +130,59 @@ func formatMCPParamValue(v any) string {
 		}
 		return fmt.Sprintf("%v", v)
 	}
+}
+func appendMCPArrayQueryParam(path, name string, value any, style string, explode bool) string {
+	var values []string
+	switch typed := value.(type) {
+	case []any:
+		values = make([]string, 0, len(typed))
+		for _, item := range typed {
+			values = append(values, formatMCPParamValue(item))
+		}
+	case []string:
+		values = typed
+	default:
+		raw := formatMCPParamValue(value)
+		var decoded []any
+		if json.Unmarshal([]byte(raw), &decoded) == nil {
+			for _, item := range decoded {
+				values = append(values, formatMCPParamValue(item))
+			}
+		} else {
+			for _, item := range strings.Split(raw, ",") {
+				if item = strings.TrimSpace(item); item != "" {
+					values = append(values, item)
+				}
+			}
+		}
+	}
+	if len(values) == 0 {
+		return path
+	}
+
+	query := url.Values{}
+	switch style {
+	case "spaceDelimited":
+		query.Set(name, strings.Join(values, " "))
+	case "pipeDelimited":
+		query.Set(name, strings.Join(values, "|"))
+	case "form":
+		if explode {
+			for _, item := range values {
+				query.Add(name, item)
+			}
+		} else {
+			query.Set(name, strings.Join(values, ","))
+		}
+	default:
+		query.Set(name, formatMCPParamValue(value))
+	}
+
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+	return path + separator + query.Encode()
 }
 func mcpMultipartFieldValue(v any) string {
 	if s, ok := v.(string); ok {
@@ -258,7 +315,11 @@ func makeAPIHandler(method, pathTemplate string, readOnly bool, binaryResponse b
 					bodyJSONOverride = json.RawMessage(s)
 				}
 			default:
-				params[binding.WireName] = formatMCPParamValue(v)
+				if binding.QueryArray {
+					path = appendMCPArrayQueryParam(path, binding.WireName, v, binding.QueryStyle, binding.QueryExplode)
+				} else {
+					params[binding.WireName] = formatMCPParamValue(v)
+				}
 			}
 		}
 		for _, p := range positionalParams {
