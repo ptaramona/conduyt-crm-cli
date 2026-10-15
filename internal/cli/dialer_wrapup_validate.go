@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,11 +28,11 @@ func parseWrapupSeconds(raw string) (int, error) {
 }
 
 // wrapupSecondsFromJSON reads the field's raw JSON token from a --stdin body: only a plain digits-only number token is accepted
-// (a string, null, 1e2, 12.5 or a negative is refused); nil when the body does not carry the field.
+// (a string, null, 1e2, 12.5 or a negative is refused); nil when the body does not carry the field. A body that is not valid JSON is an error here (before any client exists), so it is a usage error, not a late parse failure.
 func wrapupSecondsFromJSON(body []byte) (*int, error) {
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(body, &fields); err != nil {
-		return nil, nil // the caller reports the parse error
+		return nil, fmt.Errorf("parsing stdin JSON: %w", err)
 	}
 	raw, ok := fields["wrapupAutoReleaseSeconds"]
 	if !ok {

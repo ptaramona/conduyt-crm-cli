@@ -115,6 +115,8 @@ func TestDialerPatchSettingsWrapupInvalidFlagValuesSendNothing(t *testing.T) {
 		_, hits, err := runDialerPatchSettingsErr(t, "", "--wrapup-auto-release-seconds", v)
 		if err == nil {
 			t.Errorf("%q: no error", v)
+		} else if ExitCode(err) != 2 {
+			t.Errorf("%q: exit code %d, want 2 (usage): %v", v, ExitCode(err), err)
 		}
 		if hits != 0 {
 			t.Errorf("%q: %d requests sent", v, hits)
@@ -127,6 +129,8 @@ func TestDialerPatchSettingsWrapupStdinValidation(t *testing.T) {
 		_, hits, err := runDialerPatchSettingsErr(t, `{"wrapupAutoReleaseSeconds": `+v+`}`, "--stdin")
 		if err == nil {
 			t.Errorf("stdin %s: no error", v)
+		} else if ExitCode(err) != 2 {
+			t.Errorf("stdin %s: exit code %d, want 2 (usage): %v", v, ExitCode(err), err)
 		}
 		if hits != 0 {
 			t.Errorf("stdin %s: %d requests sent", v, hits)
@@ -143,5 +147,20 @@ func TestDialerPatchSettingsWrapupStdinValidation(t *testing.T) {
 	body, hits, err := runDialerPatchSettingsErr(t, `{"pauseSeconds": 7}`, "--stdin")
 	if err != nil || hits != 1 || len(body) != 1 || body["pauseSeconds"] != 7.0 {
 		t.Errorf("no-field stdin: err=%v hits=%d body=%v", err, hits, body)
+	}
+}
+
+// Round 3: a malformed stdin body is a usage error (exit 2) before any client or request, not a late parse failure.
+func TestDialerPatchSettingsMalformedStdinIsUsageErrorBeforeAnyRequest(t *testing.T) {
+	for _, in := range []string{`{"wrapupAutoReleaseSeconds":0x1e}`, `{"wrapupAutoReleaseSeconds":}`, `{"wrapupAutoReleaseSeconds":30`, `not json`, ``, `[30]`} {
+		_, hits, err := runDialerPatchSettingsErr(t, in, "--stdin")
+		if err == nil {
+			t.Errorf("stdin %q: no error", in)
+		} else if ExitCode(err) != 2 {
+			t.Errorf("stdin %q: exit code %d, want 2 (usage): %v", in, ExitCode(err), err)
+		}
+		if hits != 0 {
+			t.Errorf("stdin %q: %d requests sent", in, hits)
+		}
 	}
 }

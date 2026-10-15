@@ -33,3 +33,10 @@ different, valid one. So this is now a hand-fix on a generated file (a reprint m
 - Tests: `TestDialerPatchSettingsWrapupInvalidFlagValuesSendNothing` (19 invalid texts, zero server hits) and
   `TestDialerPatchSettingsWrapupStdinValidation` (14 invalid JSON values with zero hits; 0, 30, 300, 3600 sent as numbers; a body without the
   field passes through untouched), plus the earlier valid-case tests.
+
+## Round 3 hand-fix: malformed --stdin JSON is a usage error (Codex round 2 P2, 2026-10-15)
+
+`wrapupSecondsFromJSON` used to swallow the JSON syntax error (returning nil, nil), so a body such as `{"wrapupAutoReleaseSeconds":0x1e}` passed
+validation, the client was created, and the later parse failure exited 1. It now returns the `json.Unmarshal` error ("parsing stdin JSON: ..."),
+which the existing `usageErr` turns into exit 2 before `flags.newClient()`. Tests assert `ExitCode(err) == 2` and zero server hits for every
+invalid flag text, every invalid stdin value and a malformed-body matrix (`TestDialerPatchSettingsMalformedStdinIsUsageErrorBeforeAnyRequest`).
