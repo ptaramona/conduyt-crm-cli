@@ -13,6 +13,12 @@ import (
 )
 
 func newDialerPatchSettingsCmd(flags *rootFlags) *cobra.Command {
+	var bodyAdvanceOn string
+	var bodyAutoAdvanceEnabled bool
+	var bodyOpenLeadOnDial bool
+	var bodyPauseSeconds int
+	var bodySmartDialCallerId string
+	var bodyWrapupAutoReleaseSeconds int
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +49,24 @@ func newDialerPatchSettingsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("advance-on") || bodyAdvanceOn != "" {
+					bodyMap["advanceOn"] = bodyAdvanceOn
+				}
+				if cmd.Flags().Changed("auto-advance-enabled") {
+					bodyMap["autoAdvanceEnabled"] = bodyAutoAdvanceEnabled
+				}
+				if cmd.Flags().Changed("open-lead-on-dial") {
+					bodyMap["openLeadOnDial"] = bodyOpenLeadOnDial
+				}
+				if cmd.Flags().Changed("pause-seconds") || bodyPauseSeconds != 0 {
+					bodyMap["pauseSeconds"] = bodyPauseSeconds
+				}
+				if cmd.Flags().Changed("smart-dial-caller-id") || bodySmartDialCallerId != "" {
+					bodyMap["smartDialCallerId"] = bodySmartDialCallerId
+				}
+				if cmd.Flags().Changed("wrapup-auto-release-seconds") || bodyWrapupAutoReleaseSeconds != 0 {
+					bodyMap["wrapupAutoReleaseSeconds"] = bodyWrapupAutoReleaseSeconds
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +211,12 @@ func newDialerPatchSettingsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAdvanceOn, "advance-on", "", "disposition: the next dial waits for a saved disposition; timer: the pause starts when the call ends")
+	cmd.Flags().BoolVar(&bodyAutoAdvanceEnabled, "auto-advance-enabled", false, "Dial the next lead after each call ends")
+	cmd.Flags().BoolVar(&bodyOpenLeadOnDial, "open-lead-on-dial", false, "Open the lead's record when Smart Dialing places a call")
+	cmd.Flags().IntVar(&bodyPauseSeconds, "pause-seconds", 0, "Pause between calls, in seconds")
+	cmd.Flags().StringVar(&bodySmartDialCallerId, "smart-dial-caller-id", "", "Which line Smart Dialing calls go out on")
+	cmd.Flags().IntVar(&bodyWrapupAutoReleaseSeconds, "wrapup-auto-release-seconds", 0, "Seconds of continuous wrap-up after which a rep returns to Available automatically: 0 = off, otherwise 30 to 3600 (default 300)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

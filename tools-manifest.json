@@ -5389,10 +5389,47 @@
     },
     {
       "name": "dialer_patch-settings",
-      "description": "Update dialer settings. Returns the updated DataEnvelope.",
+      "description": "Update dialer settings. Optional: advanceOn, autoAdvanceEnabled, openLeadOnDial (plus 3 more). Returns the updated DataEnvelope.",
       "method": "PATCH",
       "path": "/dialer/settings",
-      "params": []
+      "params": [
+        {
+          "name": "advanceOn",
+          "type": "string",
+          "location": "body",
+          "description": "disposition: the next dial waits for a saved disposition; timer: the pause starts when the call ends"
+        },
+        {
+          "name": "autoAdvanceEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Dial the next lead after each call ends"
+        },
+        {
+          "name": "openLeadOnDial",
+          "type": "bool",
+          "location": "body",
+          "description": "Open the lead's record when Smart Dialing places a call"
+        },
+        {
+          "name": "pauseSeconds",
+          "type": "int",
+          "location": "body",
+          "description": "Pause between calls, in seconds"
+        },
+        {
+          "name": "smartDialCallerId",
+          "type": "string",
+          "location": "body",
+          "description": "Which line Smart Dialing calls go out on"
+        },
+        {
+          "name": "wrapupAutoReleaseSeconds",
+          "type": "int",
+          "location": "body",
+          "description": "Seconds of continuous wrap-up after which a rep returns to Available automatically: 0 = off, otherwise 30..3600 (default 300)"
+        }
+      ]
     },
     {
       "name": "dialer_post-call-eligibility",
