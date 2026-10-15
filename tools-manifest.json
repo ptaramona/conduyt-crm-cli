@@ -3837,7 +3837,7 @@
     },
     {
       "name": "contacts_list",
-      "description": "Returns a paginated list of contacts. Supports search, filtering by tag, source, company, assigned user, date ranges, lead score, and smart views. Smart views: `needs_follow_up`, `hot_leads`, `new_this_week`, `recently_won`, `untagged`, `missing_email`, `missing_phone`. Optional: page (default: 1), per_page (default: 50), search (plus 13 more).",
+      "description": "Returns a paginated list of contacts. Supports search, filtering by tag, source, company, assigned user, date ranges, lead score, and smart views. Smart views: `needs_follow_up`, `hot_leads`, `new_this_week`, `recently_won`, `untagged`, `missing_email`, `missing_phone`. Optional: page (default: 1), per_page (default: 50), search (plus 14 more).",
       "method": "GET",
       "path": "/contacts",
       "params": [
@@ -3858,6 +3858,12 @@
           "type": "string",
           "location": "query",
           "description": "Full-text search query"
+        },
+        {
+          "name": "email",
+          "type": "array",
+          "location": "query",
+          "description": "Exact email lookup, repeatable (?email=a@x.com\u0026email=b@y.com; form style, exploded). Each value is trimmed and lower-cased, must be a valid address of at most 254 characters, and matches the contact's primary email or any secondary email slot (email_2 and up). Duplicates collapse; at most 20 addresses. An invalid or empty value, or more than 20, is a 400. Combines with every other filter (AND), inside the caller's account and visibility. Accounts whose identifier index is still being built answer from a slower lookup; a single address held by more than 5,000 contacts there is a 422."
         },
         {
           "name": "tag",

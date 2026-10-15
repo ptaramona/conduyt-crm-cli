@@ -36,6 +36,49 @@ func formatCLIParamValue(v any) string {
 	}
 	return fmt.Sprintf("%v", v)
 }
+func appendArrayQueryParam(path, name, raw, style string, explode bool) string {
+	values := make([]string, 0)
+	var decoded []any
+	if json.Unmarshal([]byte(raw), &decoded) == nil {
+		for _, value := range decoded {
+			values = append(values, formatCLIParamValue(value))
+		}
+	} else {
+		for _, value := range strings.Split(raw, ",") {
+			if value = strings.TrimSpace(value); value != "" {
+				values = append(values, value)
+			}
+		}
+	}
+	if len(values) == 0 {
+		return path
+	}
+
+	query := url.Values{}
+	switch style {
+	case "spaceDelimited":
+		query.Set(name, strings.Join(values, " "))
+	case "pipeDelimited":
+		query.Set(name, strings.Join(values, "|"))
+	case "form":
+		if explode {
+			for _, value := range values {
+				query.Add(name, value)
+			}
+		} else {
+			query.Set(name, strings.Join(values, ","))
+		}
+	default:
+		query.Set(name, raw)
+	}
+
+	encoded := query.Encode()
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+	return path + separator + encoded
+}
 
 // noColor is set by the --no-color flag
 var noColor bool

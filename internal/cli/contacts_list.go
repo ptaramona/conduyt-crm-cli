@@ -15,6 +15,7 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 	var flagPage string
 	var flagPerPage int
 	var flagSearch string
+	var flagEmail string
 	var flagTag string
 	var flagTags string
 	var flagSource string
@@ -79,6 +80,9 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 			c, err := flags.newClient()
 			if err != nil {
 				return err
+			}
+			if flagEmail != "" {
+				path = appendArrayQueryParam(path, "email", flagEmail, "form", true)
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "contacts", path, map[string]string{
 				"page":         formatCLIParamValue(flagPage),
@@ -148,6 +152,7 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
 	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
+	cmd.Flags().StringVar(&flagEmail, "email", "", "Exact email lookup, repeatable (?email=a@x.com&email=b@y.com; form style, exploded).")
 	cmd.Flags().StringVar(&flagTag, "tag", "", "Filter by single tag name")
 	cmd.Flags().StringVar(&flagTags, "tags", "", "Filter by comma-separated tag names")
 	cmd.Flags().StringVar(&flagSource, "source", "", "Source")
