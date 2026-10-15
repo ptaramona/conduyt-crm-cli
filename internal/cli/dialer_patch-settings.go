@@ -13,6 +13,12 @@ import (
 )
 
 func newDialerPatchSettingsCmd(flags *rootFlags) *cobra.Command {
+	var bodyAdvanceOn string
+	var bodyAutoAdvanceEnabled bool
+	var bodyOpenLeadOnDial bool
+	var bodyPauseSeconds int
+	var bodySmartDialCallerId string
+	var bodyWrapupAutoReleaseSeconds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -24,6 +30,26 @@ func newDialerPatchSettingsCmd(flags *rootFlags) *cobra.Command {
 			if !stdinBody {
 			}
 			path := "/dialer/settings"
+			// hand-fix (see .printing-press-patches/dialer-settings-wrapup-seconds.md): the wrap-up value is validated from its
+			// raw text BEFORE any client or request exists, on the flag path and on the --stdin path
+			var stdinData []byte
+			var wrapupSeconds *int
+			if stdinBody {
+				var err error
+				stdinData, err = io.ReadAll(cmd.InOrStdin())
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				if wrapupSeconds, err = wrapupSecondsFromJSON(stdinData); err != nil {
+					return usageErr(err)
+				}
+			} else if cmd.Flags().Changed("wrapup-auto-release-seconds") {
+				n, err := parseWrapupSeconds(bodyWrapupAutoReleaseSeconds)
+				if err != nil {
+					return usageErr(err)
+				}
+				wrapupSeconds = &n
+			}
 			c, err := flags.newClient()
 			if err != nil {
 				return err
@@ -31,18 +57,35 @@ func newDialerPatchSettingsCmd(flags *rootFlags) *cobra.Command {
 			params := map[string]string{}
 			var body any
 			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return fmt.Errorf("reading stdin: %w", err)
-				}
 				var jsonBody map[string]any
 				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
 					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				if wrapupSeconds != nil {
+					jsonBody["wrapupAutoReleaseSeconds"] = *wrapupSeconds
 				}
 				body = jsonBody
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("advance-on") || bodyAdvanceOn != "" {
+					bodyMap["advanceOn"] = bodyAdvanceOn
+				}
+				if cmd.Flags().Changed("auto-advance-enabled") {
+					bodyMap["autoAdvanceEnabled"] = bodyAutoAdvanceEnabled
+				}
+				if cmd.Flags().Changed("open-lead-on-dial") {
+					bodyMap["openLeadOnDial"] = bodyOpenLeadOnDial
+				}
+				if cmd.Flags().Changed("pause-seconds") || bodyPauseSeconds != 0 {
+					bodyMap["pauseSeconds"] = bodyPauseSeconds
+				}
+				if cmd.Flags().Changed("smart-dial-caller-id") || bodySmartDialCallerId != "" {
+					bodyMap["smartDialCallerId"] = bodySmartDialCallerId
+				}
+				if wrapupSeconds != nil {
+					bodyMap["wrapupAutoReleaseSeconds"] = *wrapupSeconds
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +230,12 @@ func newDialerPatchSettingsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAdvanceOn, "advance-on", "", "disposition: the next dial waits for a saved disposition; timer: the pause starts when the call ends")
+	cmd.Flags().BoolVar(&bodyAutoAdvanceEnabled, "auto-advance-enabled", false, "Dial the next lead after each call ends")
+	cmd.Flags().BoolVar(&bodyOpenLeadOnDial, "open-lead-on-dial", false, "Open the lead's record when Smart Dialing places a call")
+	cmd.Flags().IntVar(&bodyPauseSeconds, "pause-seconds", 0, "Pause between calls, in seconds")
+	cmd.Flags().StringVar(&bodySmartDialCallerId, "smart-dial-caller-id", "", "Which line Smart Dialing calls go out on")
+	cmd.Flags().StringVar(&bodyWrapupAutoReleaseSeconds, "wrapup-auto-release-seconds", "", "Seconds of continuous wrap-up after which a rep returns to Available automatically: 0 = off, otherwise 30 to 3600 (default 300)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

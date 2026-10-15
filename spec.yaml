@@ -10780,13 +10780,47 @@ paths:
       tags:
         - Dialer
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
               type: object
-              additionalProperties: true
-              description: See GET /schema/api-catalog (authenticated) for the full field-level request schema of this endpoint.
+              additionalProperties: false
+              description: The account-wide Smart Dialing policy (owner or admin). Send only the fields to change; an unknown field or an out-of-range value is 400 and nothing is written.
+              properties:
+                autoAdvanceEnabled:
+                  type: boolean
+                  description: Dial the next lead after each call ends
+                pauseSeconds:
+                  type: integer
+                  minimum: 1
+                  maximum: 60
+                  description: Pause between calls, in seconds
+                advanceOn:
+                  type: string
+                  enum:
+                    - disposition
+                    - timer
+                  description: "disposition: the next dial waits for a saved disposition; timer: the pause starts when the call ends"
+                openLeadOnDial:
+                  type: boolean
+                  description: Open the lead's record when Smart Dialing places a call
+                smartDialCallerId:
+                  type: string
+                  enum:
+                    - local_presence
+                    - did
+                  description: Which line Smart Dialing calls go out on
+                wrapupAutoReleaseSeconds:
+                  type: integer
+                  description: "Seconds of continuous wrap-up after which a rep returns to Available automatically: 0 = off, otherwise 30..3600 (default 300)"
+                  oneOf:
+                    - type: integer
+                      enum:
+                        - 0
+                    - type: integer
+                      minimum: 30
+                      maximum: 3600
       responses:
         "200":
           description: Success
