@@ -60,6 +60,16 @@ func TestCodeOrchExecuteContactsListEmptyEmailArrayIsNotAbsence(t *testing.T) {
 	}
 }
 
+func TestCodeOrchExecuteContactsListEmptyEmailScalarIsNotAbsence(t *testing.T) {
+	q, hits, _ := execContactsList(t, map[string]any{"email": ""})
+	if hits != 1 {
+		t.Fatalf("hits=%d", hits)
+	}
+	if got, ok := q["email"]; !ok || !reflect.DeepEqual(got, []string{""}) {
+		t.Fatalf("an explicit empty scalar must reach the API as email= (its 400), got %q present=%v", got, ok)
+	}
+}
+
 func TestCodeOrchContactsListBindsEmail(t *testing.T) {
 	for _, ep := range codeOrchEndpoints {
 		if ep.ID != "contacts.list" {

@@ -12,7 +12,7 @@
   `make sync-spec` would fail TestSpecMatchesUpstreamPublicAPI until a full reprint); that refresh is a separate change.
 - `internal/cli/contacts_list_email_test.go` pins the flag, the repeated params (comma and JSON forms) and the no-flag case.
 
-## Round 2 hand-fixes (Codex round 1 findings, 2026-10-15)
+## Round 2/3 hand-fixes (Codex round 1 and 2 findings, 2026-10-15)
 
 Printing Press is a third-party generator (@mvanhorn/printing-press-library); these gaps cannot be fixed upstream by us, so they are hand-fixes
 here, and a reprint from a newer generator must keep them (the tests below fail if it does not).
@@ -31,3 +31,7 @@ here, and a reprint from a newer generator must keep them (the tests below fail 
 - The four accidental `*.orig` copies (contacts_list.go, helpers.go, tools.go, tools-manifest.json) were deleted.
 - Tests: `internal/cli/contacts_list_email_test.go` (repeated flags, blank inputs send nothing, 21 distinct values, `+` encoding) and
   `internal/mcp/code_orch_array_query_test.go` (execute handler sends two `email` occurrences, empty array is not absence, binding present).
+- Round 3 (Codex round 2 P2): an explicit empty scalar GET/DELETE param (`params: {"email": ""}`) used to take the scalar map path, where
+  `client.do` drops empty values, so the request went out unfiltered. The execute handler now routes any empty scalar through the path
+  `url.Values` as `name=`, the same as an empty array, so the API answers its 400. Pinned by
+  `TestCodeOrchExecuteContactsListEmptyEmailScalarIsNotAbsence`. A reprint must keep this.

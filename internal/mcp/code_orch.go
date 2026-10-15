@@ -22,9 +22,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 	mcplib "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 )
 
 // RegisterCodeOrchestrationTools registers the two agent-facing tools that
@@ -7499,7 +7499,13 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 				codeOrchAddArrayQuery(arrays, wire, arr)
 				continue
 			}
-			query[wire] = formatMCPParamValue(v)
+			sv := formatMCPParamValue(v)
+			if sv == "" {
+				// client.do drops empty map values; an explicit empty scalar must reach the API as name= (its 400), not vanish.
+				arrays.Add(wire, "")
+				continue
+			}
+			query[wire] = sv
 		}
 		if enc := arrays.Encode(); enc != "" {
 			sep := "?"
