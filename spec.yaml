@@ -17428,6 +17428,59 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DataEnvelope"
+  /contacts/{id}/duplicate-proposals/{proposalId}:
+    post:
+      x-generated: true
+      operationId: postContactsIdDuplicateProposalsProposalId
+      summary: Create / invoke contacts id duplicate-proposals proposalId
+      tags:
+        - Contacts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: proposalId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: See GET /schema/api-catalog (authenticated) for the full field-level request schema of this endpoint.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelope"
+  /contacts/{id}/duplicate-proposals:
+    get:
+      x-generated: true
+      operationId: getContactsIdDuplicateProposals
+      summary: Get contacts id duplicate-proposals
+      tags:
+        - Contacts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelope"
 components:
   securitySchemes:
     BearerAuth:

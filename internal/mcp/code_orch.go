@@ -2385,6 +2385,26 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		keywords:       codeOrchKeywords("contacts", "get-contacts-id", "Get contacts id dnc", "/contacts/{id}/dnc"),
 	},
 	{
+		ID:             "contacts.duplicate-proposals.get-contacts-id",
+		Method:         "GET",
+		Path:           "/contacts/{id}/duplicate-proposals",
+		Summary:        "Get contacts id duplicate-proposals",
+		Positional:     []string{"id"},
+		TemplateParams: []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{},
+		keywords:       codeOrchKeywords("contacts", "get-contacts-id", "Get contacts id duplicate-proposals", "/contacts/{id}/duplicate-proposals"),
+	},
+	{
+		ID:             "contacts.duplicate-proposals.post-contacts-id-proposal-id",
+		Method:         "POST",
+		Path:           "/contacts/{id}/duplicate-proposals/{proposalId}",
+		Summary:        "Create / invoke contacts id duplicate-proposals proposalId",
+		Positional:     []string{"id", "proposalId"},
+		TemplateParams: []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{},
+		keywords:       codeOrchKeywords("contacts", "post-contacts-id-proposal-id", "Create / invoke contacts id duplicate-proposals proposalId", "/contacts/{id}/duplicate-proposals/{proposalId}"),
+	},
+	{
 		ID:             "contacts.enrich.post-contacts-id",
 		Method:         "POST",
 		Path:           "/contacts/{id}/enrich",
@@ -7498,6 +7518,28 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 	case "contacts.create":
 		if err := cliutil.CheckCallDerivedFields(params); err != nil {
 			return mcplib.NewToolResultError(err.Error()), nil
+		}
+	case "contacts.duplicate-proposals.get-contacts-id", "contacts.duplicate-proposals.post-contacts-id-proposal-id":
+		// Hand-written (identity v2, board #69): ids are UUIDs and the decision is exactly one of the three values, as the CLI requires.
+		for _, name := range ep.Positional {
+			v, isStr := params[name].(string)
+			if !isStr {
+				return mcplib.NewToolResultError(name + " must be a UUID string"), nil
+			}
+			if err := cliutil.CheckUUID(name, v); err != nil {
+				return mcplib.NewToolResultError(err.Error()), nil
+			}
+		}
+		if ep.Method == "POST" {
+			body := map[string]any{}
+			for k, v := range params {
+				if k != "id" && k != "proposalId" {
+					body[k] = v
+				}
+			}
+			if err := cliutil.CheckProposalBody(body); err != nil {
+				return mcplib.NewToolResultError(err.Error()), nil
+			}
 		}
 	case "calls.count-unknown-callers":
 		if v, ok := params["since"]; ok {

@@ -75,3 +75,47 @@ func TestCodeOrchCountUnknownCallersSinceIsStrict(t *testing.T) {
 		t.Fatalf("valid since: hits=%d isErr=%v query=%s", hits, res.IsError, q)
 	}
 }
+
+// Identity rules v2 (board #69): the executor applies the same duplicate-proposal checks as the CLI, before any request.
+const (
+	dpContactID  = "3f8a0c4e-1111-4222-8333-444455556666"
+	dpProposalID = "9b2d7c1a-5e4f-4a3b-9c8d-7e6f5a4b3c2d"
+)
+
+func TestCodeOrchDuplicateProposalDecisionIsStrict(t *testing.T) {
+	const post = "contacts.duplicate-proposals.post-contacts-id-proposal-id"
+	bad := map[string]map[string]any{
+		"no decision":     {"id": dpContactID, "proposalId": dpProposalID},
+		"merged":          {"id": dpContactID, "proposalId": dpProposalID, "decision": "merged"},
+		"not a string":    {"id": dpContactID, "proposalId": dpProposalID, "decision": true},
+		"extra key":       {"id": dpContactID, "proposalId": dpProposalID, "decision": "different", "dryRun": true},
+		"bad contact id":  {"id": "../x", "proposalId": dpProposalID, "decision": "different"},
+		"bad proposal id": {"id": dpContactID, "proposalId": "nope", "decision": "different"},
+		"missing id":      {"proposalId": dpProposalID, "decision": "different"},
+	}
+	for name, params := range bad {
+		t.Run(name, func(t *testing.T) {
+			hits, _, _, res := execGuard(t, post, params)
+			if hits != 0 || !res.IsError {
+				t.Fatalf("hits=%d isError=%v; the guard must refuse before any request", hits, res.IsError)
+			}
+		})
+	}
+}
+
+func TestCodeOrchDuplicateProposalsValidCallsAreSent(t *testing.T) {
+	for _, d := range []string{"not_sure", "different", "merge"} {
+		hits, body, _, res := execGuard(t, "contacts.duplicate-proposals.post-contacts-id-proposal-id", map[string]any{"id": dpContactID, "proposalId": dpProposalID, "decision": d})
+		if hits != 1 || res.IsError || !strings.Contains(body, `"decision":"`+d+`"`) {
+			t.Fatalf("%s: hits=%d isError=%v body=%s", d, hits, res.IsError, body)
+		}
+	}
+	hits, _, _, res := execGuard(t, "contacts.duplicate-proposals.get-contacts-id", map[string]any{"id": dpContactID})
+	if hits != 1 || res.IsError {
+		t.Fatalf("list: hits=%d isError=%v", hits, res.IsError)
+	}
+	hits, _, _, res = execGuard(t, "contacts.duplicate-proposals.get-contacts-id", map[string]any{"id": "nope"})
+	if hits != 0 || !res.IsError {
+		t.Fatalf("list with a bad id: hits=%d isError=%v", hits, res.IsError)
+	}
+}

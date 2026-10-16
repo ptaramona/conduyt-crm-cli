@@ -35,6 +35,7 @@ func newContactsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newContactsActiveEnrollmentsCmd(flags))
 	cmd.AddCommand(newContactsBestTimeCmd(flags))
 	cmd.AddCommand(newContactsCollaboratorsCmd(flags))
+	cmd.AddCommand(newContactsDuplicateProposalsCmd(flags))
 	cmd.AddCommand(newContactsDncCmd(flags))
 	cmd.AddCommand(newContactsEnrichCmd(flags))
 	cmd.AddCommand(newContactsGdprExportCmd(flags))

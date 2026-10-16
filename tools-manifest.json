@@ -4282,6 +4282,50 @@
       ]
     },
     {
+      "name": "contacts_duplicate-proposals_get-contacts-id",
+      "description": "List the possible duplicates of contact id (identity rules v2, read-only, contacts:view): { proposals, heldIdentifiers }. Each proposal has id (the proposalId for contacts_duplicate-proposals_post-contacts-id-proposal-id), status (open | not_sure), rule, raisedHere and other { id, name, createdAt, visible, editable }; a record you cannot view is 'a contact you cannot view' with no id. heldIdentifiers are emails or phones held from this record because another record owns them (value-free). Required: id. Returns the DataEnvelope.",
+      "method": "GET",
+      "path": "/contacts/{id}/duplicate-proposals",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "contacts_duplicate-proposals_post-contacts-id-proposal-id",
+      "description": "Record a decision on one possible-duplicate pair shown on contact id (identity rules v2; contacts:edit on BOTH records). decision is required and exactly one of: not_sure (keep both records visible, the pair stays listed), different (different people: never shown again, FINAL), merge (record that the pair is ALREADY merged; this never merges: merge first with the contacts merge endpoint, else 409 not_merged). Other refusals: 409 already_decided, 403 other_record_not_editable, 404, 400. Required: id, proposalId, decision. Returns the new DataEnvelope.",
+      "method": "POST",
+      "path": "/contacts/{id}/duplicate-proposals/{proposalId}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        },
+        {
+          "name": "proposalId",
+          "type": "string",
+          "location": "path",
+          "description": "Proposal id",
+          "required": true
+        },
+        {
+          "name": "decision",
+          "type": "string",
+          "location": "body",
+          "description": "not_sure | different | merge (merge only records a pair that is already merged)",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "contacts_enrich_post-contacts-id",
       "description": "Create / invoke contacts id enrich. Required: id. Returns the new DataEnvelope.",
       "method": "POST",
