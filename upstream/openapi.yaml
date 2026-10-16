@@ -1080,9 +1080,23 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - description: the deal list (no board_snapshot); data.data and data.meta are required and data.columns is forbidden, so a snapshot answer never matches this branch
+                    allOf:
+                      - $ref: "#/components/schemas/PaginatedResponse"
+                      - type: object
+                        required:
+                          - data
+                        properties:
+                          data:
+                            type: object
+                            required:
+                              - data
+                              - meta
+                            not:
+                              required:
+                                - columns
                   - type: object
-                    description: board_snapshot=true (every named column from one database snapshot, rows only)
+                    description: board_snapshot=true (every named column from one database snapshot, rows only); data.columns and data.meta.board_snapshot = true are required, so a list answer never matches this branch
                     required:
                       - data
                     properties:

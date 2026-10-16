@@ -55,3 +55,13 @@ Applied by hand in the 4.28.0 print's style. Not applied: `.printing-press.json`
   null, objects do not count); a blank alias beside a real one is fine. Tests: `TestCheckBoardSnapshotParams`, the executor test,
   `TestDealsListSpecDeclaresPerPage1000AndTheSnapshotBranch`. Mutants: dropping the non-blank check fails the guard and executor
   tests; reverting per_page to 200 in spec.yaml or in the flag help fails the spec test.
+- Round 3 (Codex parity r2 P2): the two 200 branches are now mutually exclusive in `spec.yaml` and `upstream/openapi.yaml`. The list
+  branch mirrors the frozen list arm (`allOf`: `PaginatedResponse` plus `data` requiring `data.data` and `data.meta`) and also forbids
+  `data.columns` (`not: required: [columns]`); the snapshot branch is `DealBoardSnapshot` (requires `columns`, `meta`, and
+  `meta.board_snapshot` = true). A snapshot answer therefore validates against exactly one branch. No generated output changed (no
+  reprint needed: the print only reads the branch for typing). Test: `TestDealsListOKBranchesAreMutuallyExclusive`
+  (`internal/cli/deals_spec_branches_test.go`) validates one real snapshot answer and one real paginated answer against every branch of
+  both spec files and asserts exactly one match each (and zero for a half-and-half envelope). It needs `gopkg.in/yaml.v3` and
+  `github.com/google/jsonschema-go`, now direct requires in go.mod (both were already in the module cache and go.sum; jsonschema-go
+  was an indirect dependency). Mutants: the round 2 spec (permissive `PaginatedResponse` branch), and the new branch without
+  `required: [data, meta]` and `not`, both fail it.
