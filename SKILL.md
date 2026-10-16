@@ -266,9 +266,10 @@ These capabilities aren't available in any other tool for this API.
 
 **calls** — Call log management
 
-- `conduyt-crm-pp-cli calls count-unknown-callers` — Board #35.
+- `conduyt-crm-pp-cli calls count-unknown-callers` — Board #35. Needs `--line` and `--since` (RFC 3339 with Z or an explicit offset).
 - `conduyt-crm-pp-cli calls create-record` — Create a call record
 - `conduyt-crm-pp-cli calls get` — Get a call by ID
+- `conduyt-crm-pp-cli calls link call-to-contact` — Board #35, the unknown-caller prompt's 'Search a contact'. Link a contact-less call to a contact (`<id> --contact-id <uuid> [--attach-number] [--dry-run]`).
 - `conduyt-crm-pp-cli calls list` — List call records
 - `conduyt-crm-pp-cli calls update` — Update a call record (e.g., add notes)
 

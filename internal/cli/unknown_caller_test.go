@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -131,7 +132,7 @@ func TestContactsCreateCallIdRidesInTheBody(t *testing.T) {
 }
 
 func TestDialerGetHistoryUnmatchedAndLine(t *testing.T) {
-	reqs, err := runUnknownCaller(t, newDialerGetHistoryCmd, "--unmatched", "1", "--line", "+18005550199")
+	reqs, err := runUnknownCaller(t, newDialerGetHistoryCmd, "--unmatched", "--line", "+18005550199")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,6 +153,95 @@ func TestUnknownCallerCommandsAreRegistered(t *testing.T) {
 	for _, path := range [][]string{{"calls", "count-unknown-callers"}, {"calls", "link", "call-to-contact"}} {
 		if c, _, err := root.Find(path); err != nil || c == nil || c.Name() != path[len(path)-1] {
 			t.Errorf("%v not registered (%v)", path, err)
+		}
+	}
+}
+
+func TestDialerGetHistoryUnmatchedIsABooleanSwitch(t *testing.T) {
+	// the bare invocation promised in the parity description: `dialer get-history --unmatched --line <n>`, and --unmatched last
+	for _, args := range [][]string{{"--unmatched", "--line", "+18005550199"}, {"--line", "+18005550199", "--unmatched"}} {
+		reqs, err := runUnknownCaller(t, newDialerGetHistoryCmd, args...)
+		if err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		if len(reqs) != 1 || reqs[0].query.Get("unmatched") != "1" || reqs[0].query.Get("line") != "+18005550199" {
+			t.Fatalf("%v: requests = %+v", args, reqs)
+		}
+	}
+	reqs, err := runUnknownCaller(t, newDialerGetHistoryCmd, "--unmatched=false")
+	if err != nil || reqs[0].query.Has("unmatched") {
+		t.Errorf("--unmatched=false sent %v (%v), want no unmatched", reqs, err)
+	}
+}
+
+func TestContactsCreateCallIdRefusesSourceAndOwner(t *testing.T) {
+	owner := "5a5a5a5a-1111-4222-8333-444455556666"
+	for _, args := range [][]string{
+		{"--first-name", "Carla", "--call-id", ucCall, "--source", "web"},
+		{"--first-name", "Carla", "--call-id", ucCall, "--assigned-to", owner},
+		{"--call-id", ucCall, "--source", "web", "--assigned-to", owner},
+	} {
+		reqs, err := runUnknownCaller(t, newContactsCreateCmd, args...)
+		if err == nil || !strings.Contains(err.Error(), "--call-id cannot be combined with source or assignedTo") {
+			t.Errorf("%v: err = %v, want the refusal", args, err)
+		}
+		if len(reqs) != 0 {
+			t.Errorf("%v: %d requests, want none", args, len(reqs))
+		}
+	}
+	// without --call-id both are still accepted
+	reqs, err := runUnknownCaller(t, newContactsCreateCmd, "--first-name", "Carla", "--source", "web", "--assigned-to", owner)
+	if err != nil || len(reqs) != 1 || reqs[0].body["source"] != "web" || reqs[0].body["assignedTo"] != owner {
+		t.Errorf("no --call-id: err %v, requests %+v", err, reqs)
+	}
+}
+
+func TestContactsCreateCallIdRefusesSourceAndOwnerFromStdin(t *testing.T) {
+	for _, in := range []string{
+		`{"firstName":"Carla","callId":"` + ucCall + `","source":"web"}`,
+		`{"firstName":"Carla","callId":"` + ucCall + `","assignedTo":"u1"}`,
+	} {
+		old := os.Stdin
+		r, w, _ := os.Pipe()
+		_, _ = w.WriteString(in)
+		_ = w.Close()
+		os.Stdin = r
+		reqs, err := runUnknownCaller(t, newContactsCreateCmd, "--stdin")
+		os.Stdin = old
+		if err == nil || !strings.Contains(err.Error(), "--call-id cannot be combined with source or assignedTo") {
+			t.Errorf("%s: err = %v, want the refusal", in, err)
+		}
+		if len(reqs) != 0 {
+			t.Errorf("%s: %d requests, want none", in, len(reqs))
+		}
+	}
+	// stdin without callId keeps both
+	old := os.Stdin
+	r, w, _ := os.Pipe()
+	_, _ = w.WriteString(`{"firstName":"Carla","source":"web","assignedTo":"u1"}`)
+	_ = w.Close()
+	os.Stdin = r
+	reqs, err := runUnknownCaller(t, newContactsCreateCmd, "--stdin")
+	os.Stdin = old
+	if err != nil || len(reqs) != 1 {
+		t.Errorf("stdin without callId: err %v, requests %+v", err, reqs)
+	}
+}
+
+func TestCallsCountUnknownCallersSinceMustBeRFC3339WithOffset(t *testing.T) {
+	for _, good := range []string{"2026-10-15T07:00:00Z", "2026-10-15T07:00:00.123Z", "2026-10-15T00:00:00-07:00", "2026-10-15T00:00:00+05:30"} {
+		reqs, err := runUnknownCaller(t, newCallsCountUnknownCallersCmd, "--line", "+18005550199", "--since", good)
+		if err != nil || len(reqs) != 1 || reqs[0].query.Get("since") != good {
+			t.Errorf("%s: err %v, requests %+v", good, err, reqs)
+		}
+	}
+	for _, bad := range []string{"2026-10-15T07:00:00", "2026-10-15T07:00:00.000", "2026-10-15", "2026-02-31T00:00:00Z", "2026-13-01T00:00:00Z", "2026-10-15T25:00:00Z", "today", "2026-10-15 07:00:00Z"} {
+		reqs, err := runUnknownCaller(t, newCallsCountUnknownCallersCmd, "--line", "+18005550199", "--since", bad)
+		if err == nil || !strings.Contains(err.Error(), "RFC 3339") {
+			t.Errorf("%s: err = %v, want the RFC 3339 refusal", bad, err)
+		}
+		if len(reqs) != 0 {
+			t.Errorf("%s: %d requests, want none", bad, len(reqs))
 		}
 	}
 }

@@ -40,7 +40,8 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli contacts create",
 		Annotations: map[string]string{"pp:endpoint": "contacts.create", "pp:method": "POST", "pp:path": "/contacts"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !stdinBody {
+			if bodyCallId != "" && (bodySource != "" || bodyAssignedTo != "") {
+				return errCallDerivedFields
 			}
 			path := "/contacts"
 			c, err := flags.newClient()
@@ -57,6 +58,9 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 				var jsonBody map[string]any
 				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
 					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				if err := checkCallDerivedFields(jsonBody); err != nil {
+					return err
 				}
 				body = jsonBody
 			} else {
@@ -123,6 +127,11 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyZip != "" {
 					bodyMap["zip"] = bodyZip
+				}
+			}
+			if bm, ok := body.(map[string]any); ok && !stdinBody {
+				if err := checkCallDerivedFields(bm); err != nil {
+					return err
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -270,7 +279,7 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&bodyAddressLine1, "address-line1", "", "Address line1")
 	cmd.Flags().StringVar(&bodyAddressLine2, "address-line2", "", "Address line2")
-	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
+	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to (refused together with --call-id: the server assigns the rep who took the call)")
 	cmd.Flags().StringVar(&bodyCallId, "call-id", "", "A contact-less inbound call to link the new contact to, in the same transaction (board #35, the unknown-caller prompt).")
 	cmd.Flags().StringVar(&bodyCity, "city", "", "City")
 	cmd.Flags().StringVar(&bodyCompany, "company", "", "Company")
@@ -282,7 +291,7 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyJobTitle, "job-title", "", "Job title")
 	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
 	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
-	cmd.Flags().StringVar(&bodySource, "source", "", "Source")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Source (refused together with --call-id: the server sets 'Inbound Call')")
 	cmd.Flags().StringVar(&bodyState, "state", "", "State")
 	cmd.Flags().StringVar(&bodyTags, "tags", "", "Tags")
 	cmd.Flags().StringVar(&bodyZip, "zip", "", "Zip")

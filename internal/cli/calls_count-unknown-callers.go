@@ -31,6 +31,9 @@ func newCallsCountUnknownCallersCmd(flags *rootFlags) *cobra.Command {
 			if !cmd.Flags().Changed("since") && !flags.dryRun {
 				return fmt.Errorf("required flag \"%s\" not set", "since")
 			}
+			if err := checkRFC3339Instant("since", flagSince); err != nil {
+				return err
+			}
 			path := "/calls/unknown-callers"
 			c, err := flags.newClient()
 			if err != nil {
@@ -92,7 +95,7 @@ func newCallsCountUnknownCallersCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&flagLine, "line", "", "Our line (the number the callers dialed), any formatting.")
-	cmd.Flags().StringVar(&flagSince, "since", "", "ISO instant (the caller's midnight).")
+	cmd.Flags().StringVar(&flagSince, "since", "", "RFC 3339 instant with Z or an explicit offset (the caller's midnight), e.g. 2026-10-15T07:00:00Z.")
 
 	return cmd
 }

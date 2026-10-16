@@ -2627,7 +2627,7 @@
     },
     {
       "name": "calls_count-unknown-callers",
-      "description": "Board #35. `total`: inbound calls to that line since `since` that arrived with no contact (the ones still contact-less plus the ones the unknown-caller prompt linked since); `unmatched`: those still contact-less (list them with GET /dialer/history?unmatched=1\u0026line=...). `since` is the caller's start of day and must be within the last 31 days. Requires `dialer.view`; counts only, under the Call history visibility rule (a scoped member counts their own calls, contact-less calls and calls linked to a contact they can see). Required: line, since. Returns the DataEnvelope.",
+      "description": "Board #35. `total`: inbound calls to that line since `since` that arrived with no contact (the ones still contact-less plus the ones the unknown-caller prompt linked since); `unmatched`: those still contact-less (list them with GET /dialer/history?unmatched=1&line=...). `since` is the caller's start of day and must be within the last 31 days. Requires `dialer.view`; counts only, under the Call history visibility rule (a scoped member counts their own calls, contact-less calls and calls linked to a contact they can see). Required: line, since. Returns the DataEnvelope.",
       "method": "GET",
       "path": "/calls/unknown-callers",
       "params": [
@@ -2642,7 +2642,7 @@
           "name": "since",
           "type": "string",
           "location": "query",
-          "description": "ISO instant (the caller's midnight).",
+          "description": "RFC 3339 instant with Z or an explicit offset (the caller's midnight), e.g. 2026-10-15T07:00:00Z.",
           "required": true
         }
       ]
@@ -3697,7 +3697,7 @@
     },
     {
       "name": "contacts_create",
-      "description": "Creates a new contact. Rate limited to 30 requests per minute. With `callId` (the unknown-caller prompt's 'Create new lead'), the new contact is linked to that contact-less INBOUND call in the SAME transaction: the phone is the call's own caller number (a submitted `phone` must be omitted or strictly the same number, else 422 `phone_not_call_number`), stored under the account's country; `firstName` is required (400 `first_name_required`) and, for this lead only, the account's form-required contact fields and required custom fields are not required (values that are sent are still validated). The caller needs `dialer.create` (an API key also needs the `calls` scope; a `dialer` key covers it). A call that does not exist is 404 `call_not_found`; a call already linked is 409 `call_already_linked` (or 404 `call_not_found` when its contact is hidden from the caller); an outbound call is 422 `call_not_inbound`; a call with no usable caller number is 422 `number_unusable`. Nothing is created on any refusal. Optional: addressLine1, addressLine2, assignedTo (plus 15 more). Returns the new DataEnvelope.",
+      "description": "Creates a new contact. Rate limited to 30 requests per minute. With `callId` (the unknown-caller prompt's 'Create new lead'), the new contact is linked to that contact-less INBOUND call in the SAME transaction: the phone is the call's own caller number (a submitted `phone` must be omitted or strictly the same number, else 422 `phone_not_call_number`), stored under the account's country; `firstName` is required (400 `first_name_required`) and, for this lead only, the account's form-required contact fields and required custom fields are not required (values that are sent are still validated). The caller needs `dialer.create` (an API key also needs the `calls` scope; a `dialer` key covers it). A call that does not exist is 404 `call_not_found`; a call already linked is 409 `call_already_linked` (or 404 `call_not_found` when its contact is hidden from the caller); an outbound call is 422 `call_not_inbound`; a call with no usable caller number is 422 `number_unusable`. Nothing is created on any refusal. Optional: addressLine1, addressLine2, assignedTo (plus 15 more). Returns the new DataEnvelope. callId MUST NOT be combined with source or assignedTo: the server derives both from the call (source 'Inbound Call', owner = the rep who took the call) and the request is refused.",
       "method": "POST",
       "path": "/contacts",
       "params": [
@@ -3717,7 +3717,7 @@
           "name": "assignedTo",
           "type": "string",
           "location": "body",
-          "description": "Assigned to"
+          "description": "Assigned to. Refused together with callId: a lead made from a call is owned by the rep who took it."
         },
         {
           "name": "callId",
@@ -3789,7 +3789,7 @@
           "name": "source",
           "type": "string",
           "location": "body",
-          "description": "Source"
+          "description": "Source. Refused together with callId: the server sets 'Inbound Call' for a lead made from a call."
         },
         {
           "name": "state",
@@ -3925,7 +3925,7 @@
           "name": "email",
           "type": "array",
           "location": "query",
-          "description": "Exact email lookup, repeatable (?email=a@x.com\u0026email=b@y.com; form style, exploded). Each value is trimmed and lower-cased, must be a valid address of at most 254 characters, and matches the contact's primary email or any secondary email slot (email_2 and up). Duplicates collapse; at most 20 distinct addresses. An invalid or empty value, or more than 20 distinct addresses, is a 400. Combines with every other filter (AND), inside the caller's account and visibility. Accounts whose identifier index is still being built answer from a slower lookup; if the stored spellings of the requested addresses exceed that lookup's bind budget (a count of spellings, not of contacts, and other filters do not reduce it), the answer is a 422 until the identifier backfill completes."
+          "description": "Exact email lookup, repeatable (?email=a@x.com&email=b@y.com; form style, exploded). Each value is trimmed and lower-cased, must be a valid address of at most 254 characters, and matches the contact's primary email or any secondary email slot (email_2 and up). Duplicates collapse; at most 20 distinct addresses. An invalid or empty value, or more than 20 distinct addresses, is a 400. Combines with every other filter (AND), inside the caller's account and visibility. Accounts whose identifier index is still being built answer from a slower lookup; if the stored spellings of the requested addresses exceed that lookup's bind budget (a count of spellings, not of contacts, and other filters do not reduce it), the answer is a 422 until the identifier backfill completes."
         },
         {
           "name": "tag",

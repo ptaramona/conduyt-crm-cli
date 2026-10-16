@@ -20,6 +20,17 @@ App main f132ed6f0 (live 2026-10-15 9:45 PM PT). The public OpenAPI at that comm
 - Command shapes as generated: `calls count-unknown-callers --line --since`, `calls link call-to-contact <id> --contact-id [--attach-number] [--dry-run]`,
   `contacts create --call-id <uuid>`, `dialer get-history --unmatched 1 --line <n>`. On `calls link call-to-contact`, the local `--dry-run` flag shadows the root
   `--dry-run`, so it sends the API's body `dryRun: true` (the unknown-caller preview) and does not trigger the Press's request-printing dry run; pinned by a test.
-  `calls` stays a hidden group, as in the 4.28.0 print.
-- `tools-manifest.json` 727 -> 728 tools (the link tool; the counter was already listed); `mcp.tool_count` 726 -> 728 in `internal/mcp/tools.go` plus the calls group lists.
+  `calls` stays a hidden group, as in the 4.28.0 print; README.md and SKILL.md list `calls link call-to-contact` like the other calls commands.
+- `tools-manifest.json` 726 -> 728 tools (BOTH new operations were added: the link tool and the counter); `mcp.tool_count` 726 -> 728 in `internal/mcp/tools.go` plus the calls group lists.
 - Tests: `internal/cli/unknown_caller_test.go`.
+
+## Round 2 (Codex parity r1 findings, 2026-10-15) - hand-written, a reprint must keep these
+
+- `contacts create --call-id` is REFUSED with `--source`, `--assigned-to`, or `source` / `assignedTo` keys in `--stdin` JSON (the server derives both from the call
+  and keeps an explicit `assignedTo`). The check lives in `internal/cli/unknown_caller_guards.go` (`checkCallDerivedFields`), called from the hand-edited
+  `contacts_create.go` after the body is built (flags or stdin). The `--source` / `--assigned-to` flag texts and the `contacts_create` manifest entry say so.
+  `spec.yaml` is NOT changed: the public OpenAPI example still supplies both fields (an app-repo item), so a plain reprint would regenerate the old texts.
+- `dialer get-history --unmatched` is a boolean switch (`BoolVar`) that sends `unmatched=1` when set; the bare `--unmatched --line <n>` is tested.
+- `calls count-unknown-callers --since` is validated with `time.Parse(time.RFC3339Nano)` (`checkRFC3339Instant`): Z or an explicit offset, a real date; offset-less
+  and impossible dates (2026-02-31) are refused before any request. The 31-day window stays the API's rule.
+- Tests: `internal/cli/unknown_caller_test.go` (refusals for flags and stdin, bare `--unmatched`, `since` cases).
