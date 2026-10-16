@@ -401,6 +401,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli deals get-views` — List deals views
 - `conduyt-crm-pp-cli deals get-views-id` — Get deals views id
 - `conduyt-crm-pp-cli deals list` — Returns deals with Kanban-optimized sort order (stage, sortOrder, then requested sort).
+- `conduyt-crm-pp-cli deals list --board-snapshot --pipeline <id> --board-columns <stageId>[:<limit>],...` — Every named column of one pipeline from ONE database snapshot (a moved deal is in exactly one column), rows only, read live; refuses --page, --stage and --all. 503 board_snapshot_busy (snapshot only) or gate_busy (any deals list call).
 - `conduyt-crm-pp-cli deals patch-views-id` — Update deals views id
 - `conduyt-crm-pp-cli deals post-probabilities` — Create / invoke deals probabilities
 - `conduyt-crm-pp-cli deals post-views` — Create / invoke deals views

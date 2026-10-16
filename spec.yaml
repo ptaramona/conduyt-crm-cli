@@ -1079,13 +1079,50 @@ paths:
             type: string
             enum: [ asc, desc ]
             default: desc
+        - name: board_columns
+          in: query
+          required: false
+          description: "With board_snapshot=true: the columns to read, in answer order, as a comma list (repeats of the parameter are joined) of <stageId> or <stageId>:<limit>. limit is an integer 1-1000 (default per_page, itself default 50). Every stageId must be a live stage of the pipeline (400 naming the others); at least 1 and at most 50 columns, no stage twice, at most 5000 rows in total (400). Without board_snapshot=true it is a 400."
+          schema:
+            type: string
+        - name: board_snapshot
+          in: query
+          required: false
+          description: "true: answer every column named in board_columns from ONE database snapshot (one read-only REPEATABLE READ transaction), so a deal moved while the read runs is in exactly one column; each column's deals are exactly what ?stage=<stageId>&per_page=<limit>&rows_only=true answers (same filters, visibility, order and projection) and no aggregate is computed. Needs pipeline (or pipeline_name) and board_columns; cannot be combined with stage / stage_id / stage_name, rows_only, summary, health_summary, system_occupancy or a page other than 1 (400). A read that cannot finish inside its budget is a 503 code board_snapshot_busy with retryAfter and Retry-After (read the columns one by one instead, or retry). Any request to this endpoint, snapshot or not, can also be answered 503 code gate_busy (the access check could not finish in time) with retryAfter and Retry-After. Any value other than true or false, or the parameter repeated with different values, is a 400. The Deals board uses it for its first load and full reload."
+          schema:
+            type: boolean
       responses:
         "200":
-          description: Paginated list of deals
+          description: Paginated list of deals; with board_snapshot=true, every named column from one database snapshot (an envelope whose data is a DealBoardSnapshot).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedResponse"
+        "503":
+          description: "Temporarily busy; nothing was changed. Two codes: board_snapshot_busy (board_snapshot=true only: the snapshot could not finish inside its time budget; read the columns one by one with stage=<stageId>&rows_only=true, or retry) and gate_busy (any request, snapshot or not: the access check could not finish in time). Retry after the Retry-After seconds."
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - code
+                  - retryAfter
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - board_snapshot_busy
+                      - gate_busy
+                  retryAfter:
+                    type: integer
     post:
       operationId: createDeal
       summary: Create a deal
@@ -18070,6 +18107,46 @@ components:
       properties:
         data:
           description: Response payload (shape varies by endpoint)
+
+    DealBoardSnapshot:
+      type: object
+      description: "(GET /deals?board_snapshot=true) every column named in board_columns, in that order, read from one database snapshot: a deal is in exactly one column. Each column's deals are exactly what GET /deals?stage=<stageId>&per_page=<limit>&rows_only=true answers."
+      required:
+        - columns
+        - meta
+      additionalProperties: false
+      properties:
+        columns:
+          type: array
+          items:
+            type: object
+            required:
+              - stageId
+              - limit
+              - deals
+            additionalProperties: false
+            properties:
+              stageId:
+                type: string
+                format: uuid
+              limit:
+                type: integer
+                minimum: 1
+                maximum: 1000
+                description: the rows asked for this column; deals.length equal to limit means the column may hold more
+              deals:
+                type: array
+                items: {}
+        meta:
+          type: object
+          required:
+            - board_snapshot
+          additionalProperties: false
+          properties:
+            board_snapshot:
+              type: boolean
+              enum:
+                - true
 
     PaginatedResponse:
       type: object

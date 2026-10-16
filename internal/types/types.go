@@ -207,6 +207,11 @@ type Deal struct {
 	WonAt             string          `json:"wonAt"`
 }
 
+type DealBoardSnapshot struct {
+	Columns json.RawMessage `json:"columns"`
+	Meta    json.RawMessage `json:"meta"`
+}
+
 type DealCreate struct {
 	AssignedTo        string          `json:"assignedTo"`
 	ContactId         string          `json:"contactId"`
