@@ -280,3 +280,46 @@ func TestDealsListHelpDocumentsTheSnapshot(t *testing.T) {
 		}
 	}
 }
+
+// Codex r1 P2 (round 2): GET /deals declares per_page up to 1000 (the snapshot's column default accepts 201-1000) and the
+// 200 response carries the DealBoardSnapshot branch, in spec.yaml and upstream/openapi.yaml; help and manifest agree.
+func TestDealsListSpecDeclaresPerPage1000AndTheSnapshotBranch(t *testing.T) {
+	for _, f := range []string{"../../spec.yaml", "../../upstream/openapi.yaml"} {
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := string(raw)
+		i := strings.Index(s, "\n  /deals:\n    get:")
+		if i < 0 {
+			t.Fatalf("%s: no GET /deals", f)
+		}
+		blk := s[i+1:]
+		if j := strings.Index(blk[3:], "\n  /"); j > 0 {
+			blk = blk[:j+3]
+		}
+		k := strings.Index(blk, "- name: per_page")
+		if k < 0 || !strings.Contains(blk[k:k+400], "maximum: 1000") || strings.Contains(blk[k:k+400], "maximum: 200") {
+			t.Errorf("%s: GET /deals per_page is not declared with maximum 1000", f)
+		}
+		if !strings.Contains(blk, "oneOf:") || !strings.Contains(blk, `$ref: "#/components/schemas/DealBoardSnapshot"`) {
+			t.Errorf("%s: GET /deals 200 does not carry the DealBoardSnapshot branch", f)
+		}
+	}
+	if f := newDealsListCmd(&rootFlags{}).Flags().Lookup("per-page"); f == nil || !strings.Contains(f.Usage, "max 1000") || strings.Contains(f.Usage, "max 200") {
+		t.Errorf("--per-page usage = %+v", f)
+	}
+	raw, err := os.ReadFile("../../tools-manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "Items per page (max 1000); with board_snapshot=true") {
+		t.Errorf("tools-manifest.json deals_list per_page is not max 1000")
+	}
+	// a snapshot column default of 201..1000 is accepted locally
+	for _, pp := range []string{"201", "1000"} {
+		if r := runDealsList(t, 200, bsSnap, true, false, "--board-snapshot", "--pipeline", bsPipe, "--per-page", pp, "--board-columns", bsS1); r.err != nil || len(r.queries) != 1 || r.queries[0].Get("per_page") != pp {
+			t.Errorf("per-page %s: err=%v requests=%d", pp, r.err, len(r.queries))
+		}
+	}
+}

@@ -1019,7 +1019,14 @@ paths:
       tags: [ Deals ]
       parameters:
         - $ref: "#/components/parameters/PageParam"
-        - $ref: "#/components/parameters/PerPageParam"
+        - name: per_page
+          in: query
+          description: "Items per page (max 1000); with board_snapshot=true it is the default limit of a column that names none."
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
         - name: pipeline
           in: query
           schema:
@@ -1072,7 +1079,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PaginatedResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - type: object
+                    description: board_snapshot=true (every named column from one database snapshot, rows only)
+                    required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/DealBoardSnapshot"
         "503":
           description: "Temporarily busy; nothing was changed. Two codes: board_snapshot_busy (board_snapshot=true only: the snapshot could not finish inside its time budget; read the columns one by one with stage=<stageId>&rows_only=true, or retry) and gate_busy (any request, snapshot or not: the access check could not finish in time). Retry after the Retry-After seconds."
           headers:

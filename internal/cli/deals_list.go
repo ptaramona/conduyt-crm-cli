@@ -144,7 +144,7 @@ func newDealsListCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 1000); with board_snapshot=true it is the default limit of a column that names none.")
 	cmd.Flags().StringVar(&flagPipeline, "pipeline", "", "Filter by pipeline ID. Aliases also accepted: pipeline_id, pipelineId.")
 	cmd.Flags().StringVar(&flagStage, "stage", "", "Filter by stage ID. Aliases also accepted: stage_id, stageId.")
 	cmd.Flags().StringVar(&flagStatus, "status", "", "Status (one of: open, won, lost)")

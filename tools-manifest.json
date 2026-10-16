@@ -5059,7 +5059,7 @@
           "name": "per_page",
           "type": "int",
           "location": "query",
-          "description": "Items per page (max 200)"
+          "description": "Items per page (max 1000); with board_snapshot=true it is the default limit of a column that names none."
         },
         {
           "name": "pipeline",

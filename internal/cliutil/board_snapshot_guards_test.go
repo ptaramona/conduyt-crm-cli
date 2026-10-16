@@ -80,6 +80,37 @@ func TestCheckBoardSnapshotParams(t *testing.T) {
 			t.Errorf("pipeline alias %s: %v", alias, err)
 		}
 	}
+	// P3 (Codex r1): an alias counts only as a non-blank string; at least one must be.
+	for _, alias := range boardSnapshotPipelineKeys {
+		for name, bad := range map[string]any{"empty": "", "blank": "  ", "number": float64(5), "bool": true, "nil": nil, "object": map[string]any{}} {
+			p := ok()
+			delete(p, "pipeline")
+			p[alias] = bad
+			if err := CheckBoardSnapshotParams(p); err == nil || !strings.Contains(err.Error(), "needs pipeline") {
+				t.Errorf("%s alias %s: err = %v, want needs pipeline", name, alias, err)
+			}
+		}
+		p := ok()
+		if alias == "pipeline" {
+			delete(p, "pipeline")
+			p["pipeline_id"] = gS2
+		}
+		p[alias] = " "
+		if alias == "pipeline" {
+			p["pipeline_id"] = gS2
+		}
+		if err := CheckBoardSnapshotParams(p); err != nil {
+			t.Errorf("a blank %s beside a real pipeline: %v", alias, err)
+		}
+	}
+	// per_page up to 1000 is the default column limit (Codex r1 P2): 201 and 1000 pass, 1000 x 5 = 5000 passes.
+	for _, n := range []float64{201, 1000} {
+		p := ok()
+		p["per_page"] = n
+		if err := CheckBoardSnapshotParams(p); err != nil {
+			t.Errorf("per_page %v: %v", n, err)
+		}
+	}
 	for _, k := range boardSnapshotConflicts {
 		p := ok()
 		p[k] = float64(1)

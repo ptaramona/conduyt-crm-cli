@@ -112,10 +112,13 @@ func CheckBoardSnapshotParams(params map[string]any) error {
 		sort.Strings(conflicts)
 		return fmt.Errorf("board_snapshot=true cannot be combined with %s: it answers every named column's first rows, rows only, from one snapshot", strings.Join(conflicts, ", "))
 	}
+	// At least one alias must be a non-blank string: "", "  " and non-strings do not name a pipeline.
 	hasPipeline := false
 	for _, k := range boardSnapshotPipelineKeys {
-		if _, ok := params[k]; ok {
-			hasPipeline = true
+		if v, ok := params[k]; ok {
+			if str, isStr := v.(string); isStr && strings.TrimSpace(str) != "" {
+				hasPipeline = true
+			}
 		}
 	}
 	if !hasPipeline {

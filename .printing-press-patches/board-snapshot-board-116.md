@@ -8,11 +8,15 @@ Spec (written identically into `spec.yaml` and `upstream/openapi.yaml`; the drif
 - Taken VERBATIM from the frozen OpenAPI: the `board_columns` and `board_snapshot` query parameters, the whole `"503"` response
   (board_snapshot_busy / gate_busy, Retry-After, `{ error, code, retryAfter }`) and the `DealBoardSnapshot` schema. The 200
   description gains the frozen sentence about board_snapshot.
-- NOT taken: the frozen 200 `oneOf` (list / health / health rows-only / snapshot). The repo's curated GET /deals never carried
-  the health branches (PipelineHealth* schemas are not in this spec), and a trial print with even a two-branch oneOf made
-  Printing Press 4.32.1 rewire `defaultSyncResources()` to `["deals"]`, the archive workflow's resources and every sync hint
-  (`sync --resources ...` became bare `sync`): a side effect unrelated to this lane. The 200 stays `PaginatedResponse`; the
-  snapshot shape is documented by `DealBoardSnapshot`, the 200 description and the command help.
+- Round 2 (Codex r1 P2s, 2026-10-16): the 200 now is a two-branch `oneOf`: `PaginatedResponse` plus the frozen fourth branch
+  (`{ data: DealBoardSnapshot }`), so generated clients can type `data.columns`. NOT taken: the frozen health branches (the
+  curated GET /deals never carried the PipelineHealth* schemas). A trial print of this spec still rewires `defaultSyncResources()`,
+  the archive workflow resources and every sync hint (`sync --resources ...` became bare `sync`, as round 1 found), so only the
+  snapshot-related generated output was applied by hand: `deals_list.go` (`--per-page` help) and the `tools-manifest.json`
+  deals_list per_page description. `sync.go`, `sync_hint.go`, `internal/mcp/tools.go`, `doctor.go`, `search.go`, `analytics.go`,
+  `channel_workflow.go`, `data_source.go` and SKILL.md were NOT taken from that print.
+- `per_page` on GET /deals is declared endpoint-specifically (inline, maximum 1000, per the frozen contract) instead of the shared
+  `PerPageParam` (maximum 200), which stays for every other operation; help and manifest say max 1000.
 - The rest of the frozen GET /deals (about 30 more query parameters: pipeline_name, search, health_*, rows_only, summary, view,
   ...) was not imported: the repo's curated block predates them and they are not this lane's delta.
 
@@ -47,3 +51,7 @@ Applied by hand in the 4.28.0 print's style. Not applied: `.printing-press.json`
   shape check, --data-source local refused, cache bypass with a cache-on control, provenance count, both 503 codes, help and manifest),
   `internal/cliutil/board_snapshot_guards_test.go`, `internal/mcp/board_snapshot_guards_test.go`. Mutants: the cache-bypass test
   fails with `GetWithHeaders`; the executor test fails without the `deals.list` case.
+- Round 2: `CheckBoardSnapshotParams` requires at least one pipeline alias to be a non-blank string ("", "  ", numbers, booleans,
+  null, objects do not count); a blank alias beside a real one is fine. Tests: `TestCheckBoardSnapshotParams`, the executor test,
+  `TestDealsListSpecDeclaresPerPage1000AndTheSnapshotBranch`. Mutants: dropping the non-blank check fails the guard and executor
+  tests; reverting per_page to 200 in spec.yaml or in the flag help fails the spec test.
