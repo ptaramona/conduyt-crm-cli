@@ -1,5 +1,9 @@
 # Duplicate proposals (identity rules v2, board #69): contacts duplicate-proposals get / decide (2026-10-15)
 
+Superseded names (2026-10-16, board #95): the curated OpenAPI renamed the commands to `list-contact` / `decide-contact` and the
+MCPB ids to `contacts.duplicate-proposals.list-contact` / `.decide-contact`; the old names below stay aliases. See
+duplicate-proposals-look-board-95.md.
+
 App main 61bf61876. The public OpenAPI at that commit (`public/openapi.yaml`) is the contract; only the two new operations were taken.
 
 - `spec.yaml` and `upstream/openapi.yaml`: the two path blocks `/contacts/{id}/duplicate-proposals` (GET) and

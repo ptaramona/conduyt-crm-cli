@@ -4282,23 +4282,8 @@
       ]
     },
     {
-      "name": "contacts_duplicate-proposals_get-contacts-id",
-      "description": "List the possible duplicates of contact id (identity rules v2, read-only, contacts:view): { proposals, heldIdentifiers }. Each proposal has id (the proposalId for contacts_duplicate-proposals_post-contacts-id-proposal-id), status (open | not_sure), rule, raisedHere and other { id, name, createdAt, visible, editable }; a record you cannot view is 'a contact you cannot view' with no id. heldIdentifiers are emails or phones held from this record because another record owns them (value-free). Required: id. Returns the DataEnvelope.",
-      "method": "GET",
-      "path": "/contacts/{id}/duplicate-proposals",
-      "params": [
-        {
-          "name": "id",
-          "type": "string",
-          "location": "path",
-          "description": "Id",
-          "required": true
-        }
-      ]
-    },
-    {
-      "name": "contacts_duplicate-proposals_post-contacts-id-proposal-id",
-      "description": "Record a decision on one possible-duplicate pair shown on contact id (identity rules v2; contacts:edit on BOTH records). decision is required and exactly one of: not_sure (keep both records visible, the pair stays listed), different (different people: never shown again, FINAL), merge (record that the pair is ALREADY merged; this never merges: merge first with the contacts merge endpoint, else 409 not_merged). Other refusals: 409 already_decided, 403 other_record_not_editable, 404, 400. Required: id, proposalId, decision. Returns the new DataEnvelope.",
+      "name": "contacts_duplicate-proposals_decide-contact",
+      "description": "Record a decision on one possible-duplicate pair shown on contact id (identity rules v2; contacts:edit on BOTH records). decision is required and exactly one of: not_sure (keep both records visible, the pair stays listed), different (different people: never shown again, FINAL), merge (record that the pair is ALREADY merged; this never merges: merge first with the contacts merge endpoint, else 409 not_merged). Other refusals: 409 already_decided, 403 other_record_not_editable, 404, 400. Answers { id, status, decidedAt, previousMembershipRevision, membershipRevision, total }: membershipRevision and total are the contact's proposals list AFTER the decision, previousMembershipRevision the digest just BEFORE it (equal on an idempotent repeat); keep loaded pages only when previousMembershipRevision equals the revision you hold. Required: id, proposalId, decision. Returns the new DuplicateProposalsDecideContactResponse.",
       "method": "POST",
       "path": "/contacts/{id}/duplicate-proposals/{proposalId}",
       "params": [
@@ -4306,14 +4291,14 @@
           "name": "id",
           "type": "string",
           "location": "path",
-          "description": "Id",
+          "description": "The contact the line is shown on",
           "required": true
         },
         {
           "name": "proposalId",
           "type": "string",
           "location": "path",
-          "description": "Proposal id",
+          "description": "The possible-duplicate line (from GET /contacts/{id}/duplicate-proposals)",
           "required": true
         },
         {
@@ -4322,6 +4307,113 @@
           "location": "body",
           "description": "not_sure | different | merge (merge only records a pair that is already merged)",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "contacts_duplicate-proposals_post-contacts-id-proposal-id",
+      "description": "Deprecated alias of contacts_duplicate-proposals_decide-contact (renamed in the proposals look release; kept so existing callers keep working, same guards). Record a decision on one possible-duplicate pair shown on contact id (identity rules v2; contacts:edit on BOTH records). decision is required and exactly one of: not_sure (keep both records visible, the pair stays listed), different (different people: never shown again, FINAL), merge (record that the pair is ALREADY merged; this never merges: merge first with the contacts merge endpoint, else 409 not_merged). Other refusals: 409 already_decided, 403 other_record_not_editable, 404, 400. Answers { id, status, decidedAt, previousMembershipRevision, membershipRevision, total }: membershipRevision and total are the contact's proposals list AFTER the decision, previousMembershipRevision the digest just BEFORE it (equal on an idempotent repeat); keep loaded pages only when previousMembershipRevision equals the revision you hold. Required: id, proposalId, decision. Returns the new DuplicateProposalsDecideContactResponse.",
+      "method": "POST",
+      "path": "/contacts/{id}/duplicate-proposals/{proposalId}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "The contact the line is shown on",
+          "required": true
+        },
+        {
+          "name": "proposalId",
+          "type": "string",
+          "location": "path",
+          "description": "The possible-duplicate line (from GET /contacts/{id}/duplicate-proposals)",
+          "required": true
+        },
+        {
+          "name": "decision",
+          "type": "string",
+          "location": "body",
+          "description": "not_sure | different | merge (merge only records a pair that is already merged)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "contacts_duplicate-proposals_list-contact",
+      "description": "List the possible duplicates of contact id (identity rules v2, read-only, contacts:view): { proposals, heldIdentifiers, total, nextCursor, membershipRevision, heldIdentifiersTotal, heldIdentifiersNextCursor, heldIdentifiersMembershipRevision }. Each proposal has id (the proposalId for contacts_duplicate-proposals_decide-contact), status (open | not_sure), rule, raisedHere and other { id, name, createdAt, visible, editable }; a record you cannot view is 'a contact you cannot view' with no id. heldIdentifiers are emails or phones held from this record because another record owns them (value-free). Both lists are keyset paged, newest first: cursor / limit (1-100, default 50) page the proposals, held_cursor / held_limit (1-100, default 20) the held identifiers; pass nextCursor / heldIdentifiersNextCursor back unchanged (null on the last page). membershipRevision and heldIdentifiersMembershipRevision are opaque digests of each list: when a later page answers another revision than page one, discard it and read page one again. 400 invalid_cursor for a cursor this list did not issue. Required: id. Optional: cursor, limit, held_cursor, held_limit. Returns the DuplicateProposalsListContactResponse.",
+      "method": "GET",
+      "path": "/contacts/{id}/duplicate-proposals",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "The contact the line is shown on",
+          "required": true
+        },
+        {
+          "name": "cursor",
+          "type": "string",
+          "location": "query",
+          "description": "The nextCursor of the previous proposals page, unchanged (opaque). Omit it for the first page; an explicitly blank value is refused. A value this list did not issue (a held_cursor included), or cursor repeated with different values, is a 400 code invalid_cursor."
+        },
+        {
+          "name": "held_cursor",
+          "type": "string",
+          "location": "query",
+          "description": "The heldIdentifiersNextCursor of the previous held identifiers page, unchanged (opaque). Omit it for the first page; an explicitly blank value is refused. A value this list did not issue (a proposals cursor included), or held_cursor repeated with different values, is a 400 code invalid_cursor."
+        },
+        {
+          "name": "held_limit",
+          "type": "int",
+          "location": "query",
+          "description": "Held identifiers per page, integer 1-100 (default 20). A non-integer, 0, a negative value, a value above 100, or held_limit repeated with different values is a 400 naming held_limit."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Proposals per page, integer 1-100 (default 50). A non-integer, 0, a negative value, a value above 100, or limit repeated with different values is a 400 naming limit."
+        }
+      ]
+    },
+    {
+      "name": "contacts_duplicate-proposals_get-contacts-id",
+      "description": "Deprecated alias of contacts_duplicate-proposals_list-contact (renamed in the proposals look release; kept so existing callers keep working, same guards). List the possible duplicates of contact id (identity rules v2, read-only, contacts:view): { proposals, heldIdentifiers, total, nextCursor, membershipRevision, heldIdentifiersTotal, heldIdentifiersNextCursor, heldIdentifiersMembershipRevision }. Each proposal has id (the proposalId for contacts_duplicate-proposals_decide-contact), status (open | not_sure), rule, raisedHere and other { id, name, createdAt, visible, editable }; a record you cannot view is 'a contact you cannot view' with no id. heldIdentifiers are emails or phones held from this record because another record owns them (value-free). Both lists are keyset paged, newest first: cursor / limit (1-100, default 50) page the proposals, held_cursor / held_limit (1-100, default 20) the held identifiers; pass nextCursor / heldIdentifiersNextCursor back unchanged (null on the last page). membershipRevision and heldIdentifiersMembershipRevision are opaque digests of each list: when a later page answers another revision than page one, discard it and read page one again. 400 invalid_cursor for a cursor this list did not issue. Required: id. Optional: cursor, limit, held_cursor, held_limit. Returns the DuplicateProposalsListContactResponse.",
+      "method": "GET",
+      "path": "/contacts/{id}/duplicate-proposals",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "The contact the line is shown on",
+          "required": true
+        },
+        {
+          "name": "cursor",
+          "type": "string",
+          "location": "query",
+          "description": "The nextCursor of the previous proposals page, unchanged (opaque). Omit it for the first page; an explicitly blank value is refused. A value this list did not issue (a held_cursor included), or cursor repeated with different values, is a 400 code invalid_cursor."
+        },
+        {
+          "name": "held_cursor",
+          "type": "string",
+          "location": "query",
+          "description": "The heldIdentifiersNextCursor of the previous held identifiers page, unchanged (opaque). Omit it for the first page; an explicitly blank value is refused. A value this list did not issue (a proposals cursor included), or held_cursor repeated with different values, is a 400 code invalid_cursor."
+        },
+        {
+          "name": "held_limit",
+          "type": "int",
+          "location": "query",
+          "description": "Held identifiers per page, integer 1-100 (default 20). A non-integer, 0, a negative value, a value above 100, or held_limit repeated with different values is a 400 naming held_limit."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Proposals per page, integer 1-100 (default 50). A non-integer, 0, a negative value, a value above 100, or limit repeated with different values is a 400 naming limit."
         }
       ]
     },
@@ -7248,6 +7340,33 @@
           "location": "path",
           "description": "Id",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "imports_duplicate-proposals_get-imports-id",
+      "description": "List the duplicate proposals one import raised on the records it created (read-only, contacts:view): one row per proposal, every status (open | not_sure | different | merged), oldest first; { rows, meta: { page, per_page, total } }. Each row: proposalId, status, rowNum, createdAt, decidedAt, decidedByName, newRecord, similar ({ id, name, visible, editable, live }), matchedOn (kinds only, never a value), keptName. A record you cannot view has no id and the name 'A contact you cannot view'. Decide a row with contacts_duplicate-proposals_decide-contact on newRecord.id. Owner, admin or view-all keys read any import, others only the imports their user ran (404 otherwise). Required: id. Optional: page (1-100000, default 1), per_page (1-100, default 50). Returns the DataEnvelope.",
+      "method": "GET",
+      "path": "/imports/{id}/duplicate-proposals",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "integer 1-100000 (default 1). The page of rows, oldest first (per_page rows each). A non-integer, 0, a negative value, a value above 100000, or page repeated with different values is a 400 naming page."
+        },
+        {
+          "name": "per_page",
+          "type": "int",
+          "location": "query",
+          "description": "integer 1-100 (default 50). Rows per page. A value above 100 is a 400 (not capped); so is a non-integer, 0, a negative value, or per_page repeated with different values. meta.total counts every row of the import."
         }
       ]
     },

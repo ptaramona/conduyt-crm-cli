@@ -24,6 +24,7 @@ func newImportsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newImportsPostUploadUrlCmd(flags))
 	cmd.AddCommand(newImportsUploadFileCmd(flags))
 	cmd.AddCommand(newImportsDownloadCmd(flags))
+	cmd.AddCommand(newImportsDuplicateProposalsCmd(flags))
 	cmd.AddCommand(newImportsIntegrityCmd(flags))
 	cmd.AddCommand(newImportsLaunchMonitorCmd(flags))
 	cmd.AddCommand(newImportsProcessCmd(flags))

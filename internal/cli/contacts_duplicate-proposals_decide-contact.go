@@ -13,17 +13,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newContactsDuplicateProposalsPostContactsIdProposalIdCmd(flags *rootFlags) *cobra.Command {
+func newContactsDuplicateProposalsDecideContactCmd(flags *rootFlags) *cobra.Command {
 	var bodyDecision string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:         "post-contacts-id-proposal-id <id> <proposalId>",
-		Aliases:     []string{"create"},
-		Short:       "Create / invoke contacts id duplicate-proposals proposalId",
-		Long:        "Record a decision on one possible-duplicate pair shown on contact <id> (identity rules v2; needs contacts:edit on BOTH records). --decision is required and must be exactly one of not_sure (keep both records visible; the pair stays listed), different (different people: never shown again, FINAL) or merge (record that the pair is ALREADY merged; this command never merges: run `contacts merge` first, else 409 not_merged). Refusals (409 already_decided / not_merged, 403 other_record_not_editable, 404, 400) exit non-zero with the API's message and code. Get <proposalId> from `contacts duplicate-proposals get-contacts-id <id>`.",
-		Example:     "  conduyt-crm-pp-cli contacts duplicate-proposals post-contacts-id-proposal-id 550e8400-e29b-41d4-a716-446655440000 550e8400-e29b-41d4-a716-446655440000 --decision different",
-		Annotations: map[string]string{"pp:endpoint": "duplicate-proposals.post-contacts-id-proposal-id", "pp:method": "POST", "pp:path": "/contacts/{id}/duplicate-proposals/{proposalId}"},
+		Use: "decide-contact <id> <proposalId>",
+		// Hand-written (board #95): the pre-reprint name stays an alias so scripts written against it keep working. A reprint must keep it.
+		Aliases:     []string{"create", "post-contacts-id-proposal-id"},
+		Short:       "Record what you decided about one possible-duplicate line on this contact.",
+		Long:        "Record a decision on one possible-duplicate pair shown on contact <id> (identity rules v2; needs contacts:edit on BOTH records). --decision is required and must be exactly one of not_sure (keep both records visible; the pair stays listed), different (different people: never shown again, FINAL) or merge (record that the pair is ALREADY merged; this command never merges: run `contacts merge` first, else 409 not_merged). Answers { id, status, decidedAt, previousMembershipRevision, membershipRevision, total }: membershipRevision and total are the contact's proposals list AFTER the decision (the same digest and count `list-contact` answers), previousMembershipRevision the digest just BEFORE the write (equal on an idempotent repeat); keep loaded pages only when previousMembershipRevision equals the revision you hold, otherwise read page one again. Refusals (409 already_decided / not_merged, 403 other_record_not_editable, 404, 400) exit non-zero with the API's message and code. Get <proposalId> from `contacts duplicate-proposals list-contact <id>` (or from `imports duplicate-proposals get-imports-id <importId>`, deciding on newRecord.id).",
+		Example:     "  conduyt-crm-pp-cli contacts duplicate-proposals decide-contact 550e8400-e29b-41d4-a716-446655440000 550e8400-e29b-41d4-a716-446655440000 --decision not_sure",
+		Annotations: map[string]string{"pp:endpoint": "duplicate-proposals.decide-contact", "pp:method": "POST", "pp:path": "/contacts/{id}/duplicate-proposals/{proposalId}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()

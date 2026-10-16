@@ -18,7 +18,7 @@ const (
 )
 
 func TestDuplicateProposalsGetSendsGETOnTheContactPath(t *testing.T) {
-	reqs, err := runUnknownCaller(t, newContactsDuplicateProposalsGetContactsIdCmd, dpContact)
+	reqs, err := runUnknownCaller(t, newContactsDuplicateProposalsListContactCmd, dpContact)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestDuplicateProposalsGetSendsGETOnTheContactPath(t *testing.T) {
 
 func TestDuplicateProposalsGetRefusesANonUUIDBeforeAnyRequest(t *testing.T) {
 	for _, id := range []string{"../x", "nope", "3f8a0c4e-1111-4222-8333"} {
-		reqs, err := runUnknownCaller(t, newContactsDuplicateProposalsGetContactsIdCmd, id)
+		reqs, err := runUnknownCaller(t, newContactsDuplicateProposalsListContactCmd, id)
 		if err == nil || len(reqs) != 0 {
 			t.Errorf("%q: err=%v requests=%d", id, err, len(reqs))
 		}
@@ -38,7 +38,7 @@ func TestDuplicateProposalsGetRefusesANonUUIDBeforeAnyRequest(t *testing.T) {
 
 func TestDuplicateProposalsDecideSendsOnlyTheDecision(t *testing.T) {
 	for _, d := range []string{"not_sure", "different", "merge"} {
-		reqs, err := runUnknownCaller(t, newContactsDuplicateProposalsPostContactsIdProposalIdCmd, dpContact, dpProposal, "--decision", d)
+		reqs, err := runUnknownCaller(t, newContactsDuplicateProposalsDecideContactCmd, dpContact, dpProposal, "--decision", d)
 		if err != nil {
 			t.Fatalf("%s: %v", d, err)
 		}
@@ -63,7 +63,7 @@ func TestDuplicateProposalsDecideIsStrictBeforeAnyRequest(t *testing.T) {
 		"missing proposal": {dpContact, "--decision", "different"},
 	}
 	for name, args := range cases {
-		reqs, err := runUnknownCaller(t, newContactsDuplicateProposalsPostContactsIdProposalIdCmd, args...)
+		reqs, err := runUnknownCaller(t, newContactsDuplicateProposalsDecideContactCmd, args...)
 		if err == nil || len(reqs) != 0 {
 			t.Errorf("%s: err=%v requests=%d", name, err, len(reqs))
 		}
@@ -71,7 +71,7 @@ func TestDuplicateProposalsDecideIsStrictBeforeAnyRequest(t *testing.T) {
 }
 
 func TestDuplicateProposalsDecideHelpNamesTheMeanings(t *testing.T) {
-	cmd := newContactsDuplicateProposalsPostContactsIdProposalIdCmd(&rootFlags{})
+	cmd := newContactsDuplicateProposalsDecideContactCmd(&rootFlags{})
 	for _, want := range []string{"not_sure", "different", "FINAL", "never merges", "not_merged", "already_decided", "other_record_not_editable"} {
 		if !strings.Contains(cmd.Long, want) {
 			t.Errorf("Long is missing %q", want)
@@ -81,8 +81,8 @@ func TestDuplicateProposalsDecideHelpNamesTheMeanings(t *testing.T) {
 
 func TestContactsGroupRegistersDuplicateProposals(t *testing.T) {
 	cmd := newContactsCmd(&rootFlags{})
-	sub, _, err := cmd.Find([]string{"duplicate-proposals", "post-contacts-id-proposal-id"})
-	if err != nil || sub == nil || sub.Name() != "post-contacts-id-proposal-id" {
+	sub, _, err := cmd.Find([]string{"duplicate-proposals", "decide-contact"})
+	if err != nil || sub == nil || sub.Name() != "decide-contact" {
 		t.Fatalf("find: %v %v", sub, err)
 	}
 }
@@ -104,7 +104,7 @@ func TestDuplicateProposalsDecideLeavesTheLocalStoreUnchanged(t *testing.T) {
 	if !strings.HasPrefix(dbPath, home) {
 		t.Fatalf("store path %q escapes the test home %q", dbPath, home)
 	}
-	cmd := newContactsDuplicateProposalsPostContactsIdProposalIdCmd(&rootFlags{noCache: true})
+	cmd := newContactsDuplicateProposalsDecideContactCmd(&rootFlags{noCache: true})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs([]string{dpContact, dpProposal, "--decision", "different"})

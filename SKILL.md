@@ -348,8 +348,9 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli contacts create` — Creates a new contact. Rate limited to 30 requests per minute.
 - `conduyt-crm-pp-cli contacts delete` — Soft-delete a contact
 - `conduyt-crm-pp-cli contacts export` — Export contacts as CSV
-- `conduyt-crm-pp-cli contacts duplicate-proposals get-contacts-id <id>` — Identity rules v2: the possible duplicates of a contact (open or not_sure proposals plus heldIdentifiers); read-only.
-- `conduyt-crm-pp-cli contacts duplicate-proposals post-contacts-id-proposal-id <id> <proposalId> --decision not_sure|different|merge` — Record a decision: not_sure keeps both visible, different is final, merge only records a pair ALREADY merged (never merges; 409 not_merged).
+- `conduyt-crm-pp-cli contacts duplicate-proposals list-contact <id> [--cursor] [--limit] [--held-cursor] [--held-limit]` — Identity rules v2: the possible duplicates of a contact (open or not_sure proposals plus heldIdentifiers), keyset paged (total, nextCursor, membership revisions: re-read page one when a later page answers another revision); read-only. Alias: get-contacts-id.
+- `conduyt-crm-pp-cli contacts duplicate-proposals decide-contact <id> <proposalId> --decision not_sure|different|merge` — Record a decision: not_sure keeps both visible, different is final, merge only records a pair ALREADY merged (never merges; 409 not_merged); answers previousMembershipRevision, membershipRevision, total. Alias: post-contacts-id-proposal-id.
+- `conduyt-crm-pp-cli imports duplicate-proposals get-imports-id <importId> [--page] [--per-page]` — The duplicate proposals one import raised on the records it created, every status, oldest first; read-only.
 - `conduyt-crm-pp-cli contacts find-duplicate` — Find duplicate contacts
 - `conduyt-crm-pp-cli contacts get` — Get a contact by ID
 - `conduyt-crm-pp-cli contacts get-dnc-status` — List contacts dnc-status
