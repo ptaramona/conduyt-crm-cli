@@ -1,6 +1,11 @@
 package cli
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -79,5 +84,34 @@ func TestContactsGroupRegistersDuplicateProposals(t *testing.T) {
 	sub, _, err := cmd.Find([]string{"duplicate-proposals", "post-contacts-id-proposal-id"})
 	if err != nil || sub == nil || sub.Name() != "post-contacts-id-proposal-id" {
 		t.Fatalf("find: %v %v", sub, err)
+	}
+}
+
+// Codex parity r1 P2: a successful decision must not write its { id, status, decidedAt } acknowledgement into the local resource store.
+func TestDuplicateProposalsDecideLeavesTheLocalStoreUnchanged(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":{"id":"` + dpProposal + `","status":"different","decidedAt":"2026-10-15T20:00:00.000Z"}}`))
+	}))
+	defer srv.Close()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "xdg-data"))
+	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
+	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
+	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(home, "config.toml"))
+	dbPath := defaultDBPath("conduyt-crm-pp-cli")
+	if !strings.HasPrefix(dbPath, home) {
+		t.Fatalf("store path %q escapes the test home %q", dbPath, home)
+	}
+	cmd := newContactsDuplicateProposalsPostContactsIdProposalIdCmd(&rootFlags{noCache: true})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{dpContact, dpProposal, "--decision", "different"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dbPath); err == nil {
+		t.Fatalf("a local store was created at %s by a decision", dbPath)
 	}
 }

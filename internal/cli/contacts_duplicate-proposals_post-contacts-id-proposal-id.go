@@ -104,9 +104,8 @@ func newContactsDuplicateProposalsPostContactsIdProposalIdCmd(flags *rootFlags) 
 					}
 				}
 			}
-			if !flags.dryRun && statusCode >= 200 && statusCode < 300 && (partialFailure == nil || flags.allowPartialFailure) {
-				writeMutationResponseToStore(cmd.Context(), "duplicate-proposals", data, "")
-			}
+			// No write-through to the local store: the { id, status, decidedAt } acknowledgement is not a proposal record, and
+			// the live GET never returns a decided pair again. See .printing-press-patches/duplicate-proposals-identity-v2.md.
 			if wantsHumanTable(cmd.OutOrStdout(), flags) {
 				// Check if response contains an array (directly or wrapped in "data")
 				var items []map[string]any

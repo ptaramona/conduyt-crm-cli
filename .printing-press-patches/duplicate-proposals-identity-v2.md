@@ -31,3 +31,7 @@ App main 61bf61876. The public OpenAPI at that commit (`public/openapi.yaml`) is
   a missing, non-string or unknown decision, and any extra body key, with a tool error and no request. A reprint regenerates `code_orch.go` without it and MUST re-apply it.
 - Tests: `internal/cli/duplicate_proposals_test.go`, `internal/cliutil/duplicate_proposal_guards_test.go`, and the two tests appended to
   `internal/mcp/unknown_caller_guards_test.go` (shared `execGuard` harness).
+- The POST command does NOT call `writeMutationResponseToStore` (the generator emits it for every POST). The `{ id, status, decidedAt }` acknowledgement is
+  not a proposal record, and a decided pair is never returned by the live GET again, so persisting it would create a misleading searchable
+  `duplicate-proposals` resource. A reprint MUST drop that call again. Test: `TestDuplicateProposalsDecideLeavesTheLocalStoreUnchanged`
+  (Codex parity r1 P2).
