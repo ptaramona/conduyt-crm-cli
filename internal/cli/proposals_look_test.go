@@ -1,8 +1,15 @@
 package cli
 
 import (
+	"bytes"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 // Duplicate proposals look (board #95, app f2d638db6): the reprint renamed the two contact commands, added the list's paging
@@ -122,6 +129,65 @@ func TestImportsGroupRegistersDuplicateProposals(t *testing.T) {
 	for _, want := range []string{"A contact you cannot view", "merged", "decide-contact", "newRecord", "matchedOn", "never a value", "contacts:view"} {
 		if !strings.Contains(sub.Long, want) {
 			t.Errorf("Long is missing %q", want)
+		}
+	}
+}
+
+// Parity r2 (Codex P2): in a terminal the provenance line counts the nested arrays of the object-shaped answers, never "0 results".
+func runInTerminal(t *testing.T, build func(*rootFlags) *cobra.Command, answer string, args ...string) (stderr string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(answer))
+	}))
+	defer srv.Close()
+	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
+	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
+	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+	tty, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tty.Close()
+	var errBuf bytes.Buffer
+	cmd := build(&rootFlags{noCache: true})
+	cmd.SetOut(tty) // /dev/null is a character device, so isTerminal(stdout) is true
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs(args)
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	return errBuf.String()
+}
+
+func TestDuplicateProposalsProvenanceCountsNestedArrays(t *testing.T) {
+	got := runInTerminal(t, newContactsDuplicateProposalsListContactCmd,
+		`{"proposals":[{"id":"a"},{"id":"b"},{"id":"c"}],"heldIdentifiers":[{"kind":"email"},{"kind":"phone"}],"total":3,"nextCursor":null}`, dpContact)
+	if !strings.Contains(got, "5 results (live)") || strings.Contains(got, "0 results") {
+		t.Errorf("contact list stderr = %q, want 5 results (live)", got)
+	}
+	got = runInTerminal(t, newImportsDuplicateProposalsGetImportsIdCmd,
+		`{"rows":[{"proposalId":"a"},{"proposalId":"b"}],"meta":{"page":1,"per_page":50,"total":2}}`, dpImport)
+	if !strings.Contains(got, "2 results (live)") || strings.Contains(got, "0 results") {
+		t.Errorf("import rows stderr = %q, want 2 results (live)", got)
+	}
+}
+
+func TestDuplicateProposalsHelpAndManifestAgreeOnBlankCursor(t *testing.T) {
+	flag := newContactsDuplicateProposalsListContactCmd(&rootFlags{}).Flags().Lookup("cursor")
+	if flag == nil || !strings.Contains(flag.Usage, "Omit it for the first page; an explicitly blank value is refused") || strings.Contains(flag.Usage, "empty") {
+		t.Errorf("cursor usage = %+v", flag)
+	}
+	raw, err := os.ReadFile("../../tools-manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "Omitted or empty = the first page") {
+		t.Error("tools-manifest.json still says an empty cursor means the first page")
+	}
+	for _, old := range []string{"contacts_duplicate-proposals_get-contacts-id", "contacts_duplicate-proposals_post-contacts-id-proposal-id"} {
+		if !strings.Contains(string(raw), `"name": "`+old+`"`) {
+			t.Errorf("tools-manifest.json lost the deprecated alias %s", old)
 		}
 	}
 }

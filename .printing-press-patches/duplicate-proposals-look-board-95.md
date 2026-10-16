@@ -43,3 +43,18 @@ trailing nil, the 4.28 `resolvePaginatedReadWithStrategy` signature without resp
   fields and the revision rule.
 - Tests: `internal/cli/proposals_look_test.go`, `internal/cliutil/paging_guards_test.go`, `internal/mcp/proposals_look_guards_test.go`;
   the identity v2 tests were updated to the new constructor names and endpoint ids.
+
+## Parity round 2 (Codex r1 findings P1-P3, 2026-10-16)
+
+- P1, legacy MCP ids: `handleCodeOrchExecute` maps `contacts.duplicate-proposals.get-contacts-id` to `.list-contact` and
+  `.post-contacts-id-proposal-id` to `.decide-contact` (`codeOrchLegacyEndpointIDs` in `code_orch.go`) BEFORE the endpoint lookup, so
+  the old ids pass through the same UUID, decision and paging guards. `tools-manifest.json` keeps two deprecated alias tools
+  (`contacts_duplicate-proposals_get-contacts-id`, `_post-contacts-id-proposal-id`) next to the renamed ones. A reprint must keep both.
+  Tests: `TestCodeOrchLegacyProposalEndpointIdsStillWork` (both ids executed end to end, guards still apply),
+  `TestDuplicateProposalsHelpAndManifestAgreeOnBlankCursor` (aliases present).
+- P2, provenance line: the generated `[]json.RawMessage` count printed `0 results (live)` for the object-shaped answers. Both commands
+  now call `envelopeItemCount` (`internal/cli/proposals_look_output.go`): rows for the import answer, proposals + heldIdentifiers for
+  the contact answer. Test: `TestDuplicateProposalsProvenanceCountsNestedArrays` (stdout is /dev/null, a character device, so the
+  terminal path runs).
+- P3, cursor wording: CLI flag help and both manifest cursor descriptions say "Omit it for the first page; an explicitly blank value
+  is refused", matching `CheckCursor`.

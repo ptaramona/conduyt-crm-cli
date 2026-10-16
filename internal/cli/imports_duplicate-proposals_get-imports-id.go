@@ -63,9 +63,8 @@ func newImportsDuplicateProposalsGetImportsIdCmd(flags *rootFlags) *cobra.Comman
 			// already carries meta.source for those consumers.
 			// SYNC: keep this gate aligned with command_promoted.go.tmpl.
 			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var countItems []json.RawMessage
-				_ = json.Unmarshal(data, &countItems)
-				printProvenance(cmd, len(countItems), prov)
+				// Hand-written: an object-shaped answer, counted by its nested arrays (see proposals_look_output.go).
+				printProvenance(cmd, envelopeItemCount(data, "rows"), prov)
 			}
 			// For JSON output, wrap with provenance envelope before passing through flags.
 			// --select wins over --compact when both are set; --compact only runs when

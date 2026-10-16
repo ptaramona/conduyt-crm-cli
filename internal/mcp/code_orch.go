@@ -7509,6 +7509,10 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 		return mcplib.NewToolResultError("endpoint_id is required (call conduyt-crm_search first)"), nil
 	}
 
+	// Hand-written (board #95 parity r2): the two renamed duplicate proposals ids keep answering for existing callers, mapped to
+	// the new ids BEFORE the lookup so they pass through the same guards. A reprint must keep this.
+	id = codeOrchLegacyEndpointIDs.resolve(id)
+
 	var ep *codeOrchEndpoint
 	for i := range codeOrchEndpoints {
 		if codeOrchEndpoints[i].ID == id {
@@ -7758,4 +7762,19 @@ func codeOrchWireQueryName(queryParams []codeOrchParamBinding, name string) stri
 		}
 	}
 	return name
+}
+
+// codeOrchLegacyEndpointIDs maps endpoint ids that were renamed to the id that now serves them.
+type codeOrchLegacyIDs map[string]string
+
+func (m codeOrchLegacyIDs) resolve(id string) string {
+	if next, ok := m[id]; ok {
+		return next
+	}
+	return id
+}
+
+var codeOrchLegacyEndpointIDs = codeOrchLegacyIDs{
+	"contacts.duplicate-proposals.get-contacts-id":              "contacts.duplicate-proposals.list-contact",
+	"contacts.duplicate-proposals.post-contacts-id-proposal-id": "contacts.duplicate-proposals.decide-contact",
 }

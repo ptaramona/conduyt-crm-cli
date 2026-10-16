@@ -73,9 +73,8 @@ func newContactsDuplicateProposalsListContactCmd(flags *rootFlags) *cobra.Comman
 			// already carries meta.source for those consumers.
 			// SYNC: keep this gate aligned with command_promoted.go.tmpl.
 			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var countItems []json.RawMessage
-				_ = json.Unmarshal(data, &countItems)
-				printProvenance(cmd, len(countItems), prov)
+				// Hand-written: an object-shaped answer, counted by its nested arrays (see proposals_look_output.go).
+				printProvenance(cmd, envelopeItemCount(data, "proposals", "heldIdentifiers"), prov)
 			}
 			// For JSON output, wrap with provenance envelope before passing through flags.
 			// --select wins over --compact when both are set; --compact only runs when
@@ -111,7 +110,7 @@ func newContactsDuplicateProposalsListContactCmd(flags *rootFlags) *cobra.Comman
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagCursor, "cursor", "", "The nextCursor of the previous proposals page, unchanged (opaque). Omitted or empty = the first page.")
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "The nextCursor of the previous proposals page, unchanged (opaque). Omit it for the first page; an explicitly blank value is refused.")
 	cmd.Flags().StringVar(&flagHeldCursor, "held-cursor", "", "The heldIdentifiersNextCursor of the previous held identifiers page, unchanged (opaque).")
 	cmd.Flags().IntVar(&flagHeldLimit, "held-limit", 20, "Held identifiers per page, integer 1-100 (default 20).")
 	cmd.Flags().IntVar(&flagLimit, "limit", 50, "Proposals per page, integer 1-100 (default 50).")
