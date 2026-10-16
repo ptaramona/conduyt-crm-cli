@@ -10,16 +10,18 @@ import (
 func newCallsCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "calls",
-		Short:       "List, get, create, and update calls",
+		Short:       "List, get, count, create, and update calls",
 		Hidden:      true,
 		Annotations: map[string]string{"mcp:read-only": "true", "pp:typed-exit-codes": "0,2"},
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
+	cmd.AddCommand(newCallsCountUnknownCallersCmd(flags))
 	cmd.AddCommand(newCallsCreateRecordCmd(flags))
 	cmd.AddCommand(newCallsGetCmd(flags))
 	cmd.AddCommand(newCallsListCmd(flags))
 	cmd.AddCommand(newCallsPostVoiceDropCmd(flags))
 	cmd.AddCommand(newCallsUpdateCmd(flags))
+	cmd.AddCommand(newCallsLinkCmd(flags))
 	return cmd
 }

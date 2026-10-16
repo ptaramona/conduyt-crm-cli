@@ -24,6 +24,7 @@ import (
 
 	mcplib "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 )
 
@@ -1494,6 +1495,16 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		keywords:       codeOrchKeywords("calendars", "update-calendar", "Update an appointment", "/calendars/{id}/appointments/{appointmentId}"),
 	},
 	{
+		ID:             "calls.count-unknown-callers",
+		Method:         "GET",
+		Path:           "/calls/unknown-callers",
+		Summary:        "Board #35.",
+		Positional:     []string{},
+		TemplateParams: []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "line", WireName: "line"}, {PublicName: "since", WireName: "since"}},
+		keywords:       codeOrchKeywords("calls", "count-unknown-callers", "Board #35.", "/calls/unknown-callers"),
+	},
+	{
 		ID:             "calls.create-record",
 		Method:         "POST",
 		Path:           "/calls",
@@ -1532,6 +1543,16 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		TemplateParams: []codeOrchParamBinding{},
 		QueryParams:    []codeOrchParamBinding{},
 		keywords:       codeOrchKeywords("calls", "update", "Update a call record (e.g., add notes)", "/calls/{id}"),
+	},
+	{
+		ID:             "calls.link.call-to-contact",
+		Method:         "POST",
+		Path:           "/calls/{id}/link",
+		Summary:        "Board #35, the unknown-caller prompt's 'Search a contact'.",
+		Positional:     []string{"id"},
+		TemplateParams: []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{},
+		keywords:       codeOrchKeywords("calls", "call-to-contact", "Board #35, the unknown-caller prompt's 'Search a contact'.", "/calls/{id}/link"),
 	},
 	{
 		ID:             "chat.add-member",
@@ -2950,7 +2971,7 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		Summary:        "Get recent call history",
 		Positional:     []string{},
 		TemplateParams: []codeOrchParamBinding{},
-		QueryParams:    []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "unmatched", WireName: "unmatched"}, {PublicName: "line", WireName: "line"}},
 		keywords:       codeOrchKeywords("dialer", "get-history", "Get recent call history", "/dialer/history"),
 	},
 	{
@@ -7470,6 +7491,24 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 	params, _ := args["params"].(map[string]any)
 	if params == nil {
 		params = map[string]any{}
+	}
+
+	// Hand-written guards (parity round 3): the executor must refuse what the CLI refuses, before any client is built.
+	switch ep.ID {
+	case "contacts.create":
+		if err := cliutil.CheckCallDerivedFields(params); err != nil {
+			return mcplib.NewToolResultError(err.Error()), nil
+		}
+	case "calls.count-unknown-callers":
+		if v, ok := params["since"]; ok {
+			s, isStr := v.(string)
+			if !isStr {
+				return mcplib.NewToolResultError("since must be an RFC 3339 string with Z or an explicit offset"), nil
+			}
+			if err := cliutil.CheckRFC3339Instant("since", s); err != nil {
+				return mcplib.NewToolResultError(err.Error()), nil
+			}
+		}
 	}
 
 	c, err := newMCPClient()

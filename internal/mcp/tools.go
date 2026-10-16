@@ -913,7 +913,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 		"api":         "conduyt-crm",
 		"description": "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has.",
 		"archetype":   "crm",
-		"tool_count":  726,
+		"tool_count":  728,
 		"paths":       paths,
 		// tool_surface tells agents which surface a capability lives on.
 		"tool_surface": "MCP exposes typed endpoint tools plus a runtime mirror of user-facing CLI commands. Endpoint tools keep typed schemas; command-mirror tools shell out to the companion conduyt-crm-pp-cli binary.",
@@ -1179,9 +1179,15 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "calls",
 				"description": "Call log management",
-				"endpoints":   []string{"create-record", "get", "list", "update"},
+				"endpoints":   []string{"count-unknown-callers", "create-record", "get", "list", "update"},
 				"syncable":    true,
 				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "calls.link",
+				"description": "Manage link",
+				"endpoints":   []string{"call-to-contact"},
 				"writable":    true,
 			},
 			{

@@ -6586,6 +6586,126 @@ paths:
               schema:
                 $ref: "#/components/schemas/DataEnvelope"
 
+  /calls/{id}/link:
+    post:
+      operationId: linkCallToContact
+      summary: Link a contact-less call to a contact (optionally attaching the call's number)
+      description: "Board #35, the unknown-caller prompt's \"Search a contact\". Links the call to the contact with a compare-and-set on the locked call row: an unlinked call is linked; a call already linked to THIS contact answers 200 with `alreadyLinked: true` (idempotent); a call linked to another contact is 409 `call_already_linked`, or 404 `call_not_found` when that contact is hidden from the caller. With `attachNumber: true` the call's number (the caller on an inbound call, stored under the account's country) is written into the contact's next free phone slot (the empty primary phone, then phone_2, phone_3 ... the account's numbered phone fields); nothing is ever overwritten, a number the contact already has writes nothing (`alreadyOnContact: true`), every slot taken is 409 `no_free_phone_slot`, and a number another live contact has as its primary phone is 409 `number_on_another_contact` (checked for every attach, serialized per number). With `dryRun: true` the same checks run and the answer says what the request would do, writing nothing. Nothing is written on any refusal. Requires `dialer.create`, plus `contacts.edit` when `attachNumber` is true; the contact must be one the caller may see (404 otherwise) and, for an attach, edit (403 `contact_not_editable` for a collaborator), re-proven under the row lock. API keys need the `calls` scope (a `dialer` key covers it) and the `contacts` scope. A new link records an `unknown_call_linked` activity on the contact and the call's touch."
+      tags:
+        - Calls
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - contactId
+              properties:
+                contactId:
+                  type: string
+                  format: uuid
+                attachNumber:
+                  type: boolean
+                  default: false
+                  description: Also write the call's number into the contact's next free phone slot.
+                dryRun:
+                  type: boolean
+                  default: false
+                  description: Run every check and answer what the request would do (attached.slot, alreadyOnContact, alreadyLinked, or the same refusal); nothing is written.
+            examples:
+              attach:
+                summary: Attach the caller's number to an existing contact and link the call
+                value:
+                  contactId: 3f8a0c4e-1111-4222-8333-444455556666
+                  attachNumber: true
+              linkOnly:
+                summary: Link the call without touching the contact's phones
+                value:
+                  contactId: 3f8a0c4e-1111-4222-8333-444455556666
+              preview:
+                summary: Ask what an attach would do, writing nothing
+                value:
+                  contactId: 3f8a0c4e-1111-4222-8333-444455556666
+                  attachNumber: true
+                  dryRun: true
+      responses:
+        "200":
+          description: Linked (or already linked to this contact)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelope"
+              examples:
+                attachedAsSecondPhone:
+                  value:
+                    data:
+                      callId: 9b2d7c1a-5e4f-4a3b-9c8d-7e6f5a4b3c2d
+                      contactId: 3f8a0c4e-1111-4222-8333-444455556666
+                      alreadyLinked: false
+                      attached:
+                        number: "+15095550142"
+                        slot: phone_2
+                        alreadyOnContact: false
+                      dryRun: false
+                      contact:
+                        id: 3f8a0c4e-1111-4222-8333-444455556666
+                        name: Maria Ruiz
+        "400":
+          description: Malformed body (`invalid_json`, `invalid_body`, `unknown_field`, `contact_id_invalid`, `attach_number_invalid`, `dry_run_invalid`)
+        "403":
+          description: Missing `dialer.create`, or `contacts.edit` for an attach, or `contact_not_editable` (the caller may see the contact but not edit it)
+        "404":
+          description: The call (`call_not_found`) or the contact (`contact_not_found`) does not exist in this account or is not visible
+        "409":
+          description: "`call_already_linked`, `no_free_phone_slot`, `number_on_another_contact`, or `number_owner_undecidable` (too many contacts share the number's last seven digits to prove who owns it; link without attachNumber); nothing was written"
+        "422":
+          description: "`number_unusable`: the call has no usable phone number to attach"
+
+  /calls/unknown-callers:
+    get:
+      operationId: countUnknownCallers
+      summary: Count a line's unknown callers since an instant (the toll-free quick mode counter)
+      description: "Board #35. `total`: inbound calls to that line since `since` that arrived with no contact (the ones still contact-less plus the ones the unknown-caller prompt linked since); `unmatched`: those still contact-less (list them with GET /dialer/history?unmatched=1&line=...). `since` is the caller's start of day and must be within the last 31 days. Requires `dialer.view`; counts only, under the Call history visibility rule (a scoped member counts their own calls, contact-less calls and calls linked to a contact they can see)."
+      tags:
+        - Calls
+      parameters:
+        - name: line
+          in: query
+          required: true
+          description: Our line (the number the callers dialed), any formatting.
+          schema:
+            type: string
+          example: "+18005550199"
+        - name: since
+          in: query
+          required: true
+          description: ISO instant (the caller's midnight).
+          schema:
+            type: string
+            format: date-time
+          example: 2026-10-15T07:00:00.000Z
+      responses:
+        "200":
+          description: The counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataEnvelope"
+              examples:
+                today:
+                  value:
+                    data:
+                      line: "+18005550199"
+                      since: 2026-10-15T07:00:00.000Z
+                      total: 14
+                      unmatched: 9
+        "400":
+          description: "`line_required`, `line_conflict`, `line_invalid`, `since_required`, `since_conflict` or `since_out_of_range`"
+
   # ──────────────────────────────────────────────
   # Chat (Internal Team)
   # ──────────────────────────────────────────────
