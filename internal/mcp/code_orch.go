@@ -1494,6 +1494,16 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		keywords:       codeOrchKeywords("calendars", "update-calendar", "Update an appointment", "/calendars/{id}/appointments/{appointmentId}"),
 	},
 	{
+		ID:             "calls.count-unknown-callers",
+		Method:         "GET",
+		Path:           "/calls/unknown-callers",
+		Summary:        "Board #35.",
+		Positional:     []string{},
+		TemplateParams: []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "line", WireName: "line"}, {PublicName: "since", WireName: "since"}},
+		keywords:       codeOrchKeywords("calls", "count-unknown-callers", "Board #35.", "/calls/unknown-callers"),
+	},
+	{
 		ID:             "calls.create-record",
 		Method:         "POST",
 		Path:           "/calls",
@@ -1532,6 +1542,16 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		TemplateParams: []codeOrchParamBinding{},
 		QueryParams:    []codeOrchParamBinding{},
 		keywords:       codeOrchKeywords("calls", "update", "Update a call record (e.g., add notes)", "/calls/{id}"),
+	},
+	{
+		ID:             "calls.link.call-to-contact",
+		Method:         "POST",
+		Path:           "/calls/{id}/link",
+		Summary:        "Board #35, the unknown-caller prompt's 'Search a contact'.",
+		Positional:     []string{"id"},
+		TemplateParams: []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{},
+		keywords:       codeOrchKeywords("calls", "call-to-contact", "Board #35, the unknown-caller prompt's 'Search a contact'.", "/calls/{id}/link"),
 	},
 	{
 		ID:             "chat.add-member",
@@ -2950,7 +2970,7 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		Summary:        "Get recent call history",
 		Positional:     []string{},
 		TemplateParams: []codeOrchParamBinding{},
-		QueryParams:    []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "unmatched", WireName: "unmatched"}, {PublicName: "line", WireName: "line"}},
 		keywords:       codeOrchKeywords("dialer", "get-history", "Get recent call history", "/dialer/history"),
 	},
 	{

@@ -12,6 +12,8 @@ import (
 )
 
 func newDialerGetHistoryCmd(flags *rootFlags) *cobra.Command {
+	var flagUnmatched string
+	var flagLine string
 
 	cmd := &cobra.Command{
 		Use:         "get-history",
@@ -25,6 +27,12 @@ func newDialerGetHistoryCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagUnmatched != "" {
+				params["unmatched"] = formatCLIParamValue(flagUnmatched)
+			}
+			if flagLine != "" {
+				params["line"] = formatCLIParamValue(flagLine)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +81,8 @@ func newDialerGetHistoryCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagUnmatched, "unmatched", "", "`1` or `true`: only calls no contact is linked to (board #35, the unknown-caller prompt's not-matched calls).")
+	cmd.Flags().StringVar(&flagLine, "line", "", "Our line (any formatting): only INBOUND calls to it (board #35, the toll-free counter's link).")
 
 	return cmd
 }

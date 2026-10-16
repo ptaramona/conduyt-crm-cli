@@ -266,6 +266,7 @@ These capabilities aren't available in any other tool for this API.
 
 **calls** — Call log management
 
+- `conduyt-crm-pp-cli calls count-unknown-callers` — Board #35.
 - `conduyt-crm-pp-cli calls create-record` — Create a call record
 - `conduyt-crm-pp-cli calls get` — Get a call by ID
 - `conduyt-crm-pp-cli calls list` — List call records

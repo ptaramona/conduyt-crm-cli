@@ -481,6 +481,7 @@ Internal calendar and appointment management
 
 Call log management
 
+- **`conduyt-crm-pp-cli calls count-unknown-callers`** - Board #35. `total`: inbound calls to that line since `since` that arrived with no contact (the ones still contact-less plus the ones the unknown-caller prompt linked since); `unmatched`: those still contact-less (list them with GET /dialer/history?unmatched=1&line=...). `since` is the caller's start of day and must be within the last 31 days. Requires `dialer.view`; counts only, under the Call history visibility rule (a scoped member counts their own calls, contact-less calls and calls linked to a contact they can see).
 - **`conduyt-crm-pp-cli calls create-record`** - Create a call record
 - **`conduyt-crm-pp-cli calls get`** - Get a call by ID
 - **`conduyt-crm-pp-cli calls list`** - List call records
@@ -570,7 +571,7 @@ Contact management, tagging, scoring, import/export, merge, duplicates
 
 Contact management, tagging, scoring, import/export, merge, duplicates
 
-- **`conduyt-crm-pp-cli contacts create`** - Creates a new contact. Rate limited to 30 requests per minute.
+- **`conduyt-crm-pp-cli contacts create`** - Creates a new contact. Rate limited to 30 requests per minute. With `callId` (the unknown-caller prompt's "Create new lead"), the new contact is linked to that contact-less INBOUND call in the SAME transaction: the phone is the call's own caller number (a submitted `phone` must be omitted or strictly the same number, else 422 `phone_not_call_number`), stored under the account's country; `firstName` is required (400 `first_name_required`) and, for this lead only, the account's form-required contact fields and required custom fields are not required (values that are sent are still validated). The caller needs `dialer.create` (an API key also needs the `calls` scope; a `dialer` key covers it). A call that does not exist is 404 `call_not_found`; a call already linked is 409 `call_already_linked` (or 404 `call_not_found` when its contact is hidden from the caller); an outbound call is 422 `call_not_inbound`; a call with no usable caller number is 422 `number_unusable`. Nothing is created on any refusal.
 - **`conduyt-crm-pp-cli contacts delete`** - Soft-delete a contact
 - **`conduyt-crm-pp-cli contacts export`** - Export contacts as CSV
 - **`conduyt-crm-pp-cli contacts find-duplicate`** - Find duplicate contacts

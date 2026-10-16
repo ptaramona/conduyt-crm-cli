@@ -2436,6 +2436,40 @@
       ]
     },
     {
+      "name": "calls_link_call-to-contact",
+      "description": "Board #35, the unknown-caller prompt's 'Search a contact'. Links the call to the contact with a compare-and-set on the locked call row: an unlinked call is linked; a call already linked to THIS contact answers 200 with `alreadyLinked: true` (idempotent); a call linked to another contact is 409 `call_already_linked`, or 404 `call_not_found` when that contact is hidden from the caller. With `attachNumber: true` the call's number (the caller on an inbound call, stored under the account's country) is written into the contact's next free phone slot (the empty primary phone, then phone_2, phone_3 ... the account's numbered phone fields); nothing is ever overwritten, a number the contact already has writes nothing (`alreadyOnContact: true`), every slot taken is 409 `no_free_phone_slot`, and a number another live contact has as its primary phone is 409 `number_on_another_contact` (checked for every attach, serialized per number). With `dryRun: true` the same checks run and the answer says what the request would do, writing nothing. Nothing is written on any refusal. Requires `dialer.create`, plus `contacts.edit` when `attachNumber` is true; the contact must be one the caller may see (404 otherwise) and, for an attach, edit (403 `contact_not_editable` for a collaborator), re-proven under the row lock. API keys need the `calls` scope (a `dialer` key covers it) and the `contacts` scope. A new link records an `unknown_call_linked` activity on the contact and the call's touch. Required: id, contactId. Optional: attachNumber (default: false), dryRun (default: false). Returns the new DataEnvelope.",
+      "method": "POST",
+      "path": "/calls/{id}/link",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Resource UUID",
+          "required": true
+        },
+        {
+          "name": "attachNumber",
+          "type": "bool",
+          "location": "body",
+          "description": "Also write the call's number into the contact's next free phone slot."
+        },
+        {
+          "name": "contactId",
+          "type": "string",
+          "location": "body",
+          "description": "Contact id",
+          "required": true
+        },
+        {
+          "name": "dryRun",
+          "type": "bool",
+          "location": "body",
+          "description": "Run every check and answer what the request would do (attached.slot, alreadyOnContact, alreadyLinked, or the same refusal); nothing is written."
+        }
+      ]
+    },
+    {
       "name": "chat_add-member",
       "description": "Add a member to a channel. Required: id, userId. Optional: role (default: member).",
       "method": "POST",
@@ -2587,6 +2621,28 @@
           "type": "string",
           "location": "path",
           "description": "Id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "calls_count-unknown-callers",
+      "description": "Board #35. `total`: inbound calls to that line since `since` that arrived with no contact (the ones still contact-less plus the ones the unknown-caller prompt linked since); `unmatched`: those still contact-less (list them with GET /dialer/history?unmatched=1\u0026line=...). `since` is the caller's start of day and must be within the last 31 days. Requires `dialer.view`; counts only, under the Call history visibility rule (a scoped member counts their own calls, contact-less calls and calls linked to a contact they can see). Required: line, since. Returns the DataEnvelope.",
+      "method": "GET",
+      "path": "/calls/unknown-callers",
+      "params": [
+        {
+          "name": "line",
+          "type": "string",
+          "location": "query",
+          "description": "Our line (the number the callers dialed), any formatting.",
+          "required": true
+        },
+        {
+          "name": "since",
+          "type": "string",
+          "location": "query",
+          "description": "ISO instant (the caller's midnight).",
           "required": true
         }
       ]
@@ -3641,7 +3697,7 @@
     },
     {
       "name": "contacts_create",
-      "description": "Creates a new contact. Rate limited to 30 requests per minute. Optional: addressLine1, addressLine2, assignedTo (plus 14 more). Returns the new DataEnvelope.",
+      "description": "Creates a new contact. Rate limited to 30 requests per minute. With `callId` (the unknown-caller prompt's 'Create new lead'), the new contact is linked to that contact-less INBOUND call in the SAME transaction: the phone is the call's own caller number (a submitted `phone` must be omitted or strictly the same number, else 422 `phone_not_call_number`), stored under the account's country; `firstName` is required (400 `first_name_required`) and, for this lead only, the account's form-required contact fields and required custom fields are not required (values that are sent are still validated). The caller needs `dialer.create` (an API key also needs the `calls` scope; a `dialer` key covers it). A call that does not exist is 404 `call_not_found`; a call already linked is 409 `call_already_linked` (or 404 `call_not_found` when its contact is hidden from the caller); an outbound call is 422 `call_not_inbound`; a call with no usable caller number is 422 `number_unusable`. Nothing is created on any refusal. Optional: addressLine1, addressLine2, assignedTo (plus 15 more). Returns the new DataEnvelope.",
       "method": "POST",
       "path": "/contacts",
       "params": [
@@ -3662,6 +3718,12 @@
           "type": "string",
           "location": "body",
           "description": "Assigned to"
+        },
+        {
+          "name": "callId",
+          "type": "string",
+          "location": "body",
+          "description": "A contact-less inbound call to link the new contact to, in the same transaction (board #35, the unknown-caller prompt)."
         },
         {
           "name": "city",
@@ -5262,10 +5324,23 @@
     },
     {
       "name": "dialer_get-history",
-      "description": "Get recent call history.",
+      "description": "Get recent call history. Optional: unmatched, line. Returns the DataEnvelope.",
       "method": "GET",
       "path": "/dialer/history",
-      "params": []
+      "params": [
+        {
+          "name": "unmatched",
+          "type": "string",
+          "location": "query",
+          "description": "`1` or `true`: only calls no contact is linked to (board #35, the unknown-caller prompt's not-matched calls). A repeated key with different values is a 400 `unmatched_conflict`."
+        },
+        {
+          "name": "line",
+          "type": "string",
+          "location": "query",
+          "description": "Our line (any formatting): only INBOUND calls to it (board #35, the toll-free counter's link). Combined with another direction it is a 400 `line_direction_conflict`; a repeated key with different values is a 400 `line_conflict`."
+        }
+      ]
     },
     {
       "name": "dialer_get-inbound-lookup",
