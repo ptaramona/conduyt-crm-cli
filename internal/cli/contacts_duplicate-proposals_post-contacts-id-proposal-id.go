@@ -104,8 +104,8 @@ func newContactsDuplicateProposalsPostContactsIdProposalIdCmd(flags *rootFlags) 
 					}
 				}
 			}
-			// No write-through to the local store: the { id, status, decidedAt } acknowledgement is not a proposal record, and
-			// the live GET never returns a decided pair again. See .printing-press-patches/duplicate-proposals-identity-v2.md.
+			// No write-through to the local store: the { id, status, decidedAt } acknowledgement is not a complete proposal record,
+			// and terminal different/merged pairs disappear from the live GET (it selects only open and not_sure). See .printing-press-patches/duplicate-proposals-identity-v2.md.
 			if wantsHumanTable(cmd.OutOrStdout(), flags) {
 				// Check if response contains an array (directly or wrapped in "data")
 				var items []map[string]any
