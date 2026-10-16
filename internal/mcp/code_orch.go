@@ -2762,7 +2762,7 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		Summary:        "Returns deals with Kanban-optimized sort order (stage, sortOrder, then requested sort).",
 		Positional:     []string{},
 		TemplateParams: []codeOrchParamBinding{},
-		QueryParams:    []codeOrchParamBinding{{PublicName: "per_page", WireName: "per_page"}, {PublicName: "pipeline", WireName: "pipeline"}, {PublicName: "stage", WireName: "stage"}, {PublicName: "status", WireName: "status"}, {PublicName: "assigned_to", WireName: "assigned_to"}, {PublicName: "sort", WireName: "sort"}, {PublicName: "order", WireName: "order"}},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "per_page", WireName: "per_page"}, {PublicName: "pipeline", WireName: "pipeline"}, {PublicName: "stage", WireName: "stage"}, {PublicName: "status", WireName: "status"}, {PublicName: "assigned_to", WireName: "assigned_to"}, {PublicName: "sort", WireName: "sort"}, {PublicName: "order", WireName: "order"}, {PublicName: "board_columns", WireName: "board_columns"}, {PublicName: "board_snapshot", WireName: "board_snapshot"}},
 		keywords:       codeOrchKeywords("deals", "list", "Returns deals with Kanban-optimized sort order (stage, sortOrder, then requested sort).", "/deals"),
 	},
 	{
@@ -7568,6 +7568,12 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 			if err := cliutil.CheckPagingParams(params, map[string]int{"page": 100000, "per_page": 100}, nil); err != nil {
 				return mcplib.NewToolResultError(err.Error()), nil
 			}
+		}
+	case "deals.list":
+		// Hand-written (board #116 for app #111): the board snapshot's refusals, as `deals list --board-snapshot` applies them,
+		// before any client is built. A reprint must keep this.
+		if err := cliutil.CheckBoardSnapshotParams(params); err != nil {
+			return mcplib.NewToolResultError(err.Error()), nil
 		}
 	case "calls.count-unknown-callers":
 		if v, ok := params["since"]; ok {

@@ -21,10 +21,13 @@ func newDealsListCmd(flags *rootFlags) *cobra.Command {
 	var flagSort string
 	var flagOrder string
 	var flagAll bool
+	var flagBoardColumns string
+	var flagBoardSnapshot bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
 		Short:       "Returns deals with Kanban-optimized sort order (stage, sortOrder, then requested sort).",
+		Long:        dealsListBoardSnapshotLong, // hand-written (board #116): the snapshot mode, its refusals, the two 503 codes; a reprint must keep it
 		Example:     "  conduyt-crm-pp-cli deals list",
 		Annotations: map[string]string{"pp:endpoint": "deals.list", "pp:method": "GET", "pp:path": "/deals", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,6 +70,14 @@ func newDealsListCmd(flags *rootFlags) *cobra.Command {
 					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagOrder, "order", allowedOrder)
 				}
 			}
+			// Hand-written (board #116 for app #111): the board snapshot is its own read (refusals first, live, unpaged, never
+			// cached or written into the store); see deals_board_snapshot.go. A reprint must keep this.
+			if flagBoardSnapshot || cmd.Flags().Changed("board-columns") {
+				return runDealsBoardSnapshot(cmd, flags, flagBoardSnapshot, dealsBoardSnapshotArgs{
+					columns: flagBoardColumns, pipeline: flagPipeline, status: flagStatus, assignedTo: flagAssignedTo,
+					sort: flagSort, order: flagOrder, perPage: flagPerPage,
+				})
+			}
 			path := "/deals"
 			c, err := flags.newClient()
 			if err != nil {
@@ -81,6 +92,9 @@ func newDealsListCmd(flags *rootFlags) *cobra.Command {
 				"assigned_to": formatCLIParamValue(flagAssignedTo),
 				"sort":        formatCLIParamValue(flagSort),
 				"order":       formatCLIParamValue(flagOrder),
+				// generated; never reached with a value: the snapshot branch above returns first ("" and "false" are stripped)
+				"board_columns":  formatCLIParamValue(flagBoardColumns),
+				"board_snapshot": formatCLIParamValue(flagBoardSnapshot),
 			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -130,7 +144,7 @@ func newDealsListCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 1000); with board_snapshot=true it is the default limit of a column that names none.")
 	cmd.Flags().StringVar(&flagPipeline, "pipeline", "", "Filter by pipeline ID. Aliases also accepted: pipeline_id, pipelineId.")
 	cmd.Flags().StringVar(&flagStage, "stage", "", "Filter by stage ID. Aliases also accepted: stage_id, stageId.")
 	cmd.Flags().StringVar(&flagStatus, "status", "", "Status (one of: open, won, lost)")
@@ -138,6 +152,9 @@ func newDealsListCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&flagSort, "sort", "createdAt", "Sort (one of: createdAt, updatedAt, title, value)")
 	cmd.Flags().StringVar(&flagOrder, "order", "desc", "Order (one of: asc, desc)")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
+	// Hand-written help (board #116): the generator cut both descriptions at the first sentence, losing the value format.
+	cmd.Flags().StringVar(&flagBoardColumns, "board-columns", "", "With --board-snapshot: <stageId>[:<limit>],... in answer order; 1-50 live stages of the pipeline, no stage twice, limit 1-1000 (default --per-page), at most 5000 rows in total")
+	cmd.Flags().BoolVar(&flagBoardSnapshot, "board-snapshot", false, "Read every column in --board-columns of --pipeline from ONE database snapshot (a moved deal is in exactly one column); refuses --page, --stage and --all")
 
 	return cmd
 }

@@ -5045,7 +5045,7 @@
     },
     {
       "name": "deals_list",
-      "description": "Returns deals with Kanban-optimized sort order (stage, sortOrder, then requested sort). Optional: page (default: 1), per_page (default: 50), pipeline (plus 5 more).",
+      "description": "Returns deals with Kanban-optimized sort order (stage, sortOrder, then requested sort). Optional: page (default: 1), per_page (default: 50), pipeline (plus 7 more). Board snapshot: board_snapshot=true (a JSON boolean) with pipeline and board_columns (\u003cstageId\u003e[:\u003climit\u003e],...) answers { columns: [{ stageId, limit, deals }], meta: { board_snapshot: true } } from ONE database snapshot; this executor refuses, before any request, page (even 1), stage and its aliases, rows_only, summary, system_occupancy and every health_* parameter with it, a missing pipeline or board_columns, a board_columns value the server would refuse, and board_columns without board_snapshot=true. 503 board_snapshot_busy (snapshot only) or gate_busy (any call): nothing was changed; retry after Retry-After.",
       "method": "GET",
       "path": "/deals",
       "params": [
@@ -5059,7 +5059,7 @@
           "name": "per_page",
           "type": "int",
           "location": "query",
-          "description": "Items per page (max 200)"
+          "description": "Items per page (max 1000); with board_snapshot=true it is the default limit of a column that names none."
         },
         {
           "name": "pipeline",
@@ -5096,6 +5096,18 @@
           "type": "string",
           "location": "query",
           "description": "Order"
+        },
+        {
+          "name": "board_columns",
+          "type": "string",
+          "location": "query",
+          "description": "With board_snapshot=true: the columns to read, in answer order, as a comma list (repeats of the parameter are joined) of \u003cstageId\u003e or \u003cstageId\u003e:\u003climit\u003e. limit is an integer 1-1000 (default per_page, itself default 50). Every stageId must be a live stage of the pipeline (400 naming the others); at least 1 and at most 50 columns, no stage twice, at most 5000 rows in total (400). Without board_snapshot=true it is a 400."
+        },
+        {
+          "name": "board_snapshot",
+          "type": "bool",
+          "location": "query",
+          "description": "true: answer every column named in board_columns from ONE database snapshot (one read-only REPEATABLE READ transaction), so a deal moved while the read runs is in exactly one column; each column's deals are exactly what ?stage=\u003cstageId\u003e\u0026per_page=\u003climit\u003e\u0026rows_only=true answers (same filters, visibility, order and projection) and no aggregate is computed. Needs pipeline (or pipeline_name) and board_columns; cannot be combined with stage / stage_id / stage_name, rows_only, summary, health_summary, system_occupancy or a page other than 1 (400). A read that cannot finish inside its budget is a 503 code board_snapshot_busy with retryAfter and Retry-After (read the columns one by one instead, or retry). Any request to this endpoint, snapshot or not, can also be answered 503 code gate_busy (the access check could not finish in time) with retryAfter and Retry-After. Any value other than true or false, or the parameter repeated with different values, is a 400. The Deals board uses it for its first load and full reload."
         }
       ]
     },
