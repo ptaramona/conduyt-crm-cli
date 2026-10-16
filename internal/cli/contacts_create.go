@@ -41,7 +41,7 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 		Annotations: map[string]string{"pp:endpoint": "contacts.create", "pp:method": "POST", "pp:path": "/contacts"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if bodyCallId != "" && (bodySource != "" || bodyAssignedTo != "") {
-				return errCallDerivedFields
+				return cliutil.ErrCallDerivedFields
 			}
 			path := "/contacts"
 			c, err := flags.newClient()
@@ -59,7 +59,7 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
 					return fmt.Errorf("parsing stdin JSON: %w", err)
 				}
-				if err := checkCallDerivedFields(jsonBody); err != nil {
+				if err := cliutil.CheckCallDerivedFields(jsonBody); err != nil {
 					return err
 				}
 				body = jsonBody
@@ -130,7 +130,7 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 				}
 			}
 			if bm, ok := body.(map[string]any); ok && !stdinBody {
-				if err := checkCallDerivedFields(bm); err != nil {
+				if err := cliutil.CheckCallDerivedFields(bm); err != nil {
 					return err
 				}
 			}

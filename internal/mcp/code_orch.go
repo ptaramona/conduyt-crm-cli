@@ -24,6 +24,7 @@ import (
 
 	mcplib "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 )
 
@@ -7490,6 +7491,24 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 	params, _ := args["params"].(map[string]any)
 	if params == nil {
 		params = map[string]any{}
+	}
+
+	// Hand-written guards (parity round 3): the executor must refuse what the CLI refuses, before any client is built.
+	switch ep.ID {
+	case "contacts.create":
+		if err := cliutil.CheckCallDerivedFields(params); err != nil {
+			return mcplib.NewToolResultError(err.Error()), nil
+		}
+	case "calls.count-unknown-callers":
+		if v, ok := params["since"]; ok {
+			s, isStr := v.(string)
+			if !isStr {
+				return mcplib.NewToolResultError("since must be an RFC 3339 string with Z or an explicit offset"), nil
+			}
+			if err := cliutil.CheckRFC3339Instant("since", s); err != nil {
+				return mcplib.NewToolResultError(err.Error()), nil
+			}
+		}
 	}
 
 	c, err := newMCPClient()

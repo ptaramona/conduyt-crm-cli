@@ -18,7 +18,7 @@ App main f132ed6f0 (live 2026-10-15 9:45 PM PT). The public OpenAPI at that comm
   `/calls/{id}/link` as a syncable sub-resource; a POST acknowledgement is not data to sync), and its "Use since for incremental fetches" query tip in
   `tools.go` (a false positive: `since` here is the counter's window start, not a modification-time filter).
 - Command shapes as generated: `calls count-unknown-callers --line --since`, `calls link call-to-contact <id> --contact-id [--attach-number] [--dry-run]`,
-  `contacts create --call-id <uuid>`, `dialer get-history --unmatched 1 --line <n>`. On `calls link call-to-contact`, the local `--dry-run` flag shadows the root
+  `contacts create --call-id <uuid>`, `dialer get-history --unmatched --line <n>`. On `calls link call-to-contact`, the local `--dry-run` flag shadows the root
   `--dry-run`, so it sends the API's body `dryRun: true` (the unknown-caller preview) and does not trigger the Press's request-printing dry run; pinned by a test.
   `calls` stays a hidden group, as in the 4.28.0 print; README.md and SKILL.md list `calls link call-to-contact` like the other calls commands.
 - `tools-manifest.json` 726 -> 728 tools (BOTH new operations were added: the link tool and the counter); `mcp.tool_count` 726 -> 728 in `internal/mcp/tools.go` plus the calls group lists.
@@ -34,3 +34,15 @@ App main f132ed6f0 (live 2026-10-15 9:45 PM PT). The public OpenAPI at that comm
 - `calls count-unknown-callers --since` is validated with `time.Parse(time.RFC3339Nano)` (`checkRFC3339Instant`): Z or an explicit offset, a real date; offset-less
   and impossible dates (2026-02-31) are refused before any request. The 31-day window stays the API's rule.
 - Tests: `internal/cli/unknown_caller_test.go` (refusals for flags and stdin, bare `--unmatched`, `since` cases).
+
+## Round 3 (Codex parity r2 findings, 2026-10-15) - hand-written, a reprint must keep these
+
+- The guards moved from `internal/cli/unknown_caller_guards.go` to `internal/cliutil/unknown_caller_guards.go` (exported `CheckCallDerivedFields`,
+  `CheckRFC3339Instant`, `ErrCallDerivedFields`) so the companion MCP server shares them. The CLI callers (`contacts_create.go`,
+  `calls_count-unknown-callers.go`) import `cliutil`.
+- MCPB: `handleCodeOrchExecute` in `internal/mcp/code_orch.go` has a hand-written block before `newMCPClient()`: for `contacts.create` it refuses `callId` with
+  `source` or `assignedTo`; for `calls.count-unknown-callers` it refuses a `since` that is not a string or not strict RFC 3339 (Z or offset, real date).
+  Both refuse with a tool error and no request. A reprint regenerates `code_orch.go` without this block and MUST re-apply it.
+- Tests: `internal/mcp/unknown_caller_guards_test.go` (callId+source, callId+assignedTo refused with zero HTTP hits; callId alone posts; offset-less,
+  2026-02-31, leading-space and non-date `since` refused with zero hits; valid `since` sent).
+- The Round 2 note above that places the guard in `internal/cli/unknown_caller_guards.go` is superseded by the cliutil location.

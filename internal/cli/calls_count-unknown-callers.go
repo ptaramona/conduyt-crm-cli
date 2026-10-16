@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +32,7 @@ func newCallsCountUnknownCallersCmd(flags *rootFlags) *cobra.Command {
 			if !cmd.Flags().Changed("since") && !flags.dryRun {
 				return fmt.Errorf("required flag \"%s\" not set", "since")
 			}
-			if err := checkRFC3339Instant("since", flagSince); err != nil {
+			if err := cliutil.CheckRFC3339Instant("since", flagSince); err != nil {
 				return err
 			}
 			path := "/calls/unknown-callers"
