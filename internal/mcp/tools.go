@@ -913,7 +913,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 		"api":         "conduyt-crm",
 		"description": "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has.",
 		"archetype":   "crm",
-		"tool_count":  730,
+		"tool_count":  731,
 		"paths":       paths,
 		// tool_surface tells agents which surface a capability lives on.
 		"tool_surface": "MCP exposes typed endpoint tools plus a runtime mirror of user-facing CLI commands. Endpoint tools keep typed schemas; command-mirror tools shell out to the companion conduyt-crm-pp-cli binary.",
@@ -1275,7 +1275,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "contacts.duplicate-proposals",
 				"description": "Manage duplicate proposals",
-				"endpoints":   []string{"get-contacts-id", "post-contacts-id-proposal-id"},
+				"endpoints":   []string{"decide-contact", "list-contact"},
 				"writable":    true,
 			},
 			{
@@ -1555,6 +1555,11 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "imports.download",
 				"description": "Manage download",
+				"endpoints":   []string{"get-imports-id"},
+			},
+			{
+				"name":        "imports.duplicate-proposals",
+				"description": "Manage duplicate proposals",
 				"endpoints":   []string{"get-imports-id"},
 			},
 			{

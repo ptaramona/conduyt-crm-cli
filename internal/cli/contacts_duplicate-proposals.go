@@ -10,12 +10,12 @@ import (
 func newContactsDuplicateProposalsCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "duplicate-proposals",
-		Short:       "Get and create duplicate proposals for contacts",
+		Short:       "List and create duplicate proposals for contacts",
 		Annotations: map[string]string{"mcp:read-only": "true", "pp:typed-exit-codes": "0,2"},
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
-	cmd.AddCommand(newContactsDuplicateProposalsGetContactsIdCmd(flags))
-	cmd.AddCommand(newContactsDuplicateProposalsPostContactsIdProposalIdCmd(flags))
+	cmd.AddCommand(newContactsDuplicateProposalsDecideContactCmd(flags))
+	cmd.AddCommand(newContactsDuplicateProposalsListContactCmd(flags))
 	return cmd
 }

@@ -83,7 +83,7 @@ const (
 )
 
 func TestCodeOrchDuplicateProposalDecisionIsStrict(t *testing.T) {
-	const post = "contacts.duplicate-proposals.post-contacts-id-proposal-id"
+	const post = "contacts.duplicate-proposals.decide-contact"
 	bad := map[string]map[string]any{
 		"no decision":     {"id": dpContactID, "proposalId": dpProposalID},
 		"merged":          {"id": dpContactID, "proposalId": dpProposalID, "decision": "merged"},
@@ -105,16 +105,16 @@ func TestCodeOrchDuplicateProposalDecisionIsStrict(t *testing.T) {
 
 func TestCodeOrchDuplicateProposalsValidCallsAreSent(t *testing.T) {
 	for _, d := range []string{"not_sure", "different", "merge"} {
-		hits, body, _, res := execGuard(t, "contacts.duplicate-proposals.post-contacts-id-proposal-id", map[string]any{"id": dpContactID, "proposalId": dpProposalID, "decision": d})
+		hits, body, _, res := execGuard(t, "contacts.duplicate-proposals.decide-contact", map[string]any{"id": dpContactID, "proposalId": dpProposalID, "decision": d})
 		if hits != 1 || res.IsError || !strings.Contains(body, `"decision":"`+d+`"`) {
 			t.Fatalf("%s: hits=%d isError=%v body=%s", d, hits, res.IsError, body)
 		}
 	}
-	hits, _, _, res := execGuard(t, "contacts.duplicate-proposals.get-contacts-id", map[string]any{"id": dpContactID})
+	hits, _, _, res := execGuard(t, "contacts.duplicate-proposals.list-contact", map[string]any{"id": dpContactID})
 	if hits != 1 || res.IsError {
 		t.Fatalf("list: hits=%d isError=%v", hits, res.IsError)
 	}
-	hits, _, _, res = execGuard(t, "contacts.duplicate-proposals.get-contacts-id", map[string]any{"id": "nope"})
+	hits, _, _, res = execGuard(t, "contacts.duplicate-proposals.list-contact", map[string]any{"id": "nope"})
 	if hits != 0 || !res.IsError {
 		t.Fatalf("list with a bad id: hits=%d isError=%v", hits, res.IsError)
 	}

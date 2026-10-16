@@ -17187,57 +17187,549 @@ paths:
                 $ref: "#/components/schemas/DataEnvelope"
   /contacts/{id}/duplicate-proposals/{proposalId}:
     post:
-      x-generated: true
-      operationId: postContactsIdDuplicateProposalsProposalId
-      summary: Create / invoke contacts id duplicate-proposals proposalId
+      operationId: decideContactDuplicateProposal
+      summary: Record a decision on a possible duplicate
+      description: "Record what you decided about one possible-duplicate line on this contact. not_sure: both records stay visible on both records. different: the two are different people and the line is never shown again. merge: records a merge already completed through POST /contacts/merge (either record may be the survivor); the line is closed for good. Needs edit access to BOTH records."
       tags:
         - Contacts
       parameters:
         - name: id
           in: path
           required: true
+          description: The contact the line is shown on
           schema:
             type: string
+            format: uuid
         - name: proposalId
           in: path
           required: true
+          description: The possible-duplicate line (from GET /contacts/{id}/duplicate-proposals)
           schema:
             type: string
+            format: uuid
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
               type: object
-              additionalProperties: true
-              description: See GET /schema/api-catalog (authenticated) for the full field-level request schema of this endpoint.
+              required:
+                - decision
+              properties:
+                decision:
+                  type: string
+                  enum:
+                    - not_sure
+                    - different
+                    - merge
+                  description: "not_sure: both records stay visible on both records. different: never shown again. merge: records a merge already completed through POST /contacts/merge (either record may be the survivor); the line is closed for good."
       responses:
         "200":
-          description: Success
+          description: Decision recorded
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DataEnvelope"
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - status
+                      - decidedAt
+                      - previousMembershipRevision
+                      - membershipRevision
+                      - total
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      status:
+                        type: string
+                        enum:
+                          - not_sure
+                          - different
+                          - merged
+                        description: merged is the status the server sets after a merge
+                      decidedAt:
+                        type:
+                          - string
+                          - "null"
+                        format: date-time
+                      previousMembershipRevision:
+                        type: string
+                        description: "This contact's proposals list just BEFORE the write: the same opaque digest as membershipRevision, read in the same request before the decision (an idempotent repeat answers previous = current). A client adopts membershipRevision and total only when this equals the revision it holds; otherwise it removes the line and reads page one again."
+                      membershipRevision:
+                        type: string
+                        description: "This contact's proposals list AFTER the decision: the same opaque digest GET /contacts/{id}/duplicate-proposals answers as membershipRevision (read after the write; also on an idempotent repeat). A client that removed the decided line keeps its loaded pages, adopts this revision, and reads page one again only when a later page answers another."
+                      total:
+                        type: integer
+                        description: "This contact's proposals list AFTER the decision: the same count GET /contacts/{id}/duplicate-proposals answers as total (read after the write; also on an idempotent repeat)."
+        "400":
+          description: error is "Request body must be valid JSON" with code invalid_json, or error is 'decision must be one of "merge", "different", "not_sure"' (decision missing or not a listed value; no code), or error is "dry_run/sandbox is not supported on this endpoint. Remove the dry-run flag or use a documented sandbox-enabled endpoint." (a dry_run or sandbox flag was sent; no code). Only the invalid_json answer carries a code.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - invalid_json
+        "401":
+          description: Authentication required. error is "Authentication required".
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Billing refusal. error is "Active subscription required. Please update your billing." (owner or admin) or "Your team's Conduyt access is paused for billing. Please contact your account administrator." (anyone else), or "Account not found" (the account behind the credential no longer exists). No code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 'error is "Missing permission: contacts.edit", an MFA setup refusal, "You can view this contact but not edit it", or "Deciding this pair needs edit access to both records" (code other_record_not_editable), or the API key refusal with code api_key_scopes_stale (an API key saved before the deals rule), or another "API key denied: ..." refusal (scope, IP allowlist or tier; no code), or "Sandbox API key denied: mutation requests must use ?dry_run=true on a documented sandbox-enabled endpoint" (the environment sandbox key, refused on this endpoint with or without the flag; no code). Only other_record_not_editable and api_key_scopes_stale carry a code; every other 403 has error only.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - other_record_not_editable
+                      - api_key_scopes_stale
+        "404":
+          description: Not found. error is "Not found" (the contact id or proposalId is not a UUID), "Contact not found" (no such contact, or not visible to you) or "Proposal not found on this contact" (also when the other record is gone and the decision is not merge).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 'code already_decided: error is "This pair was already decided (different)" or "This pair was already decided (merged)" (different and merged are final; a later decision of a final line is refused), or "This pair was decided by someone else just now" (a concurrent decision won). code not_merged: error is "The two records are not merged yet: merge them first (POST /api/v1/contacts/merge), then record the decision".'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - code
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - already_decided
+                      - not_merged
+        "429":
+          description: API key rate limit. error is "API key rate limit exceeded. Try again in N seconds." or "API key lineage rate limit exceeded. Try again in N seconds."; retryAfter and the Retry-After header carry the seconds. No code.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - retryAfter
+                properties:
+                  error:
+                    type: string
+                  retryAfter:
+                    type: integer
+        "500":
+          description: Unexpected failure. error is "Internal server error". No code.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+        "503":
+          description: "Retryable, nothing was changed. code gate_busy: error is \"The service is busy and could not check this request's access in time; nothing was changed. Retry in a few seconds.\"; retryAfter and the Retry-After header carry the seconds."
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - code
+                  - retryAfter
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - gate_busy
+                  retryAfter:
+                    type: integer
   /contacts/{id}/duplicate-proposals:
     get:
-      x-generated: true
-      operationId: getContactsIdDuplicateProposals
-      summary: Get contacts id duplicate-proposals
+      operationId: listContactDuplicateProposals
+      summary: List the possible duplicates of a contact
+      description: "The possible-duplicate lines shown on this contact (status open or not_sure), newest first, each naming the other record, plus the email and phone identifiers held from it. Values are never returned: an identifier is a kind (email or phone) and the records that hold it. A record you cannot view is named \"a contact you cannot view\" with a null id and createdAt. Both lists are keyset paged, newest first (createdAt desc, id desc): cursor and limit page the proposals (default 50), held_cursor and held_limit page the held identifiers (default 20); a list sent without its cursor answers its first page. total and heldIdentifiersTotal count every line each list shows; nextCursor and heldIdentifiersNextCursor are null on the last page. membershipRevision and heldIdentifiersMembershipRevision are opaque digests of each list's whole shown set, the same on every page while the list is unchanged and moved by any membership change (also one that keeps the total): when a later page answers a revision other than page one's, discard that page and read page one again."
       tags:
         - Contacts
       parameters:
         - name: id
           in: path
           required: true
+          description: The contact the line is shown on
           schema:
             type: string
+            format: uuid
+        - name: cursor
+          in: query
+          required: false
+          description: The nextCursor of the previous proposals page, unchanged (opaque). Omitted or empty = the first page. A value this list did not issue (a held_cursor included), or cursor repeated with different values, is a 400 code invalid_cursor.
+          schema:
+            type: string
+        - name: held_cursor
+          in: query
+          required: false
+          description: The heldIdentifiersNextCursor of the previous held identifiers page, unchanged (opaque). Omitted or empty = the first page. A value this list did not issue (a proposals cursor included), or held_cursor repeated with different values, is a 400 code invalid_cursor.
+          schema:
+            type: string
+        - name: held_limit
+          in: query
+          required: false
+          description: Held identifiers per page, integer 1-100 (default 20). A non-integer, 0, a negative value, a value above 100, or held_limit repeated with different values is a 400 naming held_limit.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          x-default-provenance: authored_operation
+        - name: limit
+          in: query
+          required: false
+          description: Proposals per page, integer 1-100 (default 50). A non-integer, 0, a negative value, a value above 100, or limit repeated with different values is a 400 naming limit.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          x-default-provenance: authored_operation
       responses:
         "200":
-          description: Success
+          description: The proposals and held identifiers
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - proposals
+                      - heldIdentifiers
+                      - total
+                      - nextCursor
+                      - membershipRevision
+                      - heldIdentifiersTotal
+                      - heldIdentifiersNextCursor
+                      - heldIdentifiersMembershipRevision
+                    properties:
+                      total:
+                        type: integer
+                        description: Every proposal line this contact shows (all pages)
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                        description: Pass as cursor for the next proposals page; null on the last page
+                      membershipRevision:
+                        type: string
+                        description: Opaque digest of the whole proposals list (all pages), the same on every page while the list is unchanged; any membership change moves it, also one that keeps total. A later page answering another revision than page one means read page one again
+                      heldIdentifiersTotal:
+                        type: integer
+                        description: Every held identifier line this contact shows (all pages)
+                      heldIdentifiersNextCursor:
+                        type:
+                          - string
+                          - "null"
+                        description: Pass as held_cursor for the next held identifiers page; null on the last page
+                      heldIdentifiersMembershipRevision:
+                        type: string
+                        description: Opaque digest of the whole held identifiers list (all pages), the same on every page while the list is unchanged; any membership change moves it, also one that keeps heldIdentifiersTotal. A later page answering another revision than page one means read page one again
+                      proposals:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - id
+                            - status
+                            - rule
+                            - ruleVersion
+                            - source
+                            - createdAt
+                            - decidedAt
+                            - raisedHere
+                            - other
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            status:
+                              type: string
+                              enum:
+                                - open
+                                - not_sure
+                            rule:
+                              type: string
+                            ruleVersion:
+                              type: string
+                            source:
+                              type: string
+                            createdAt:
+                              type: string
+                              format: date-time
+                            decidedAt:
+                              type:
+                                - string
+                                - "null"
+                              format: date-time
+                            raisedHere:
+                              type: boolean
+                              description: true when this record is the newer arrival the line was raised on
+                            other:
+                              type: object
+                              required:
+                                - id
+                                - name
+                                - createdAt
+                                - visible
+                                - editable
+                              properties:
+                                id:
+                                  type:
+                                    - string
+                                    - "null"
+                                  format: uuid
+                                name:
+                                  type: string
+                                createdAt:
+                                  type:
+                                    - string
+                                    - "null"
+                                  format: date-time
+                                visible:
+                                  type: boolean
+                                editable:
+                                  type: boolean
+                      heldIdentifiers:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - id
+                            - kind
+                            - rule
+                            - source
+                            - createdAt
+                            - heldBy
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            kind:
+                              type: string
+                              enum:
+                                - email
+                                - phone
+                            rule:
+                              type: string
+                            source:
+                              type: string
+                            createdAt:
+                              type: string
+                              format: date-time
+                            heldBy:
+                              type: array
+                              items:
+                                type: object
+                                required:
+                                  - id
+                                  - name
+                                  - visible
+                                properties:
+                                  id:
+                                    type:
+                                      - string
+                                      - "null"
+                                    format: uuid
+                                  name:
+                                    type: string
+                                  visible:
+                                    type: boolean
+        "400":
+          description: "A paging parameter is invalid. code invalid_cursor: error is \"Invalid cursor: pass the cursor from the previous page's answer unchanged\" (or the same for held_cursor), or \"cursor was sent more than once with different values: send it once\" (or held_cursor). limit and held_limit: error names the parameter, \"Invalid limit: expected an integer between 1 and 100\", \"Invalid limit: N is above the maximum of 100\" or \"limit was sent more than once with different values (...): send it once\" (no code)."
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - invalid_cursor
+        "401":
+          description: Authentication required. error is "Authentication required".
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 'Authentication or permission refusal: "Missing permission: contacts.view", an MFA setup refusal, or code api_key_scopes_stale for an API key saved before the deals rule (the code is present only for that case), or another "API key denied: ..." refusal (scope, IP allowlist or tier; no code).'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - api_key_scopes_stale
+        "404":
+          description: Not found. error is "Not found" (the id is not a UUID) or "Contact not found" (no such contact, or not visible to you).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: API key rate limit. error is "API key rate limit exceeded. Try again in N seconds." or "API key lineage rate limit exceeded. Try again in N seconds."; retryAfter and the Retry-After header carry the seconds. No code.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - retryAfter
+                properties:
+                  error:
+                    type: string
+                  retryAfter:
+                    type: integer
+        "500":
+          description: Unexpected failure. error is "Internal server error". No code.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+        "503":
+          description: "Retryable, nothing was changed. code gate_busy: error is \"The service is busy and could not check this request's access in time; nothing was changed. Retry in a few seconds.\"; retryAfter and the Retry-After header carry the seconds."
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - code
+                  - retryAfter
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - gate_busy
+                  retryAfter:
+                    type: integer
+  /imports/{id}/duplicate-proposals:
+    get:
+      x-generated: true
+      operationId: getImportsIdDuplicateProposals
+      summary: Get imports id duplicate-proposals
+      tags:
+        - Imports
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          description: integer 1-100000 (default 1). The page of rows, oldest first (per_page rows each). A non-integer, 0, a negative value, a value above 100000, or page repeated with different values is a 400 naming page.
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+            maximum: 100000
+          x-default-provenance: handler_literal
+        - name: per_page
+          in: query
+          required: false
+          description: integer 1-100 (default 50). Rows per page. A value above 100 is a 400 (not capped); so is a non-integer, 0, a negative value, or per_page repeated with different values. meta.total counts every row of the import.
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+          x-default-provenance: handler_literal
+      responses:
+        "200":
+          description: "{ rows, meta: { page, per_page, total } }: the import's duplicate proposal rows, oldest first, every status"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/DataEnvelope"
+        "400":
+          description: page or per_page is not an integer, is below 1 or above its maximum (page 100000, per_page 100), or is repeated with different values; the message names the parameter
+        "403":
+          description: The caller lacks contacts.view
+        "404":
+          description: Unknown import, another account's import, or an import the caller may not read (only owners, admins and view-all callers read imports they did not run)
 components:
   securitySchemes:
     BearerAuth:

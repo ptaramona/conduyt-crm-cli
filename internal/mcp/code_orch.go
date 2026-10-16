@@ -2385,24 +2385,25 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		keywords:       codeOrchKeywords("contacts", "get-contacts-id", "Get contacts id dnc", "/contacts/{id}/dnc"),
 	},
 	{
-		ID:             "contacts.duplicate-proposals.get-contacts-id",
-		Method:         "GET",
-		Path:           "/contacts/{id}/duplicate-proposals",
-		Summary:        "Get contacts id duplicate-proposals",
-		Positional:     []string{"id"},
-		TemplateParams: []codeOrchParamBinding{},
-		QueryParams:    []codeOrchParamBinding{},
-		keywords:       codeOrchKeywords("contacts", "get-contacts-id", "Get contacts id duplicate-proposals", "/contacts/{id}/duplicate-proposals"),
-	},
-	{
-		ID:             "contacts.duplicate-proposals.post-contacts-id-proposal-id",
+		ID:             "contacts.duplicate-proposals.decide-contact",
 		Method:         "POST",
 		Path:           "/contacts/{id}/duplicate-proposals/{proposalId}",
-		Summary:        "Create / invoke contacts id duplicate-proposals proposalId",
+		Summary:        "Record what you decided about one possible-duplicate line on this contact.",
 		Positional:     []string{"id", "proposalId"},
 		TemplateParams: []codeOrchParamBinding{},
 		QueryParams:    []codeOrchParamBinding{},
-		keywords:       codeOrchKeywords("contacts", "post-contacts-id-proposal-id", "Create / invoke contacts id duplicate-proposals proposalId", "/contacts/{id}/duplicate-proposals/{proposalId}"),
+		keywords:       codeOrchKeywords("contacts", "decide-contact", "Record what you decided about one possible-duplicate line on this contact.", "/contacts/{id}/duplicate-proposals/{proposalId}"),
+	},
+	{
+		ID:             "contacts.duplicate-proposals.list-contact",
+		Method:         "GET",
+		Path:           "/contacts/{id}/duplicate-proposals",
+		Summary:        "The possible-duplicate lines shown on this contact (status open or not_sure), newest first, each naming the other record",
+		Positional:     []string{"id"},
+		TemplateParams: []codeOrchParamBinding{},
+		// cursor is hand-added (board #95): the generator leaves the pagination cursor out of the bindings.
+		QueryParams: []codeOrchParamBinding{{PublicName: "cursor", WireName: "cursor"}, {PublicName: "held_cursor", WireName: "held_cursor"}, {PublicName: "held_limit", WireName: "held_limit"}, {PublicName: "limit", WireName: "limit"}},
+		keywords:    codeOrchKeywords("contacts", "list-contact", "The possible-duplicate lines shown on this contact (status open or not_sure), newest first, each naming the other record", "/contacts/{id}/duplicate-proposals"),
 	},
 	{
 		ID:             "contacts.enrich.post-contacts-id",
@@ -4183,6 +4184,17 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		TemplateParams: []codeOrchParamBinding{},
 		QueryParams:    []codeOrchParamBinding{},
 		keywords:       codeOrchKeywords("imports", "get-imports-id", "Get imports id download", "/imports/{id}/download"),
+	},
+	{
+		ID:             "imports.duplicate-proposals.get-imports-id",
+		Method:         "GET",
+		Path:           "/imports/{id}/duplicate-proposals",
+		Summary:        "Get imports id duplicate-proposals",
+		Positional:     []string{"id"},
+		TemplateParams: []codeOrchParamBinding{},
+		// page is hand-added (board #95): the generator leaves the pagination parameter out of the bindings.
+		QueryParams: []codeOrchParamBinding{{PublicName: "page", WireName: "page"}, {PublicName: "per_page", WireName: "per_page"}},
+		keywords:    codeOrchKeywords("imports", "get-imports-id", "Get imports id duplicate-proposals", "/imports/{id}/duplicate-proposals"),
 	},
 	{
 		ID:             "imports.integrity.get-imports-id",
@@ -7519,8 +7531,9 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 		if err := cliutil.CheckCallDerivedFields(params); err != nil {
 			return mcplib.NewToolResultError(err.Error()), nil
 		}
-	case "contacts.duplicate-proposals.get-contacts-id", "contacts.duplicate-proposals.post-contacts-id-proposal-id":
-		// Hand-written (identity v2, board #69): ids are UUIDs and the decision is exactly one of the three values, as the CLI requires.
+	case "contacts.duplicate-proposals.list-contact", "contacts.duplicate-proposals.decide-contact", "imports.duplicate-proposals.get-imports-id":
+		// Hand-written (identity v2, board #69; ids renamed and the import rows added by the board #95 reprint): ids are UUIDs and the
+		// decision is exactly one of the three values, as the CLI requires.
 		for _, name := range ep.Positional {
 			v, isStr := params[name].(string)
 			if !isStr {
@@ -7538,6 +7551,17 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 				}
 			}
 			if err := cliutil.CheckProposalBody(body); err != nil {
+				return mcplib.NewToolResultError(err.Error()), nil
+			}
+		}
+		// Hand-written (board #95): page sizes, page numbers and cursors are checked as the CLI checks them.
+		switch ep.ID {
+		case "contacts.duplicate-proposals.list-contact":
+			if err := cliutil.CheckPagingParams(params, map[string]int{"limit": 100, "held_limit": 100}, []string{"cursor", "held_cursor"}); err != nil {
+				return mcplib.NewToolResultError(err.Error()), nil
+			}
+		case "imports.duplicate-proposals.get-imports-id":
+			if err := cliutil.CheckPagingParams(params, map[string]int{"page": 100000, "per_page": 100}, nil); err != nil {
 				return mcplib.NewToolResultError(err.Error()), nil
 			}
 		}

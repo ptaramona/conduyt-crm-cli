@@ -252,6 +252,14 @@ type DripCampaignCreate struct {
 	UrlSegment    string          `json:"urlSegment"`
 }
 
+type DuplicateProposalsDecideContactResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type DuplicateProposalsListContactResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type EmailTemplateCreate struct {
 	Body     string `json:"body"`
 	BodyHtml string `json:"bodyHtml"`

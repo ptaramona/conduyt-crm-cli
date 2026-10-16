@@ -12,25 +12,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newContactsDuplicateProposalsGetContactsIdCmd(flags *rootFlags) *cobra.Command {
+func newImportsDuplicateProposalsGetImportsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagPage int
+	var flagPerPage int
 
 	cmd := &cobra.Command{
-		Use:         "get-contacts-id <id>",
+		Use:         "get-imports-id <id>",
 		Aliases:     []string{"get"},
-		Short:       "Get contacts id duplicate-proposals",
-		Long:        "List the possible duplicates of contact <id> (identity rules v2; read-only, contacts:view): { proposals, heldIdentifiers }. Each proposal has id (the <proposalId> for `post-contacts-id-proposal-id`), status (open | not_sure), rule, raisedHere and `other` { id, name, createdAt, visible, editable }; a record you cannot view is \"a contact you cannot view\" with no id. heldIdentifiers are emails or phones this record was not given because another record owns them (value-free).",
-		Example:     "  conduyt-crm-pp-cli contacts duplicate-proposals get-contacts-id 550e8400-e29b-41d4-a716-446655440000",
-		Annotations: map[string]string{"pp:endpoint": "duplicate-proposals.get-contacts-id", "pp:method": "GET", "pp:path": "/contacts/{id}/duplicate-proposals", "mcp:read-only": "true"},
+		Short:       "Get imports id duplicate-proposals",
+		Long:        "List the duplicate proposals one import raised on the records it created (the import results section \"Created, similar record exists\"; read-only, contacts:view): one row per proposal, every status (open | not_sure | different | merged; a merged pair reads merged), oldest first. Answers { rows, meta: { page, per_page, total } } (total counts every row of the import). Each row: proposalId, status, rowNum (the import file's row number), createdAt, decidedAt, decidedByName, newRecord (the record the import created), similar (the existing record it may duplicate), matchedOn (kinds only, such as phone or phone + company, never a value), keptName; newRecord and similar are { id, name, visible, editable, live }. A record you cannot view has no id and the name \"A contact you cannot view\". Decide a row with `contacts duplicate-proposals decide-contact <newRecord.id> <proposalId> --decision ...` (contacts:edit on both records). An owner, admin or view-all key reads any import of the account, any other key only the imports its user ran (404 otherwise). Paged with --page (1-100000, default 1) and --per-page (1-100, default 50); there is no --all.",
+		Example:     "  conduyt-crm-pp-cli imports duplicate-proposals get-imports-id 550e8400-e29b-41d4-a716-446655440000",
+		Annotations: map[string]string{"pp:endpoint": "duplicate-proposals.get-imports-id", "pp:method": "GET", "pp:path": "/imports/{id}/duplicate-proposals", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
 			}
-			path := "/contacts/{id}/duplicate-proposals"
+			path := "/imports/{id}/duplicate-proposals"
 			if len(args) < 1 || args[0] == "" {
 				return usageErr(fmt.Errorf("id is required\nUsage: %s <%s>", cmd.CommandPath(), "id"))
 			}
-			// Hand-written (board #69): the id is a UUID, checked before any request. A reprint must keep this.
+			// Hand-written (board #95): the import id is a UUID and page / per_page are checked locally, before any request. A reprint must keep this.
 			if err := cliutil.CheckUUID("id", args[0]); err != nil {
+				return usageErr(err)
+			}
+			if err := cliutil.CheckPageSize("page", flagPage, 100000); err != nil {
+				return usageErr(err)
+			}
+			if err := cliutil.CheckPageSize("per-page", flagPerPage, 100); err != nil {
 				return usageErr(err)
 			}
 			path = replacePathParam(path, "id", args[0])
@@ -38,8 +46,14 @@ func newContactsDuplicateProposalsGetContactsIdCmd(flags *rootFlags) *cobra.Comm
 			if err != nil {
 				return err
 			}
+			// Hand-written (board #95): only the flags the caller gave are sent (the generator would always send the defaults).
 			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "live", "duplicate-proposals", false, path, params, nil, "", cmd.ErrOrStderr())
+			for flag, wire := range map[string]string{"page": "page", "per-page": "per_page"} {
+				if cmd.Flags().Changed(flag) {
+					params[wire] = cmd.Flags().Lookup(flag).Value.String()
+				}
+			}
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "live", "duplicate-proposals", path, params, nil, false, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -87,6 +101,8 @@ func newContactsDuplicateProposalsGetContactsIdCmd(flags *rootFlags) *cobra.Comm
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().IntVar(&flagPage, "page", 1, "integer 1-100000 (default 1). The page of rows, oldest first (per_page rows each).")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "integer 1-100 (default 50). Rows per page.")
 
 	return cmd
 }
