@@ -1151,7 +1151,7 @@
     },
     {
       "name": "automations_dry-run_automation",
-      "description": "Dry-run an automation without side effects. Required: id. Optional: contactId.",
+      "description": "Dry-run an automation without side effects. Required: id. Optional: mode, source, companyId (plus 3 more).",
       "method": "POST",
       "path": "/automations/{id}/dry-run",
       "params": [
@@ -1163,10 +1163,40 @@
           "required": true
         },
         {
+          "name": "mode",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "body",
+          "description": "The event's company for a COMPANY occurrence (company.created / updated / stage_changed / deleted / tagged / tag_removed): REQUIRED, 400 without it; needs companies.view, 404 when not found in this account; executionId does not replace it. On any other occurrence it is accepted only when it equals the company carried by the replayed executionId payload, else refused (400). With executionId on a company occurrence it must equal the replayed payload's company (400 otherwise). Company producers carry no contact, so contact filters on such an occurrence are judged as production judges them, without one"
+        },
+        {
           "name": "contactId",
           "type": "string",
           "location": "body",
-          "description": "Contact id"
+          "description": "Optional contact the simulated event is about: merge tokens, contact-backed trigger filters and contact.* conditions are judged against this real contact (required when the occurrence or the graph reads the contact); refused (400) on a company occurrence, which carries no contact in production (the workflow is simulated without one)"
+        },
+        {
+          "name": "dealId",
+          "type": "string",
+          "location": "body",
+          "description": "The event's deal for a DEAL occurrence (deal.created / stage_changed / won / lost / ...): REQUIRED, 400 without it (the contact's newest deal is never a substitute); must be a deal you can see (deals.view and pipeline visibility), 404 otherwise; refused (400) when the selected occurrence is not a deal event"
+        },
+        {
+          "name": "executionId",
+          "type": "string",
+          "location": "body",
+          "description": "Optional id of a stored run of THIS automation to replay (admin or owner only). The replay supplies ONE fact: the company carried by that run's stored payload, read the way the live runner reads it; nothing else about the subject comes from the run. The run must belong to this account and this automation, carry the same trigger event as the occurrence being previewed, and the same contact and deal as the preview; otherwise 404 (not found, or a deal run hidden from API keys without the deals scope) or 400 (other event or other subject). Runs that carry a deal are hidden from API keys without the deals scope. On a COMPANY occurrence companyId stays required and executionId does not replace it (it must equal the replayed payload's company). Omitted, on a non-company occurrence: the preview is a synthetic sample, company rules evaluate as unknown/absent, and the response says so"
         }
       ]
     },
@@ -1244,7 +1274,7 @@
     },
     {
       "name": "automations_test-node_post-automations-id",
-      "description": "Create / invoke automations id test-node. Required: id. Returns the new DataEnvelope.",
+      "description": "Create / invoke automations id test-node. Required: id, nodeId. Optional: companyId, contactId, dealId (plus 1 more).",
       "method": "POST",
       "path": "/automations/{id}/test-node",
       "params": [
@@ -1253,6 +1283,37 @@
           "type": "string",
           "location": "path",
           "description": "Id",
+          "required": true
+        },
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "body",
+          "description": "The event's company for a COMPANY occurrence (company.created / updated / stage_changed / deleted / tagged / tag_removed): REQUIRED, 400 without it; needs companies.view, 404 when not found in this account; executionId does not replace it. On any other occurrence it is accepted only when it equals the company carried by the replayed executionId payload, else refused (400). With executionId on a company occurrence it must equal the replayed payload's company (400 otherwise). Company producers carry no contact, so contact filters on such an occurrence are judged as production judges them, without one"
+        },
+        {
+          "name": "contactId",
+          "type": "string",
+          "location": "body",
+          "description": "Optional contact the simulated event is about: merge tokens, contact-backed trigger filters and contact.* conditions are judged against this real contact (required when the occurrence or the graph reads the contact); refused (400) on a company occurrence, which carries no contact in production (the workflow is simulated without one)"
+        },
+        {
+          "name": "dealId",
+          "type": "string",
+          "location": "body",
+          "description": "The event's deal for a DEAL occurrence (deal.created / stage_changed / won / lost / ...): REQUIRED, 400 without it (the contact's newest deal is never a substitute); must be a deal you can see (deals.view and pipeline visibility), 404 otherwise; refused (400) when the selected occurrence is not a deal event"
+        },
+        {
+          "name": "executionId",
+          "type": "string",
+          "location": "body",
+          "description": "Optional id of a stored run of THIS automation to replay (admin or owner only). The replay supplies ONE fact: the company carried by that run's stored payload, read the way the live runner reads it; nothing else about the subject comes from the run. The run must belong to this account and this automation, carry the same trigger event as the occurrence being previewed, and the same contact and deal as the preview; otherwise 404 (not found, or a deal run hidden from API keys without the deals scope) or 400 (other event or other subject). Runs that carry a deal are hidden from API keys without the deals scope. On a COMPANY occurrence companyId stays required and executionId does not replace it (it must equal the replayed payload's company). Omitted, on a non-company occurrence: the preview is a synthetic sample, company rules evaluate as unknown/absent, and the response says so"
+        },
+        {
+          "name": "nodeId",
+          "type": "string",
+          "location": "body",
+          "description": "Required id of the node to simulate (the automation's v2 graph node)",
           "required": true
         }
       ]
