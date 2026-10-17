@@ -731,7 +731,7 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		Summary:        "Dry-run an automation without side effects",
 		Positional:     []string{"id"},
 		TemplateParams: []codeOrchParamBinding{},
-		QueryParams:    []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "mode", WireName: "mode"}, {PublicName: "source", WireName: "source"}},
 		keywords:       codeOrchKeywords("automations", "automation", "Dry-run an automation without side effects", "/automations/{id}/dry-run"),
 	},
 	{

@@ -13,7 +13,12 @@ import (
 )
 
 func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
+	var flagMode string
+	var flagSource string
+	var bodyCompanyId string
 	var bodyContactId string
+	var bodyDealId string
+	var bodyExecutionId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -38,6 +43,12 @@ func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if cmd.Flags().Changed("mode") || flagMode != "" {
+				params["mode"] = formatCLIParamValue(flagMode)
+			}
+			if cmd.Flags().Changed("source") || flagSource != "" {
+				params["source"] = formatCLIParamValue(flagSource)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -52,8 +63,17 @@ func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContactId != "" {
+				if cmd.Flags().Changed("company-id") || bodyCompanyId != "" {
+					bodyMap["companyId"] = bodyCompanyId
+				}
+				if cmd.Flags().Changed("contact-id") || bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
+				}
+				if cmd.Flags().Changed("deal-id") || bodyDealId != "" {
+					bodyMap["dealId"] = bodyDealId
+				}
+				if cmd.Flags().Changed("execution-id") || bodyExecutionId != "" {
+					bodyMap["executionId"] = bodyExecutionId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -199,7 +219,12 @@ func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&flagMode, "mode", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSource, "source", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "UUID of the event's company: REQUIRED for a COMPANY occurrence (company.created, updated, stage_changed, deleted, tagged, tag_removed), 400 without it; on any other occurrence accepted only when it equals the company the --execution-id payload carries, else 400; --execution-id does not replace it")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Optional contact UUID the simulated event is about: merge tokens, contact-backed trigger filters and contact conditions are judged against it; refused (400) on a company occurrence")
+	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "UUID of the event's deal: REQUIRED for a DEAL occurrence (deal.created, stage_changed, won, lost), 400 without it, 404 for a deal you cannot see; refused (400) on any other occurrence")
+	cmd.Flags().StringVar(&bodyExecutionId, "execution-id", "", "UUID of a stored run of THIS automation to replay (admin or owner only); supplies ONE fact, the company that run's payload carried, with the same account, automation, trigger event, contact and deal as the preview (else 404 or 400); runs carrying a deal are hidden from API keys without the deals scope; without it, on a non-company occurrence, the preview is a synthetic sample and company rules evaluate as unknown/absent, which the response says")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
