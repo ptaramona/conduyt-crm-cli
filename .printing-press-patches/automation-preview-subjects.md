@@ -31,7 +31,7 @@ New flags (dry-run automation and test-node post-automations-id): `--deal-id`, `
   rule. The help of `--contact-id`, `--deal-id`, `--company-id` and `--execution-id` is rewritten in both command files to state: deal
   REQUIRED on a deal occurrence, company REQUIRED on a company occurrence (otherwise accepted only when it equals the company the
   execution payload carries; the execution does not replace it), execution = admin or owner only, supplies one fact (the company that
-  run's payload carried), and the synthetic sample / unknown/absent sentence. Pinned by `TestPreviewSubjectFlagHelpCarriesTheRules`.
+  run's payload carried), the deal-scope sentence (runs carrying a deal are hidden from API keys without the deals scope; added in Codex round 2) and the synthetic sample / unknown/absent sentence. Pinned by `TestPreviewSubjectFlagHelpCarriesTheRules`.
 - `tools-manifest.json` descriptions of the two tools follow the print's style ("Optional: ... (plus N more)."), without the generator's
   "Returns the new DataEnvelope." suffix.
 - The CLI sends the ids as given; the API owns the UUID and occurrence rules (400/404). `internal/mcp/code_orch.go` binds only the dry-run

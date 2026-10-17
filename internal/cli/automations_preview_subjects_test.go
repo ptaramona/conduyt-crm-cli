@@ -138,7 +138,7 @@ func TestPreviewSubjectFlagHelpCarriesTheRules(t *testing.T) {
 		for flag, needles := range map[string][]string{
 			"deal-id":      {"REQUIRED for a DEAL occurrence"},
 			"company-id":   {"REQUIRED for a COMPANY occurrence", "--execution-id does not replace it"},
-			"execution-id": {"admin or owner only", "synthetic sample", "unknown/absent"},
+			"execution-id": {"admin or owner only", "runs carrying a deal are hidden from API keys without the deals scope", "synthetic sample", "unknown/absent"},
 		} {
 			f := fl.Lookup(flag)
 			if f == nil {
