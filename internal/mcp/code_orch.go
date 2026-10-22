@@ -3582,7 +3582,7 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		Summary:        "Send an email to a contact",
 		Positional:     []string{},
 		TemplateParams: []codeOrchParamBinding{},
-		QueryParams:    []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "dry_run", WireName: "dry_run"}, {PublicName: "sandbox", WireName: "sandbox"}},
 		keywords:       codeOrchKeywords("email", "send", "Send an email to a contact", "/email/send"),
 	},
 	{
@@ -3592,7 +3592,7 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		Summary:        "Send bulk emails",
 		Positional:     []string{},
 		TemplateParams: []codeOrchParamBinding{},
-		QueryParams:    []codeOrchParamBinding{},
+		QueryParams:    []codeOrchParamBinding{{PublicName: "dry_run", WireName: "dry_run"}, {PublicName: "sandbox", WireName: "sandbox"}},
 		keywords:       codeOrchKeywords("email", "send-bulk", "Send bulk emails", "/email/send-bulk"),
 	},
 	{
@@ -7568,6 +7568,16 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 			if err := cliutil.CheckPagingParams(params, map[string]int{"page": 100000, "per_page": 100}, nil); err != nil {
 				return mcplib.NewToolResultError(err.Error()), nil
 			}
+		}
+	case "email.send", "email.send-bulk":
+		// Hand-written (Go CLI #324): only the body keys the endpoint declares (and its spec-declared query parameters) are
+		// accepted; an unknown key is refused with the accepted list, never dropped. A reprint must keep this.
+		extra := make([]string, 0, len(ep.QueryParams))
+		for _, q := range ep.QueryParams {
+			extra = append(extra, q.PublicName)
+		}
+		if err := cliutil.CheckEmailSendBodyKeys(ep.ID, params, extra...); err != nil {
+			return mcplib.NewToolResultError(err.Error()), nil
 		}
 	case "deals.list":
 		// Hand-written (board #116 for app #111): the board snapshot's refusals, as `deals list --board-snapshot` applies them,

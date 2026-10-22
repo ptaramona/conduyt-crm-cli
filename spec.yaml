@@ -2007,57 +2007,392 @@ paths:
     post:
       operationId: sendEmail
       summary: Send an email to a contact
-      tags: [ Email ]
+      description: Sends one email through the account's connected Resend domain and logs it as a Message row linked to the contact. `to` must equal the linked contact's registered email address (case-insensitive) — this stops a caller from citing a contact's id but sending to a different address, which would bypass that contact's opt-out/CAN-SPAM status. Provide `html`, `text`, or both; at least one body is required. There is no scheduling field — this endpoint sends immediately or fails; it never queues a future send. This is a contact-bound send — `cc`/`bcc` are NOT supported, so a non-empty value is rejected with 400 (omitted, null, whitespace-only and [] are accepted as none), for the same reason as the `to` guard above — only `to` is checked against the contact's opt-out/registered-address status, so any other recipient would bypass it. Send to each additional contact as its own request.
+      tags:
+        - Email
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [ contactId, subject, body ]
+              required:
+                - to
+                - subject
+                - contactId
+              anyOf:
+                - required:
+                    - html
+                  properties:
+                    html:
+                      type: string
+                      minLength: 1
+                - required:
+                    - text
+                  properties:
+                    text:
+                      type: string
+                      minLength: 1
               properties:
-                contactId:
+                to:
                   type: string
-                  format: uuid
+                  pattern: "@"
+                  maxLength: 254
+                  description: Recipient email address. Checked on the RAW value (max 254 characters, the RFC 5321 practical limit; must contain "@" — no further structure is validated here). Length is measured in UTF-16 code units, so characters outside the Basic Multilingual Plane count as two. Must equal the linked contact's registered email (case-insensitive, both sides trimmed) — a mismatch is rejected with 400, and a contact with no email on file is rejected with 422 (there is no address to prove a match against).
                 subject:
                   type: string
-                  maxLength: 500
-                body:
+                  pattern: \S
+                  maxLength: 998
+                  description: Email subject line. Checked on the raw value (max 998 characters); must contain at least one non-whitespace character — blank or whitespace-only is rejected as missing. Length is measured in UTF-16 code units, so characters outside the Basic Multilingual Plane count as two. The stored value is trimmed.
+                html:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 500000
+                  description: HTML body, sanitized server-side before sending. Checked on the raw value, no trim (max 500,000 characters — a sanity bound, not a product limit). Length is measured in UTF-16 code units, so characters outside the Basic Multilingual Plane count as two. `null` is accepted and treated as absent, same as omitting the field; an EMPTY string is also accepted here on its own, but does not by itself satisfy the "at least one of `html` or `text`" requirement below. A non-string, non-null value (object, number, boolean, array) is rejected with 400, never passed to the sanitizer.
+                text:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100000
+                  description: Plain-text body. Checked on the raw value, no trim (max 100,000 characters). Length is measured in UTF-16 code units, so characters outside the Basic Multilingual Plane count as two. `null` is accepted and treated as absent, same as omitting the field; an EMPTY string is also accepted here on its own, but does not by itself satisfy the "at least one of `html` or `text`" requirement below. A non-string, non-null value is rejected with 400, never passed to the Message write.
+                contactId:
                   type: string
-                bodyHtml:
-                  type: string
-                scheduledAt:
-                  type: string
-                  format: date-time
+                  pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+                  description: The CRM contact this email is sent to and logged against. Checked on the raw value — no trimming, no whitespace tolerance, no "urn:uuid:" prefix. A non-string or non-UUID-shaped value (including one with surrounding whitespace) is rejected with 400 before any lookup runs. Must belong to the caller's account and be visible/editable to the caller, or the request 404s.
+                replyTo:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\s*(\S(?:.{0,252}\S)?)?\s*$
+                  description: Override the Reply-To header. Trimmed before validation; omitted, `null`, or blank (including whitespace-only) all fall back to the account's reply-capture address, then the sending user's own email. Otherwise must be a valid email address of at most 254 characters AFTER TRIMMING (surrounding whitespace doesn't count against the limit; email validity itself is checked only by the server) — an invalid value is rejected with 422.
+                cc:
+                  type:
+                    - string
+                    - array
+                    - "null"
+                  pattern: ^\s*$
+                  maxItems: 0
+                  items:
+                    type: string
+                  description: Not supported — rejected with 400 if non-empty (a non-blank string, or an array with at least one entry; a non-string array item is also rejected). This is a contact-bound send and only `to` is checked against the contact's opt-out/registered-address status. Omitting the field, `null`, a blank string, or `[]` are all accepted. Send to each additional contact separately.
+                bcc:
+                  type:
+                    - string
+                    - array
+                    - "null"
+                  pattern: ^\s*$
+                  maxItems: 0
+                  items:
+                    type: string
+                  description: Not supported — rejected with 400 if non-empty, for the same reason as `cc`. Omitting the field, `null`, a blank string, or `[]` are all accepted.
+                sendDomainId:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?\s*$
+                  description: "Optional — send from a specific verified extra sending domain (see GET /email-domains) instead of the account's primary verified domain. Trimmed before validation; omitted, `null`, or blank (including whitespace-only) are all the primary domain. A present, non-blank value that is not UUID-shaped (post-trim) is rejected with 400 before any lookup runs. A well-FORMED UUID that doesn't resolve falls back to the primary domain SILENTLY, never an error: it applies when the id does not resolve to a verified EmailDomain row on this account, when it resolves but falls outside the account's paid extra-domain allowance (the oldest N verified extra domains, N = the allowance), or when the lookup itself fails. The response does not report which domain was actually used."
       responses:
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "201":
-          description: Email sent or scheduled
+          description: Email sent. `data` is the persisted Message record (see the Message schema) plus the linked contact.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DataEnvelope"
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/Message"
+                      - type: object
+                        properties:
+                          contact:
+                            type: object
+                            description: The linked contact, trimmed to display fields.
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                              firstName:
+                                type:
+                                  - string
+                                  - "null"
+                              lastName:
+                                type:
+                                  - string
+                                  - "null"
+                              email:
+                                type:
+                                  - string
+                                  - "null"
         "202":
-          description: Accepted
+          description: "Accepted but unconfirmed: the provider call failed in a way indistinguishable from a lost acknowledgement (e.g. a timeout after the provider may have already accepted the send). The Message row is left in a non-terminal status for the delivery webhook or sweeper to settle — do not resend on this response. `data` is the Message record plus a human-readable `pending` note."
           x-generated-status: true
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DataEnvelope"
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: The persisted message row. The database record carries additional bookkeeping columns beyond those listed here.
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      accountId:
+                        type: string
+                        format: uuid
+                      contactId:
+                        type: string
+                        format: uuid
+                      direction:
+                        type: string
+                        enum:
+                          - inbound
+                          - outbound
+                      channel:
+                        type: string
+                        enum:
+                          - sms
+                          - email
+                      subject:
+                        type:
+                          - string
+                          - "null"
+                      body:
+                        type: string
+                      bodyHtml:
+                        type:
+                          - string
+                          - "null"
+                      fromNumber:
+                        type:
+                          - string
+                          - "null"
+                      toNumber:
+                        type:
+                          - string
+                          - "null"
+                      fromEmail:
+                        type:
+                          - string
+                          - "null"
+                      toEmail:
+                        type:
+                          - string
+                          - "null"
+                      replyTo:
+                        type:
+                          - string
+                          - "null"
+                        description: The Reply-To address used for this send (email only).
+                      provider:
+                        type:
+                          - string
+                          - "null"
+                        description: The delivery provider, e.g. "resend".
+                      providerId:
+                        type:
+                          - string
+                          - "null"
+                        description: The provider's id for this send, once accepted.
+                      sentBy:
+                        type:
+                          - string
+                          - "null"
+                        format: uuid
+                        description: The user who sent this message, when sent by a human/API caller rather than an automation.
+                      status:
+                        type: string
+                      deliveredAt:
+                        type:
+                          - string
+                          - "null"
+                        format: date-time
+                      openedAt:
+                        type:
+                          - string
+                          - "null"
+                        format: date-time
+                      clickedAt:
+                        type:
+                          - string
+                          - "null"
+                        format: date-time
+                      openCount:
+                        type: integer
+                      clickCount:
+                        type: integer
+                      scheduledAt:
+                        type:
+                          - string
+                          - "null"
+                        format: date-time
+                        description: Always null for this endpoint — POST /email/send has no scheduling field and never sets it.
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                      contact:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          firstName:
+                            type:
+                              - string
+                              - "null"
+                          lastName:
+                            type:
+                              - string
+                              - "null"
+                          email:
+                            type:
+                              - string
+                              - "null"
+                      pending:
+                        type: string
+                    required:
+                      - pending
+                required:
+                  - data
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          description: Billing is not active for this account (trial expired, or the subscription is canceled/past_due/unpaid).
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: The contact was not found, is not visible to the caller, or belongs to another account.
+        "409":
+          description: 'Two DISTINCT cases under an Idempotency-Key, never interchangeable. (1) The ORIGINAL attempt with this key is still being processed (body: `{ error: "A request with this Idempotency-Key is still being processed" }`, no `code`, a `Retry-After` header) — wait the given seconds, then retry with the SAME key. (2) The key was already SPENT by a prior attempt that failed or has an unknown outcome (body: `{ error, code: "idempotency_key_spent" }`) — verify whether that attempt actually sent the email before using a brand-new key; resending the SAME key here only replays this same 409, it never re-runs the send.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - idempotency_key_spent
+                    description: Present only for case (2) above.
+        "422":
+          description: "Three distinct causes share this status, in two different body shapes. An invalid `replyTo` address, a contact with no email on file, or an Idempotency-Key reused with a different request body each answer a plain error object. A provider/send failure (e.g. the contact opted out, or a bounced/suppressed address) instead answers `{ data: <Message + contact> }` with the row's terminal `status` and `errorMessage` — not an error object — because the Message row already exists and that terminal state is the useful answer."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    description: An invalid `replyTo` address, a contact with no email on file, or the Idempotency-Key was reused with a different request body.
+                    required:
+                      - error
+                    not:
+                      required:
+                        - data
+                    properties:
+                      error:
+                        type: string
+                  - type: object
+                    description: The send was attempted and failed, or was refused by the provider/compliance gate. `data` is the Message row with its terminal status.
+                    required:
+                      - data
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: "#/components/schemas/Message"
+                          - type: object
+                            properties:
+                              errorMessage:
+                                type:
+                                  - string
+                                  - "null"
+                              contact:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                    format: uuid
+                                  firstName:
+                                    type:
+                                      - string
+                                      - "null"
+                                  lastName:
+                                    type:
+                                      - string
+                                      - "null"
+                                  email:
+                                    type:
+                                      - string
+                                      - "null"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: Internal server error. Once the provider has confirmed it accepted the send, a persistence failure answers 503 idempotency_outcome_unknown instead (see below) rather than this generic 500.
+        "503":
+          description: "Five distinct codes share this status, split across two different retry contracts. NOT safe to retry blindly: idempotency_outcome_unknown — the provider's own wire WAS (or may have been) contacted and the outcome could not be confirmed, either because sendEmailForAccount itself threw after reaching the wire, or because a later DB write/read of the Message row threw after the provider accepted the send (sendResult.success, or a webhook-recovered acceptance), or because an Idempotency-Key attempt failed ambiguously before this route's own logic ran (the wrapper's own outcome-unknown contract). Verify in the contact's timeline before retrying — with or without a new key. idempotency_claim_held (Idempotency-Key path only) means a failed attempt's claim could not be released: retry with a NEW key, since the SAME key answers 409 until it expires. PROVEN SAFE to retry (the provider's wire was NEVER contacted — nothing was sent): contact_lookup_failed — the contact lookup (verifying the linked contact belongs to this account) threw before the Message row even existed; reply_to_lookup_failed — the reply-capture address lookup threw before the Message row even existed; pre_wire_failure_unrecorded — sendEmailForAccount returned preWire: true (a litigator/opted-out/unverified-domain/quota/billing refusal that never reached the wire) and persisting or reading that refusal then threw. All three of these RELEASE a supplied Idempotency-Key instead of spending it, so the SAME key may be retried immediately."
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - code
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - idempotency_outcome_unknown
+                      - idempotency_claim_held
+                      - contact_lookup_failed
+                      - reply_to_lookup_failed
+                      - pre_wire_failure_unrecorded
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: "Optional: one key per send (1-255 printable ASCII characters, not blank), reused only to retry the SAME request. Same key + same request body replays the original response (Idempotent-Replay: true); same key + a different body is refused with 422 code idempotency_request_conflict (the key is bound to the first request for good: verify it, then use a NEW key). Two DISTINCT 409s under this key, never interchangeable: (1) the ORIGINAL attempt is still being processed (code idempotency_in_progress) — wait for the Retry-After seconds given, then retry with the SAME key; (2) the key was already SPENT by a prior attempt that failed or has an unknown outcome (code idempotency_key_spent) — verify whether that attempt took effect BEFORE sending a brand-new key; resending the SAME key here only replays this 409 again, it never re-runs the request. A third, rare 409 (code idempotency_conflict_retry) means a concurrent claim of this key could not be resolved and nothing was run or stored: retry with the SAME key. If the wrapper's OWN write to RELEASE a failed attempt's claim cannot be confirmed, the SAME key instead answers 503 idempotency_claim_held until the held claim expires — retry with a NEW key, never the same one. If the wrapper's OWN write to confirm a SUCCESSFUL completion cannot be confirmed, the mutation may have gone through anyway: the SAME key instead answers 503 idempotency_outcome_unknown — verify the outcome before any new-key retry, exactly as case (2) above. Any executed attempt spends the key, success or not, so a failed attempt usually lands in case (2) above. A refusal that fires BEFORE anything is read or written for the request itself — a validation error on the body, a lookup that comes back empty, mismatched, or inaccessible, or a lookup that fails outright — is not an executed attempt: it releases the key instead of spending it, and the SAME key may be retried immediately once the request is corrected. Further exceptions, released instead of spent: pre_wire_failure_unrecorded (a proven pre-wire refusal whose settlement failed, released ONLY once the row is confirmed disarmed (failed status + its replay envelope stripped) — an unconfirmed disarm keeps the key spent, as idempotency_outcome_unknown, instead) — the SAME key may be retried immediately after one of these. A blank or malformed key is refused with 400 idempotency_key_invalid, on dry_run requests too (a dry run never records the key)."
+          schema:
+            type: string
+            pattern: ^[!-~](?:[ -~]{0,253}[!-~])?$
+        - name: dry_run
+          in: query
+          required: false
+          description: Validate the mutation without persisting changes.
+          schema:
+            type: boolean
+        - name: sandbox
+          in: query
+          required: false
+          description: Run the mutation in sandbox mode.
+          schema:
+            type: boolean
 
   /email/send-bulk:
     post:
       operationId: sendBulkEmail
       summary: Send bulk emails
-      tags: [ Email ]
+      tags:
+        - Email
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [ contactIds, subject, body ]
+              description: A subject and a body are required unless templateId names an email template, whose subject and HTML are used for what is omitted.
+              required:
+                - contactIds
               properties:
                 contactIds:
                   type: array
@@ -2066,31 +2401,134 @@ paths:
                     format: uuid
                 subject:
                   type: string
-                body:
+                text:
                   type: string
-                bodyHtml:
+                  description: Plain-text body. Falls back to the template's text when templateId is given.
+                html:
                   type: string
+                  description: HTML body. Falls back to the template's HTML when templateId is given.
+                templateId:
+                  type: string
+                  format: uuid
+                  description: An active email template of this account. Its HTML is used unless one is sent, and its metadata (subject B, preheader, custom head, footer; the marker in html wins over text's) is applied to every recipient.
+                subjectEdited:
+                  type: boolean
+                  description: "With templateId, a tri-state. true: the subject is the caller's own and is sent verbatim. false: the subject was only copied from the template, so the template's A/B subject pick applies per recipient. Absent (the legacy behaviour): a supplied subject is sent verbatim; an omitted subject gets the template's A/B pick."
+                batchDelayMs:
+                  description: Read by the handler from the JSON body (the route declares no schema for its type).
+                replyTo:
+                  description: Read by the handler from the JSON body (the route declares no schema for its type).
+                sendDomainId:
+                  description: Read by the handler from the JSON body (the route declares no schema for its type).
       responses:
         "201":
           description: Bulk send initiated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DataEnvelope"
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sent: {}
+                      pending: {}
+                      failed: {}
+                      skipped: {}
+                      skippedBreakdown: {}
+                      total: {}
+                      errors: {}
+                    required:
+                      - sent
+                      - pending
+                      - failed
+                      - skipped
+                      - skippedBreakdown
+                      - total
+                required:
+                  - data
         "202":
           description: Accepted
           x-generated-status: true
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DataEnvelope"
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sent: {}
+                      pending: {}
+                      failed: {}
+                      skipped: {}
+                      skippedBreakdown: {}
+                      total: {}
+                      errors: {}
+                    required:
+                      - sent
+                      - pending
+                      - failed
+                      - skipped
+                      - skippedBreakdown
+                      - total
+                required:
+                  - data
         "206":
           description: Partial content
           x-generated-status: true
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DataEnvelope"
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sent: {}
+                      pending: {}
+                      failed: {}
+                      skipped: {}
+                      skippedBreakdown: {}
+                      total: {}
+                      remaining: {}
+                      remainingContactIds: {}
+                      partial:
+                        type: boolean
+                      throttled: {}
+                      errors: {}
+                    required:
+                      - sent
+                      - pending
+                      - failed
+                      - skipped
+                      - skippedBreakdown
+                      - total
+                      - remaining
+                      - remainingContactIds
+                      - partial
+                required:
+                  - data
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: "Optional: one key per bulk send (1-255 printable ASCII characters, not blank), reused only to retry the SAME request. Same key + same request body replays the original response (Idempotent-Replay: true); same key + a different body is refused with 422 code idempotency_request_conflict (the key is bound to the first request for good: verify it, then use a NEW key). Two DISTINCT 409s under this key, never interchangeable: (1) the ORIGINAL attempt is still being processed (code idempotency_in_progress) — wait for the Retry-After seconds given, then retry with the SAME key; (2) the key was already SPENT by a prior attempt that failed or has an unknown outcome (code idempotency_key_spent) — verify whether that attempt took effect BEFORE sending a brand-new key; resending the SAME key here only replays this 409 again, it never re-runs the request. A third, rare 409 (code idempotency_conflict_retry) means a concurrent claim of this key could not be resolved and nothing was run or stored: retry with the SAME key. If the wrapper's OWN write to RELEASE a failed attempt's claim cannot be confirmed, the SAME key instead answers 503 idempotency_claim_held until the held claim expires — retry with a NEW key, never the same one. If the wrapper's OWN write to confirm a SUCCESSFUL completion cannot be confirmed, the mutation may have gone through anyway: the SAME key instead answers 503 idempotency_outcome_unknown — verify the outcome before any new-key retry, exactly as case (2) above. Any executed attempt spends the key, success or not, so a failed attempt usually lands in case (2) above. A blank or malformed key is refused with 400 idempotency_key_invalid, on dry_run requests too (a dry run never records the key)."
+          schema:
+            type: string
+            pattern: ^[!-~](?:[ -~]{0,253}[!-~])?$
+        - name: dry_run
+          in: query
+          required: false
+          description: Validate the mutation without persisting changes.
+          schema:
+            type: boolean
+        - name: sandbox
+          in: query
+          required: false
+          description: Run the mutation in sandbox mode.
+          schema:
+            type: boolean
 
   /emails:
     get:

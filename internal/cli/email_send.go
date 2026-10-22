@@ -9,14 +9,17 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newEmailSendCmd(flags *rootFlags) *cobra.Command {
-	var bodyBody string
-	var bodyBodyHtml string
+	var bodyTo string
+	var bodyHtml string
+	var bodyText string
 	var bodyContactId string
-	var bodyScheduledAt string
+	var bodyReplyTo string
+	var bodySendDomainId string
 	var bodySubject string
 	var stdinBody bool
 
@@ -24,8 +27,12 @@ func newEmailSendCmd(flags *rootFlags) *cobra.Command {
 		Use:     "send",
 		Aliases: []string{"create"},
 		Short:   "Send an email to a contact",
-		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli email send --body example-value",
+		Long: `Sends one email through the account's connected Resend domain and logs it as a Message row linked to the contact.
+--to must equal the contact's registered email address. Give --html, --text or both. The send is immediate: there is no
+scheduling field. cc and bcc are not supported (a non-empty value is a 400); send to each contact as its own request.
+With --stdin the JSON object is sent as given, but only the keys this endpoint accepts: to, subject, html, text, contactId,
+replyTo, cc, bcc, sendDomainId. Any other key is refused locally and nothing is sent.`,
+		Example:     "  conduyt-crm-pp-cli email send --contact-id 3f2c1a5e-0000-4000-8000-000000000001 --to lead@example.com --subject \"Following up\" --html \"<p>Hello</p>\"",
 		Annotations: map[string]string{"pp:endpoint": "email.send", "pp:method": "POST", "pp:path": "/email/send"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -35,14 +42,19 @@ func newEmailSendCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("body") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "body")
-				}
 				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
 				}
+				if !cmd.Flags().Changed("to") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "to")
+				}
 				if !cmd.Flags().Changed("subject") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "subject")
+				}
+				if !flags.dryRun {
+					if err := cliutil.CheckEmailSendFlags(bodyTo, bodySubject, bodyContactId, bodyHtml, bodyText); err != nil {
+						return err
+					}
 				}
 			}
 			path := "/email/send"
@@ -61,24 +73,34 @@ func newEmailSendCmd(flags *rootFlags) *cobra.Command {
 				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
 					return fmt.Errorf("parsing stdin JSON: %w", err)
 				}
+				// Hand-written (Go CLI #324): only the keys the endpoint declares; see cliutil/email_send_guards.go.
+				if err := cliutil.CheckEmailSendBodyKeys("email.send", jsonBody); err != nil {
+					return err
+				}
 				body = jsonBody
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyBody != "" {
-					bodyMap["body"] = bodyBody
+				if cmd.Flags().Changed("to") {
+					bodyMap["to"] = bodyTo
 				}
-				if bodyBodyHtml != "" {
-					bodyMap["bodyHtml"] = bodyBodyHtml
+				if cmd.Flags().Changed("subject") {
+					bodyMap["subject"] = bodySubject
 				}
-				if bodyContactId != "" {
+				if cmd.Flags().Changed("html") {
+					bodyMap["html"] = bodyHtml
+				}
+				if cmd.Flags().Changed("text") {
+					bodyMap["text"] = bodyText
+				}
+				if cmd.Flags().Changed("contact-id") {
 					bodyMap["contactId"] = bodyContactId
 				}
-				if bodyScheduledAt != "" {
-					bodyMap["scheduledAt"] = bodyScheduledAt
+				if cmd.Flags().Changed("reply-to") {
+					bodyMap["replyTo"] = bodyReplyTo
 				}
-				if bodySubject != "" {
-					bodyMap["subject"] = bodySubject
+				if cmd.Flags().Changed("send-domain-id") {
+					bodyMap["sendDomainId"] = bodySendDomainId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -224,11 +246,13 @@ func newEmailSendCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyBody, "body", "", "Body")
-	cmd.Flags().StringVar(&bodyBodyHtml, "body-html", "", "Body html")
-	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&bodyScheduledAt, "scheduled-at", "", "Scheduled at")
-	cmd.Flags().StringVar(&bodySubject, "subject", "", "Subject")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "Recipient email address (max 254 characters, must contain \"@\"). Must equal the linked contact's registered email, case-insensitive.")
+	cmd.Flags().StringVar(&bodySubject, "subject", "", "Email subject line (max 998 characters, at least one non-whitespace character)")
+	cmd.Flags().StringVar(&bodyHtml, "html", "", "HTML body, sanitized server-side (max 500,000 characters). Give --html, --text or both.")
+	cmd.Flags().StringVar(&bodyText, "text", "", "Plain-text body (max 100,000 characters). Give --html, --text or both.")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "The CRM contact this email is sent to and logged against (UUID)")
+	cmd.Flags().StringVar(&bodyReplyTo, "reply-to", "", "Override the Reply-To header (max 254 characters after trimming). Blank falls back to the account's reply-capture address, then the sending user's email.")
+	cmd.Flags().StringVar(&bodySendDomainId, "send-domain-id", "", "Send from a specific verified extra sending domain (UUID, see GET /email-domains) instead of the primary one")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
