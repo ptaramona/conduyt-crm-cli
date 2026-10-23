@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "applied_at": "2026-10-14",
+  "base_run_id": "20260711-202005",
+  "base_printing_press_version": "4.28.0",
+  "patches": [
+    {
+      "id": "retry-policy",
+      "summary": "Retry loop honours Retry-After on 429/503 (cap 30 s, up to 50% jitter), replays only GET/HEAD or CLI-keyed allowlisted mutations, bounds every call with a 120 s budget, and prints one gate_busy line.",
+      "reason": "The generated loop retried every method on 5xx and network errors after a fixed 1/2/4 s and ignored Retry-After, which replays mutations and amplifies the API's gate_busy queue (Codex found it 2026-10-14).",
+      "files": [
+        "internal/client/retry.go",
+        "internal/cliutil/ratelimit.go",
+        "internal/cliutil/ratelimit_waitctx_test.go",
+        "internal/cli/root.go",
+        "internal/client/client_test.go",
+        "internal/client/client.go",
+        "internal/client/retry_test.go"
+      ],
+      "validated_outcome": "Unkeyed POST gets exactly one request on 429, 5xx, a dropped connection, a body reset and a 307; a warm-connection POST with a user Idempotency-Key header is still sent once with the header stripped.",
+      "upstream_issue": "To file against mvanhorn/cli-printing-press: never retry non-idempotent verbs on 429/5xx/network errors, honour Retry-After on 5xx, offer a per-call budget."
+    },
+    {
+      "id": "redirect-and-redaction-policy",
+      "summary": "Redirect rules (a mutation is never sent to another origin; cross-origin GET/HEAD forwards only an allowlist of headers) and request-aware credential redaction (headers, cookies, query, fragment, secret path codes, JSON/multipart bodies, redirect targets, Referer/Link) with a lazy, budgeted mask set that withholds output when it overflows. Redaction keeps the original error class (errors.Is/As to url.Error, net.OpError, DNSError with masked text) so the local-data fallback still works; MCP path parameters are PathEscape-d; doctor, dry-run bodies and local-lookup messages are redacted. Webhook delivery and feedback endpoints are masked in errors and output (client.MaskErrorForURL / MaskURL); the cyclic-safe error identity walk is budgeted.",
+      "reason": "Error bodies, error text, URLs and envelopes echo what the server or the redirect chain returns, so credentials sent in headers, bodies, query strings or path codes could reach the terminal, logs or an external redirect target.",
+      "files": [
+        "internal/client/client.go",
+        "internal/client/retry_test.go",
+        "internal/cli/public_post-screen-share-code.go",
+        "internal/cli/screen-share_delete-session-code.go",
+        "internal/cli/screen_share_code_mask_test.go",
+        "internal/cli/doctor.go",
+        "internal/cli/data_source.go",
+        "internal/mcp/tools.go",
+        "internal/mcp/code_orch.go",
+        "internal/mcp/path_escape_test.go",
+        "internal/cli/deliver.go",
+        "internal/cli/feedback.go",
+        "internal/cli/root.go"
+      ],
+      "validated_outcome": "A 308 to another origin for a keyed POST sends nothing; an echoed Authorization, X-API-Key, cookie, password, token array, Location/Referer token or screen-share code never appears in APIError, err.Error(), stderr, dry-run or the JSON envelopes; with more than 256 secrets the output is withheld.",
+      "upstream_issue": "To file against mvanhorn/cli-printing-press: client-level redirect policy and secret redaction as generator features; path-parameter secrecy as spec metadata (x-secret) so generated envelopes mask it."
+    }
+  ]
+}

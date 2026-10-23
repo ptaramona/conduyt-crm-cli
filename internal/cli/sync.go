@@ -4,16 +4,16 @@
 package cli
 
 import (
-	"github.com/ptaramona/conduyt-crm-cli/internal/client"
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
-	"github.com/ptaramona/conduyt-crm-cli/internal/learn"
-	"github.com/ptaramona/conduyt-crm-cli/internal/learn/lookups"
-	"github.com/ptaramona/conduyt-crm-cli/internal/store"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ptaramona/conduyt-crm-cli/internal/client"
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
+	"github.com/ptaramona/conduyt-crm-cli/internal/learn"
+	"github.com/ptaramona/conduyt-crm-cli/internal/learn/lookups"
+	"github.com/ptaramona/conduyt-crm-cli/internal/store"
 	"github.com/spf13/cobra"
 	"io"
 	"net/url"

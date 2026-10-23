@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ptaramona/conduyt-crm-cli/internal/client"
 )
 
 // DeliverSink describes where command output should be routed when
@@ -96,15 +98,15 @@ func deliverWebhook(url string, body []byte, compact bool) error {
 	}
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("building webhook request: %w", err)
+		return fmt.Errorf("building webhook request: %w", client.MaskErrorForURL(err, url)) // PATCH(redirect-and-redaction-policy)
 	}
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("User-Agent", "github.com/ptaramona/conduyt-crm-cli/deliver")
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
+	hc := &http.Client{Timeout: 30 * time.Second}
+	resp, err := hc.Do(req)
 	if err != nil {
-		return fmt.Errorf("posting to webhook: %w", err)
+		return fmt.Errorf("posting to webhook: %w", client.MaskErrorForURL(err, url)) // PATCH(redirect-and-redaction-policy)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {

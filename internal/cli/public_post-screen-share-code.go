@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/client"
 	"github.com/spf13/cobra"
 )
 
@@ -115,7 +116,7 @@ func newPublicPostScreenShareCodeCmd(flags *rootFlags) *cobra.Command {
 				envelope := map[string]any{
 					"action":   "post",
 					"resource": "public",
-					"path":     path,
+					"path":     client.MaskPath(path), // PATCH(redirect-and-redaction-policy): the path carries a secret code
 					"status":   statusCode,
 					"success":  statusCode >= 200 && statusCode < 300 && (partialFailure == nil || flags.allowPartialFailure),
 				}

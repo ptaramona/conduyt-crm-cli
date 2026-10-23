@@ -3,6 +3,8 @@
 
 package client
 
+// PATCH(retry-policy): the truncation tests run on maskedBody now that truncateBody is gone; see .printing-press-patches.json.
+
 import (
 	"bytes"
 	"context"
@@ -39,7 +41,8 @@ func TestTruncateBody(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := truncateBody(tc.input)
+			var c *Client
+			got := c.maskedBody(tc.input, false)
 			if len(got) != tc.wantLen {
 				t.Fatalf("len = %d, want %d", len(got), tc.wantLen)
 			}
@@ -61,7 +64,8 @@ func TestTruncateBody_UTF8RuneAtBoundary(t *testing.T) {
 	// than emit U+FFFD or invalid UTF-8.
 	prefix := strings.Repeat("a", 4094)
 	body := []byte(prefix + "€" + strings.Repeat("b", 100))
-	got := truncateBody(body)
+	var c *Client
+	got := c.maskedBody(body, false)
 
 	if !utf8.ValidString(got) {
 		t.Fatalf("output is not valid UTF-8")

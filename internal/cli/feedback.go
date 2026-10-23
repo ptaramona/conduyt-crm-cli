@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/client"
 	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
@@ -78,14 +79,14 @@ func postFeedback(url string, entry FeedbackEntry) error {
 	}
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("building feedback request: %w", err)
+		return fmt.Errorf("building feedback request: %w", client.MaskErrorForURL(err, url)) // PATCH(redirect-and-redaction-policy)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "github.com/ptaramona/conduyt-crm-cli/feedback")
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
+	hc := &http.Client{Timeout: 15 * time.Second}
+	resp, err := hc.Do(req)
 	if err != nil {
-		return fmt.Errorf("posting feedback: %w", err)
+		return fmt.Errorf("posting feedback: %w", client.MaskErrorForURL(err, url)) // PATCH(redirect-and-redaction-policy)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
@@ -148,7 +149,7 @@ maintainer sees it.`,
 					upstreamResult["error"] = err.Error()
 				} else {
 					upstreamResult["sent"] = true
-					upstreamResult["endpoint"] = endpoint
+					upstreamResult["endpoint"] = client.MaskURL(endpoint) // PATCH(redirect-and-redaction-policy)
 				}
 			}
 

@@ -49,6 +49,7 @@ type rootFlags struct {
 	profileName         string
 	deliverSpec         string
 	timeout             time.Duration
+	callBudget          time.Duration
 	rateLimit           float64
 	maxAge              time.Duration
 	dataSource          string
@@ -112,7 +113,7 @@ func Execute() (retErr error) {
 	}
 	if err == nil && flags.deliverBuf != nil {
 		if derr := Deliver(flags.deliverSink, flags.deliverBuf.Bytes(), flags.compact); derr != nil {
-			fmt.Fprintf(os.Stderr, "warning: deliver to %s:%s failed: %v\n", flags.deliverSink.Scheme, flags.deliverSink.Target, derr)
+			fmt.Fprintln(os.Stderr, deliverFailureWarning(flags.deliverSink, derr))
 			return derr
 		}
 	}
@@ -126,6 +127,17 @@ func Execute() (retErr error) {
 		return usageErr(err)
 	}
 	return err
+}
+
+// deliverFailureWarning is the stderr line for a failed --deliver. A webhook
+// target can carry credentials (userinfo, access_token): it is masked.
+// PATCH(redirect-and-redaction-policy): never print webhook credentials.
+func deliverFailureWarning(sink DeliverSink, derr error) string {
+	shown := sink.Target
+	if sink.Scheme == "webhook" {
+		shown = client.MaskURL(shown)
+	}
+	return fmt.Sprintf("warning: deliver to %s:%s failed: %v", sink.Scheme, shown, derr)
 }
 
 // isCobraUsageError reports whether err matches one of Cobra/pflag's
@@ -200,6 +212,8 @@ See README.md or the bundled SKILL.md for recipes.`,
 	rootCmd.PersistentFlags().StringVar(&flags.configPath, "config", "", "Config file path")
 	rootCmd.PersistentFlags().StringVar(&flags.homePath, "home", "", "Root directory for config, data, state, and cache files")
 	rootCmd.PersistentFlags().DurationVar(&flags.timeout, "timeout", 60*time.Second, "Request timeout")
+	// PATCH(retry-policy): whole-call time budget flag.
+	rootCmd.PersistentFlags().DurationVar(&flags.callBudget, "call-budget", client.DefaultCallBudget, "Total time budget for one call, covering every retry and wait")
 	rootCmd.PersistentFlags().BoolVar(&flags.dryRun, "dry-run", false, "Show request without sending")
 	rootCmd.PersistentFlags().BoolVar(&flags.noCache, "no-cache", false, "Bypass response cache")
 	rootCmd.PersistentFlags().BoolVar(&flags.noInput, "no-input", false, "Disable all interactive prompts (for CI/agents)")
@@ -636,6 +650,7 @@ func (f *rootFlags) newClient() (*client.Client, error) {
 		return nil, configErr(err)
 	}
 	c := client.New(cfg, f.timeout, f.rateLimit)
+	c.CallBudget = f.callBudget
 	c.DryRun = f.dryRun
 	c.NoCache = f.noCache
 	return c, nil

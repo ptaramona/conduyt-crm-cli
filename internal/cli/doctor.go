@@ -88,7 +88,7 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				report["config"] = "ok"
 				report["config_path"] = cfg.Path
-				report["base_url"] = cfg.BaseURL
+				report["base_url"] = client.MaskURL(cfg.BaseURL) // PATCH(redirect-and-redaction-policy): no userinfo or query tokens in doctor output
 				// agentcookie integration is soft: if the agentcookie daemon manages
 				// this CLI's config, it writes a marker file alongside the config and
 				// AuthSource is upgraded to "agentcookie" in config.Load. Surface the

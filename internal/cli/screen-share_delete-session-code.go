@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/client"
 	"github.com/spf13/cobra"
 )
 
@@ -94,7 +95,7 @@ func newScreenShareDeleteSessionCodeCmd(flags *rootFlags) *cobra.Command {
 				envelope := map[string]any{
 					"action":   "delete",
 					"resource": "screen-share",
-					"path":     path,
+					"path":     client.MaskPath(path), // PATCH(redirect-and-redaction-policy): the path carries a secret code
 					"status":   statusCode,
 					"success":  statusCode >= 200 && statusCode < 300 && (partialFailure == nil || flags.allowPartialFailure),
 				}

@@ -10,12 +10,15 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	mcplib "github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 	"github.com/ptaramona/conduyt-crm-cli/internal/cli"
 	"github.com/ptaramona/conduyt-crm-cli/internal/client"
 	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
@@ -24,8 +27,6 @@ import (
 	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/bound"
 	"github.com/ptaramona/conduyt-crm-cli/internal/mcp/cobratree"
 	"github.com/ptaramona/conduyt-crm-cli/internal/store"
-	mcplib "github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 )
 
 const (
@@ -289,7 +290,7 @@ func makeAPIHandler(method, pathTemplate string, readOnly bool, binaryResponse b
 			case "path":
 				placeholder := "{" + binding.WireName + "}"
 				pathParams[binding.PublicName] = true
-				path = strings.Replace(path, placeholder, formatMCPParamValue(v), 1)
+				path = strings.Replace(path, placeholder, mcpPathSegment(v), 1) // PATCH(redirect-and-redaction-policy)
 			case "body":
 				if len(binding.BodyPath) > 0 {
 					setNestedBodyArg(bodyArgs, binding.BodyPath, v)
@@ -329,7 +330,7 @@ func makeAPIHandler(method, pathTemplate string, readOnly bool, binaryResponse b
 			}
 			pathParams[p] = true
 			if v, ok := args[p]; ok {
-				path = strings.Replace(path, placeholder, formatMCPParamValue(v), 1)
+				path = strings.Replace(path, placeholder, mcpPathSegment(v), 1) // PATCH(redirect-and-redaction-policy)
 			}
 		}
 
@@ -2074,4 +2075,11 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 // includes the runtime Cobra-tree mirror.
 func RegisterNovelFeatureTools(s *server.MCPServer) {
 	_ = s
+}
+
+// PATCH(redirect-and-redaction-policy): escape MCP path parameters like the CLI does.
+// mcpPathSegment escapes a path parameter the way the CLI's replacePathParam
+// does, so a value containing "/" or "?" cannot change the route.
+func mcpPathSegment(v any) string {
+	return neturl.PathEscape(formatMCPParamValue(v))
 }

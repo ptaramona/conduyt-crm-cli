@@ -5,31 +5,40 @@ package client
 
 import (
 	"bytes"
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
-	"github.com/ptaramona/conduyt-crm-cli/internal/config"
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
+	"github.com/ptaramona/conduyt-crm-cli/internal/config"
 	"io"
 	"math"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"syscall"
 	"time"
+	"unicode"
 )
 
 const BinaryResponseHeader = "X-Printing-Press-Binary-Response"
 
 var ErrPlaceholderCredential = errors.New("auth placeholder credential")
 
+// PATCH(retry-policy): CallBudget and the lazy mutation client below are hand additions; see .printing-press-patches.json.
 type Client struct {
 	BaseURL    string
 	Config     *config.Config
@@ -38,6 +47,12 @@ type Client struct {
 	NoCache    bool
 	cacheDir   string
 	limiter    *cliutil.AdaptiveLimiter
+	// CallBudget bounds one whole call: every attempt, retry wait and limiter
+	// pause. Zero means the DefaultCallBudget.
+	CallBudget time.Duration
+
+	mutOnce   sync.Once
+	mutClient *http.Client
 }
 
 // RequestBaseURL returns the base URL used for requests.
@@ -152,39 +167,215 @@ func New(cfg *config.Config, timeout time.Duration, rateLimit float64) *Client {
 		cacheDir:   cacheDir,
 		limiter:    newRateLimiter(rateLimit),
 	}
-	// CheckRedirect re-derives auth on each hop. Go's default replays the
-	// original Authorization header verbatim, which breaks nonce-bound
-	// schemes (OAuth 1.0a PLAINTEXT, SigV4, Hawk): the duplicate nonce
-	// trips the server's replay detector with a 401. c.authHeader()
-	// returns a fresh value for those schemes and the same static value
-	// for Bearer/api_key, so post-redirect headers are byte-identical for
-	// static auth and freshly-signed for nonce-bound auth.
+	// CheckRedirect decides, per hop, what a redirect may carry:
+	//  - at most 10 hops;
+	//  - a mutation (anything but GET/HEAD) is never redirected to another
+	//    origin, 307/308 included: it is refused with a clear error and
+	//    nothing is sent, so a body is never replayed elsewhere;
+	//  - a method-preserving redirect (307/308) of a call that is not
+	//    replay-safe is refused (Go would resend the body inside Do, out of
+	//    the retry policy's sight);
+	//  - same origin (scheme, host, port): Authorization is re-derived with
+	//    c.authHeader(), because Go's default replays the original value,
+	//    which breaks nonce-bound schemes (OAuth 1.0a PLAINTEXT, SigV4, Hawk)
+	//    with a 401 from the replay detector;
+	//  - cross origin (GET/HEAD only): every request header outside
+	//    redirectSafeHeaders is dropped, so no credential travels.
 	httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 10 {
-			// Match Go's defaultCheckRedirect: a plain error so Client.Do
-			// returns it through do()'s err != nil branch. ErrUseLastResponse
-			// would cause Do to return the 3xx with nil error, which do()
-			// would then classify as a successful response and hand the HTML
-			// "Moved Permanently" body back to the caller.
+			// A plain error, like Go's defaultCheckRedirect, so Client.Do
+			// returns it through do()'s err != nil branch; ErrUseLastResponse
+			// would hand the 3xx body back as a success.
 			return errors.New("stopped after 10 redirects")
 		}
-		// Same-host gate mirrors Go's shouldCopyHeaderOnRedirect: a
-		// cross-domain 3xx (open redirect or partner handoff) must not
-		// receive the auth credential, even though we are inside
-		// CheckRedirect where Go's automatic stripping has already run.
-		if req.URL.Host == via[0].URL.Host {
+		origin := via[0]
+		same := sameOrigin(req.URL, origin.URL)
+		// PATCH(retry-policy): redirect rules for mutations and cross-origin hops.
+		if !same && !isReadMethod(origin.Method) {
+			return fmt.Errorf("refusing to follow a cross-origin redirect for %s %s: a mutation is never sent to another origin", origin.Method, origin.URL.Path)
+		}
+		if !replaySafeFromContext(req.Context()) && req.Method == origin.Method {
+			return fmt.Errorf("refusing to follow redirect for %s %s: the request is not safe to replay", origin.Method, origin.URL.Path)
+		}
+		if same {
 			if h, err := c.authHeader(req.Context()); err == nil && h != "" {
 				req.Header.Set("Authorization", h)
 			}
 		} else {
-			// Cross-host hop: Go strips standard auth headers (Authorization,
-			// Cookie) but not custom ones, so a custom API-key header would be
-			// forwarded verbatim to the redirect target. Delete it explicitly.
-			req.Header.Del("Authorization")
+			for name := range req.Header {
+				if !redirectSafeHeaders[http.CanonicalHeaderKey(name)] {
+					req.Header.Del(name)
+				}
+			}
 		}
 		return nil
 	}
 	return c
+}
+
+// PATCH(redirect-and-redaction-policy): cross-origin redirect header allowlist and origin comparison.
+// redirectSafeHeaders are the only request headers forwarded on a cross-origin redirect.
+var redirectSafeHeaders = map[string]bool{
+	"Accept": true, "Accept-Encoding": true, "Accept-Language": true,
+	"Content-Type": true, "Content-Length": true, "User-Agent": true,
+	"X-Request-Id": true, "X-Correlation-Id": true, "Cache-Control": true,
+}
+
+// sameOrigin reports whether two URLs share scheme, host and port (default
+// ports normalised). https to http on the same host is a different origin.
+func sameOrigin(a, b *url.URL) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	if !strings.EqualFold(a.Scheme, b.Scheme) {
+		return false
+	}
+	port := func(u *url.URL) string {
+		if p := u.Port(); p != "" {
+			return p
+		}
+		if strings.EqualFold(u.Scheme, "https") {
+			return "443"
+		}
+		return "80"
+	}
+	return strings.EqualFold(a.Hostname(), b.Hostname()) && port(a) == port(b)
+}
+
+// PATCH(retry-policy): mutations the CLI will not replay use a separate HTTP/1-only client (own keep-alive pool, ALPN http/1.1 only).
+// httpClientFor picks the HTTP client for one call. Reads and keyed calls use
+// the shared pooled client. A mutation the CLI will not replay gets its own
+// HTTP/1-only client with a separate keep-alive pool. HTTP/2 is off because
+// its stack retries streams on its own; HTTP/1 only retransmits a request that
+// is "replayable", which a POST/PUT/PATCH/DELETE without a key header never is
+// (doInternal strips both key headers from such calls). Keep-alives stay on so
+// bulk writes (import) do not pay a handshake per row.
+func (c *Client) httpClientFor(replaySafe bool) *http.Client {
+	if replaySafe {
+		return c.HTTPClient
+	}
+	c.mutOnce.Do(func() {
+		tr, ok := c.HTTPClient.Transport.(*http.Transport)
+		if !ok {
+			c.mutClient = c.HTTPClient
+			return
+		}
+		mt := tr.Clone()
+		mt.ForceAttemptHTTP2 = false
+		mt.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
+		mt.Protocols = new(http.Protocols)
+		mt.Protocols.SetHTTP1(true)
+		// Clone copies a TLS config that advertises h2 via ALPN; a server
+		// would pick h2 and this HTTP/1-only transport could not speak it.
+		cfg := &tls.Config{}
+		if mt.TLSClientConfig != nil {
+			cfg = mt.TLSClientConfig.Clone()
+		}
+		cfg.NextProtos = []string{"http/1.1"}
+		mt.TLSClientConfig = cfg
+		// Go ignores TLSClientConfig when a custom TLS dialer is set, so its
+		// ALPN is out of our hands: check what it negotiated and refuse h2
+		// rather than speak HTTP/1 on an h2 connection.
+		if orig := mt.DialTLSContext; orig != nil {
+			mt.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				ctx, release := linkCallCtx(ctx)
+				defer release()
+				conn, err := orig(ctx, network, addr)
+				if err != nil {
+					return nil, err
+				}
+				return rejectH2Conn(ctx, conn)
+			}
+		}
+		if orig := mt.DialTLS; orig != nil && mt.DialTLSContext == nil { //nolint:staticcheck // preserved from the cloned transport
+			// The legacy dialer has no context. Run it so the request's
+			// context (caller deadline, --timeout, call budget) still ends the
+			// wait, and handshake the result under that same context.
+			mt.DialTLS = nil //nolint:staticcheck
+			mt.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				ctx, release := linkCallCtx(ctx)
+				defer release()
+				type dialed struct {
+					conn net.Conn
+					err  error
+				}
+				result := make(chan dialed)
+				done := make(chan struct{})
+				defer close(done)
+				go func() {
+					conn, err := orig(network, addr)
+					select {
+					case result <- dialed{conn, err}:
+					case <-done:
+						// Nobody is waiting any more: close a late connection
+						// ourselves and exit.
+						if conn != nil {
+							_ = conn.Close()
+						}
+					}
+				}()
+				select {
+				case d := <-result:
+					if d.err != nil {
+						return nil, d.err
+					}
+					return rejectH2Conn(ctx, d.conn)
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			}
+		}
+		cp := *c.HTTPClient
+		cp.Transport = mt
+		c.mutClient = &cp
+	})
+	return c.mutClient
+}
+
+type callCtxKey struct{}
+
+// linkCallCtx returns a context that ends when either ctx or the call context
+// carried in ctx's values ends (net/http hands dialers a context that is
+// detached from the request's cancellation). It mirrors the call's deadline
+// (so ctx.Err() is DeadlineExceeded) and its cancellation cause.
+func linkCallCtx(ctx context.Context) (context.Context, func()) {
+	callCtx, ok := ctx.Value(callCtxKey{}).(context.Context)
+	if !ok || callCtx == nil {
+		return ctx, func() {}
+	}
+	linked, cancelCause := context.WithCancelCause(ctx)
+	cancelDeadline := func() {}
+	if d, has := callCtx.Deadline(); has {
+		linked, cancelDeadline = context.WithDeadline(linked, d)
+	}
+	stop := context.AfterFunc(callCtx, func() {
+		// A deadline is mirrored by the timer above; only a real
+		// cancellation needs forwarding, with its cause.
+		if errors.Is(callCtx.Err(), context.Canceled) {
+			cancelCause(context.Cause(callCtx))
+		}
+	})
+	return linked, func() { stop(); cancelDeadline(); cancelCause(nil) }
+}
+
+// errH2OnMutationTransport is returned, before any request byte is written,
+// when a custom TLS dialer negotiated HTTP/2 for a mutation.
+var errH2OnMutationTransport = errors.New("refusing to send a mutation: the custom TLS dialer negotiated HTTP/2 but mutations are HTTP/1.1 only")
+
+// rejectH2Conn closes conn and fails when it is a TLS connection that
+// negotiated h2.
+func rejectH2Conn(ctx context.Context, conn net.Conn) (net.Conn, error) {
+	if tc, ok := conn.(*tls.Conn); ok {
+		if err := tc.HandshakeContext(ctx); err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+		if tc.ConnectionState().NegotiatedProtocol == "h2" {
+			_ = conn.Close()
+			return nil, errH2OnMutationTransport
+		}
+	}
+	return conn, nil
 }
 
 // RateLimit returns the current effective rate limit in req/s. Returns 0 if disabled.
@@ -572,7 +763,7 @@ func verifyShortCircuitEnvelope(method, path string) json.RawMessage {
 		"status":                  "noop",
 		"reason":                  "verify_short_circuit",
 		"method":                  method,
-		"path":                    path,
+		"path":                    MaskPath(path),
 	})
 	return json.RawMessage(body)
 }
@@ -667,12 +858,81 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 		return c.dryRun(method, targetURL, path, params, bodyBytes, headerOverrides, authHeader)
 	}
 
+	// PATCH(retry-policy): replay rule, Retry-After, whole-call budget and gate_busy message replace the generated retry loop.
 	maxRetries := clientMaxRetries()
 	var lastErr error
+	busyAnnounced := false
+
+	parentCtx := ctx
+	budget := c.CallBudget
+	if budget <= 0 {
+		budget = DefaultCallBudget
+	}
+	ctx, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+	deadline, _ := ctx.Deadline()
+	// The context deadline is the earlier of the caller's and our budget.
+	// When the caller's is the earlier one, report a plain deadline error.
+	callerDeadline, callerHasDeadline := parentCtx.Deadline()
+	callerEarlier := callerHasDeadline && !callerDeadline.After(deadline)
+
+	// Replay rule: reads always; a mutation only when the CLI generated the
+	// Idempotency-Key itself for an endpoint known to honour it.
+	cliKey := ""
+	if !isReadMethod(method) && endpointHonoursIdempotencyKey(method, path) {
+		cliKey = newIdempotencyKey()
+	}
+	replaySafe := isReadMethod(method) || cliKey != ""
+	ctx = withReplaySafe(ctx, replaySafe)
+	// net/http dials with a context that is detached from the request's
+	// cancellation but keeps its values. Carry the call context through so a
+	// custom TLS dialer and its handshake still end with the call.
+	ctx = context.WithValue(ctx, callCtxKey{}, ctx)
+
+	budgetErr := func(last error) error {
+		if last == nil {
+			return fmt.Errorf("call budget of %s exceeded", budget)
+		}
+		return fmt.Errorf("call budget of %s exceeded: %w", budget, last)
+	}
+	// withLast keeps the latest response or error attached to a context error.
+	withLast := func(ctxErr, last error) error {
+		if last == nil {
+			return ctxErr
+		}
+		return fmt.Errorf("%w: %w", ctxErr, last)
+	}
+	// stopErr classifies why the call must stop: the caller's own cancel or
+	// deadline wins (errors.Is on context.Canceled / DeadlineExceeded), our
+	// budget gets its own message. The last response or error stays attached.
+	stopErr := func(last error) error {
+		if perr := parentCtx.Err(); perr != nil {
+			return withLast(perr, last)
+		}
+		if callerEarlier {
+			return withLast(context.DeadlineExceeded, last)
+		}
+		return budgetErr(last)
+	}
+	// failCtx is called when a wait, limiter pause or request ended on ctx.
+	failCtx := func(err error) error {
+		if parentCtx.Err() != nil || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return stopErr(lastErr)
+		}
+		return err
+	}
+	// budgetExceeded ends the call because the next wait cannot fit.
+	budgetExceeded := stopErr
+	// canWait reports whether a retry wait still fits in the budget.
+	canWait := func(wait time.Duration) bool {
+		return time.Until(deadline) > wait
+	}
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Proactive rate limiting — wait before sending
-		c.limiter.Wait()
+		if err := c.limiter.WaitContext(ctx); err != nil {
+			return nil, 0, failCtx(err)
+		}
 		var bodyReader io.Reader
 		if bodyBytes != nil {
 			bodyReader = strings.NewReader(string(bodyBytes))
@@ -680,7 +940,15 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 
 		req, err := http.NewRequestWithContext(ctx, method, targetURL, bodyReader)
 		if err != nil {
-			return nil, 0, fmt.Errorf("creating request: %w", err)
+			// The target URL may be invalid AND secret-bearing (userinfo, query
+			// token): no mask set exists yet, so build one from the target.
+			sink := &secretSink{}
+			sink.add(authHeader)
+			sink.addURLValue(targetURL)
+			for _, v := range sensitivePathValues(path) {
+				sink.add(v)
+			}
+			return nil, 0, fmt.Errorf("creating request: %w", c.maskSetFromSink(sink).maskErr(err))
 		}
 		if bodyBytes != nil {
 			req.Header.Set("Content-Type", contentType)
@@ -708,6 +976,24 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 		for k, v := range headerOverrides {
 			req.Header.Set(k, v)
 		}
+		// PATCH(retry-policy): key-header hygiene so the Go transport never replays a mutation itself.
+		// An empty key header still counts as "idempotent" to Go's transport,
+		// which would then replay the request on its own. Remove it.
+		for _, h := range []string{"Idempotency-Key", "X-Idempotency-Key"} {
+			if vals, ok := req.Header[http.CanonicalHeaderKey(h)]; ok && strings.TrimSpace(strings.Join(vals, "")) == "" {
+				req.Header.Del(h)
+			}
+		}
+		if cliKey != "" {
+			req.Header.Set("Idempotency-Key", cliKey)
+		} else if !isReadMethod(method) {
+			// Go's transport treats either key header as permission to resend
+			// a request on its own (reused HTTP/1 connection, HTTP/2 retries),
+			// out of reach of this policy. A mutation the CLI did not key
+			// itself must never carry one.
+			req.Header.Del("Idempotency-Key")
+			req.Header.Del("X-Idempotency-Key")
+		}
 		binaryResponse := strings.EqualFold(req.Header.Get(BinaryResponseHeader), "true")
 		if binaryResponse {
 			req.Header.Del(BinaryResponseHeader)
@@ -734,39 +1020,83 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 			}
 		}
 
-		resp, err := c.HTTPClient.Do(req)
-		if err != nil {
-			if ctxErr := ctx.Err(); ctxErr != nil {
-				return nil, 0, ctxErr
+		resp, err := c.httpClientFor(replaySafe).Do(req)
+		// One mask set per attempt, built lazily (only error paths need it)
+		// from the request as actually sent: headers, cookie-jar cookies,
+		// path parameters, query, JSON/multipart body fields, redirect
+		// targets. It serves the body copy, error text and displayed URL.
+		doErr, doResp := err, resp
+		ms := &lazyMasks{build: func() *maskSet {
+			return c.maskSetFromSink(c.sentSecrets(req, doResp, doErr, body, bodyBytes, params, path, authHeader))
+		}}
+		var respBody []byte
+		bodyReadFailed := false
+		if err == nil {
+			// Pace from the status line and headers, before the body: a body
+			// that stalls or resets must not hide a 429 from the limiter.
+			if remaining, resetAt, ok := cliutil.ParseRateLimitHeaders(resp.Header); ok {
+				c.limiter.ObserveHeaders(remaining, resetAt)
 			}
-			lastErr = fmt.Errorf("%s %s: %w", method, c.displayURL(path, authHeader), c.maskError(err, authHeader))
+			if resp.StatusCode == 429 {
+				// Always slow the shared pace, even when this request cannot
+				// be resent (mutation, last attempt, retries off).
+				c.limiter.OnRateLimit()
+			}
+			respBody, err = io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if err != nil {
+				// Headers arrived but the body broke (reset, timeout): same
+				// class as a network error.
+				bodyReadFailed = true
+				err = fmt.Errorf("reading response: %w", err)
+			}
+		}
+		if err != nil && bodyReadFailed && resp.StatusCode == 429 && ctx.Err() == nil {
+			// The server did answer 429; a body that broke after that is not
+			// a network failure. Handle it as the 429 it is, with the partial
+			// body (the Retry-After header does not need it).
+			err = nil
+		}
+		if err != nil {
+			// Record THIS attempt's failure before looking at the context, so
+			// a socket or body error racing the deadline is never masked by a
+			// stale earlier error.
+			lastErr = fmt.Errorf("%s %s: %w", method, ms.mask(path), ms.maskErr(err))
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				if bodyReadFailed && resp.StatusCode >= 400 {
+					// The server did answer: keep that answer as an APIError.
+					lastErr = &APIError{
+						Method:     method,
+						Path:       ms.mask(path),
+						StatusCode: resp.StatusCode,
+						Body:       ms.body(sanitizeJSONResponse(respBody), true),
+					}
+					return nil, resp.StatusCode, failCtx(ctxErr)
+				}
+				return nil, 0, failCtx(ctxErr)
+			}
+			// The request may have reached the server. Never replay a
+			// mutation unless the CLI keyed it for an endpoint that honours it.
+			if !replaySafe {
+				return nil, 0, lastErr
+			}
 			// Transient network failure (connection reset, DNS blip, request
-			// timeout). Back off before retrying — same exponential schedule as
-			// the 5xx path below — so a brief outage does not burn every attempt
-			// in a tight loop. ctx cancellation breaks out of the wait at once.
+			// timeout). Back off before retrying so a brief outage does not
+			// burn every attempt in a tight loop.
 			if attempt < maxRetries {
 				wait := time.Duration(math.Pow(2, float64(attempt))) * time.Second
-				fmt.Fprintf(os.Stderr, "network error (%v), retrying in %s (attempt %d/%d)\n", c.maskError(err, authHeader), wait, attempt+1, maxRetries)
-				if serr := sleepContext(ctx, wait); serr != nil {
-					return nil, 0, serr
+				if !canWait(wait) {
+					return nil, 0, budgetExceeded(lastErr)
+				}
+				fmt.Fprintf(os.Stderr, "network error (%v), retrying in %s (attempt %d/%d)\n", ms.maskErr(err), wait, attempt+1, maxRetries)
+				if serr := retrySleep(ctx, wait); serr != nil {
+					return nil, 0, failCtx(serr)
 				}
 			}
 			continue
 		}
 
-		respBody, err := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		if err != nil {
-			return nil, 0, fmt.Errorf("reading response: %w", err)
-		}
-
-		// Pace to the server-advertised budget when it ships rate-limit
-		// headers (every response, success or 429). This takes priority over
-		// the blind adaptive ramp/halve, which only governs header-less
-		// servers and the very first request of a session.
-		if remaining, resetAt, ok := cliutil.ParseRateLimitHeaders(resp.Header); ok {
-			c.limiter.ObserveHeaders(remaining, resetAt)
-		}
+		// (Rate-limit pacing already ran from the headers, before the body.)
 
 		// Success
 		if resp.StatusCode < 400 {
@@ -794,29 +1124,56 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 
 		apiErr := &APIError{
 			Method:     method,
-			Path:       c.displayURL(path, authHeader),
+			Path:       ms.mask(path),
 			StatusCode: resp.StatusCode,
-			Body:       c.maskCredentialText(truncateBody(respBody), authHeader),
+			Body:       ms.body(respBody, bodyReadFailed),
 		}
 
 		// Rate limited - adjust adaptive limiter and retry
-		if resp.StatusCode == 429 && attempt < maxRetries {
-			c.limiter.OnRateLimit()
+		if resp.StatusCode == 429 && attempt < maxRetries && replaySafe {
 			wait := cliutil.RetryAfter(resp)
+			if d, ok := serverRetryDelay(resp.Header, respBody); ok {
+				wait = d
+			} else {
+				wait = clampDelay(wait)
+			}
+			lastErr = apiErr
+			if !canWait(wait) {
+				return nil, resp.StatusCode, budgetExceeded(apiErr)
+			}
 			fmt.Fprintf(os.Stderr, "rate limited, waiting %s (attempt %d/%d, rate adjusted to %.1f req/s)\n", wait, attempt+1, maxRetries, c.limiter.Rate())
-			if err := sleepContext(ctx, wait); err != nil {
-				return nil, 0, err
+			if err := retrySleep(ctx, wait); err != nil {
+				return nil, resp.StatusCode, failCtx(err)
 			}
 			lastErr = apiErr
 			continue
 		}
 
-		// Server error - retry with backoff
-		if resp.StatusCode >= 500 && attempt < maxRetries {
+		// Server error. Mutations without an Idempotency-Key are never
+		// replayed: the write may already have been applied.
+		if resp.StatusCode >= 500 && attempt < maxRetries && replaySafe {
 			wait := time.Duration(math.Pow(2, float64(attempt))) * time.Second
-			fmt.Fprintf(os.Stderr, "server error %d, retrying in %s (attempt %d/%d)\n", resp.StatusCode, wait, attempt+1, maxRetries)
-			if err := sleepContext(ctx, wait); err != nil {
-				return nil, 0, err
+			serverWait, hasServerWait := time.Duration(0), false
+			if resp.StatusCode == http.StatusServiceUnavailable {
+				serverWait, hasServerWait = serverRetryDelay(resp.Header, respBody)
+			}
+			if hasServerWait {
+				wait = serverWait
+			}
+			lastErr = apiErr
+			if !canWait(wait) {
+				return nil, resp.StatusCode, budgetExceeded(apiErr)
+			}
+			if resp.StatusCode == http.StatusServiceUnavailable && isGateBusy(respBody) {
+				if !busyAnnounced {
+					fmt.Fprintf(os.Stderr, "Conduyt is busy, retrying in %d s\n", secondsLabel(wait))
+					busyAnnounced = true
+				}
+			} else {
+				fmt.Fprintf(os.Stderr, "server error %d, retrying in %s (attempt %d/%d)\n", resp.StatusCode, wait, attempt+1, maxRetries)
+			}
+			if err := retrySleep(ctx, wait); err != nil {
+				return nil, resp.StatusCode, failCtx(err)
 			}
 			lastErr = apiErr
 			continue
@@ -833,7 +1190,8 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 // using the auth material already resolved in `do()`. Never triggers a network
 // call — the caller is responsible for passing cached auth material only.
 func (c *Client) dryRun(method, targetURL, path string, params map[string]string, body []byte, headerOverrides map[string]string, authHeader string) (json.RawMessage, int, error) {
-	fmt.Fprintf(os.Stderr, "%s %s\n", method, c.displayURL(targetURL, authHeader))
+	secrets := append([]string{authHeader}, sensitivePathValues(path)...)
+	fmt.Fprintf(os.Stderr, "%s %s\n", method, c.displayURL(MaskURL(targetURL), secrets...))
 	queryPrinted := false
 	if params != nil {
 		keys := make([]string, 0, len(params))
@@ -848,18 +1206,24 @@ func (c *Client) dryRun(method, targetURL, path string, params map[string]string
 			if queryPrinted {
 				sep = "&"
 			}
-			fmt.Fprintf(os.Stderr, "  %s%s=%s\n", sep, k, c.maskCredentialText(params[k], authHeader))
+			shown := c.maskCredentialText(params[k], authHeader)
+			if isSensitiveName(k) {
+				shown = "****"
+			}
+			fmt.Fprintf(os.Stderr, "  %s%s=%s\n", sep, k, shown)
 			queryPrinted = true
 		}
 	}
 	_ = queryPrinted
 	if body != nil {
-		var pretty json.RawMessage
-		if json.Unmarshal(body, &pretty) == nil {
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.UseNumber()
+		var doc any
+		if dec.Decode(&doc) == nil {
 			enc := json.NewEncoder(os.Stderr)
 			enc.SetIndent("  ", "  ")
 			fmt.Fprintf(os.Stderr, "  Body:\n")
-			enc.Encode(pretty)
+			enc.Encode(redactJSON(doc, false))
 		}
 	}
 	if authHeader != "" {
@@ -1037,38 +1401,245 @@ func maskToken(token string) string {
 	return "****" + token[len(token)-4:]
 }
 
+// maskedError is a redacted error: its text is masked, and it keeps a
+// SANITIZED view of the original's identity so callers (the local-data
+// fallback) can still classify a failure:
+//   - errors.Is matches the original's sentinels;
+//   - Timeout() and Temporary() are forwarded;
+//   - Unwrap exposes only text-free classes found in the original chain
+//     (syscall.Errno and a fixed set of sentinels), never the original;
+//   - errors.As to *url.Error, *net.OpError and *net.DNSError yields clones in
+//     which EVERY textual field is masked and no path leads back to the
+//     original (addresses become masked wrappers, nested errors are wrapped).
 type maskedError struct {
-	msg string
+	msg  string
+	orig error
+	mask func(string) string
 }
 
-func (e maskedError) Error() string {
-	return e.msg
+func (e maskedError) Error() string { return e.msg }
+
+// Is matches target against the original chain with the budgeted, cycle-safe
+// walk (errors.Is on the original would never return for a self-unwrapping
+// error). Same rules as errors.Is: comparable equality, or a node's own Is.
+func (e maskedError) Is(target error) bool {
+	if e.orig == nil || target == nil {
+		return false
+	}
+	comparable := reflect.TypeOf(target).Comparable()
+	return walkChain(e.orig, func(n error) bool {
+		if comparable && reflect.TypeOf(n).Comparable() && n == target {
+			return true
+		}
+		if is, ok := n.(interface{ Is(error) bool }); ok && is.Is(target) {
+			return true
+		}
+		return false
+	})
+}
+
+// chainFind returns the first node of the original chain (budgeted walk) that
+// has type T.
+func chainFind[T any](orig error) (T, bool) {
+	var found T
+	ok := walkChain(orig, func(n error) bool {
+		if v, is := n.(T); is {
+			found = v
+			return true
+		}
+		return false
+	})
+	return found, ok
+}
+
+// chainFindAs is chainFind for pointer-typed targets, and additionally honours
+// a node's own shallow As method (the way errors.As does): a node whose As
+// fills a T counts as a match. The caller sanitizes the returned value.
+func chainFindAs[T any](orig error) (T, bool) {
+	var found T
+	ok := walkChain(orig, func(n error) bool {
+		if v, is := n.(T); is {
+			found = v
+			return true
+		}
+		if a, is := n.(interface{ As(any) bool }); is {
+			var tmp T
+			if a.As(&tmp) && !reflect.ValueOf(tmp).IsNil() {
+				found = tmp
+				return true
+			}
+		}
+		return false
+	})
+	return found, ok
+}
+
+func (e maskedError) Timeout() bool {
+	t, ok := chainFind[interface{ Timeout() bool }](e.orig)
+	return ok && t.Timeout()
+}
+
+func (e maskedError) Temporary() bool {
+	t, ok := chainFind[interface{ Temporary() bool }](e.orig)
+	return ok && t.Temporary()
+}
+
+// safeSentinels carry no text beyond their fixed message.
+var safeSentinels = []error{context.Canceled, context.DeadlineExceeded, io.EOF, io.ErrUnexpectedEOF, os.ErrDeadlineExceeded, net.ErrClosed}
+
+// maxUnwrapNodes is the traversal budget for every walk over the ORIGINAL
+// error chain (Unwrap, Is, As, Timeout, Temporary): at most this many errors
+// are inspected. It bounds cycles (an error whose Unwrap returns itself) and is
+// far above any real chain or errors.Join tree; whatever lies beyond the
+// budget is simply not seen.
+const maxUnwrapNodes = 4096
+
+// walkChain visits err and everything reachable through Unwrap() error and
+// Unwrap() []error, depth first in exactly errors.Is order, at most
+// maxUnwrapNodes nodes, and stops (true) as soon as visit returns true.
+// Traversal is lazy: a joined error keeps one frame (its children slice plus an
+// index) and the next child is taken only when the previous child's subtree is
+// exhausted, so the budget bounds visited nodes, never queued children, and
+// memory is bounded by depth plus one frame per join.
+func walkChain(err error, visit func(error) bool) bool {
+	found, _ := walkChainPeak(err, visit)
+	return found
+}
+
+// chainFrame is the unvisited remainder of one joined error.
+type chainFrame struct {
+	kids []error
+	next int
+}
+
+// walkChainPeak is walkChain that also reports the largest frame-stack
+// length, so tests can prove the traversal is memory-bounded.
+func walkChainPeak(err error, visit func(error) bool) (found bool, peak int) {
+	var frames []chainFrame
+	n := err
+	for seen := 0; seen < maxUnwrapNodes; {
+		if n == nil {
+			// Subtree finished: pull the next pending child, lazily.
+			for len(frames) > 0 {
+				top := &frames[len(frames)-1]
+				if top.next < len(top.kids) {
+					n = top.kids[top.next]
+					top.next++
+					break
+				}
+				frames = frames[:len(frames)-1]
+			}
+			if n == nil {
+				if len(frames) == 0 {
+					return false, peak
+				}
+				continue
+			}
+		}
+		cur := n
+		n = nil
+		seen++
+		if visit(cur) {
+			return true, peak
+		}
+		switch u := cur.(type) {
+		case interface{ Unwrap() error }:
+			n = u.Unwrap()
+		case interface{ Unwrap() []error }:
+			if kids := u.Unwrap(); len(kids) > 0 {
+				frames = append(frames, chainFrame{kids: kids})
+				if len(frames) > peak {
+					peak = len(frames)
+				}
+			}
+		}
+	}
+	return false, peak
+}
+
+// Unwrap returns the text-free classes found in the original chain (within
+// maxUnwrapNodes). Contract: only syscall.Errno values and safeSentinels are
+// ever returned; never the original error or any error carrying text.
+func (e maskedError) Unwrap() []error {
+	if e.orig == nil {
+		return nil
+	}
+	var out []error
+	walkChain(e.orig, func(n error) bool {
+		if en, ok := n.(syscall.Errno); ok {
+			out = append(out, en)
+		}
+		for _, s := range safeSentinels {
+			if n == s {
+				out = append(out, s)
+			}
+		}
+		return false
+	})
+	return out
+}
+
+func (e maskedError) wrap(err error) error {
+	if err == nil {
+		return nil
+	}
+	return maskedError{msg: e.mask(err.Error()), orig: err, mask: e.mask}
+}
+
+// maskedAddr is a net.Addr whose text is masked.
+type maskedAddr struct {
+	network, text string
+}
+
+func (a maskedAddr) Network() string { return a.network }
+func (a maskedAddr) String() string  { return a.text }
+
+func (e maskedError) addr(a net.Addr) net.Addr {
+	if a == nil {
+		return nil
+	}
+	return maskedAddr{network: e.mask(a.Network()), text: e.mask(a.String())}
+}
+
+func (e maskedError) As(target any) bool {
+	if e.orig == nil {
+		return false
+	}
+	switch t := target.(type) {
+	case **url.Error:
+		if ue, ok := chainFindAs[*url.Error](e.orig); ok {
+			*t = &url.Error{Op: e.mask(ue.Op), URL: e.mask(ue.URL), Err: e.wrap(ue.Err)}
+			return true
+		}
+	case **net.OpError:
+		if oe, ok := chainFindAs[*net.OpError](e.orig); ok {
+			*t = &net.OpError{Op: e.mask(oe.Op), Net: e.mask(oe.Net), Source: e.addr(oe.Source), Addr: e.addr(oe.Addr), Err: e.wrap(oe.Err)}
+			return true
+		}
+	case **net.DNSError:
+		if de, ok := chainFindAs[*net.DNSError](e.orig); ok {
+			*t = &net.DNSError{
+				Err: e.mask(de.Err), Name: e.mask(de.Name), Server: e.mask(de.Server),
+				IsTimeout: de.IsTimeout, IsTemporary: de.IsTemporary, IsNotFound: de.IsNotFound,
+				UnwrapErr: e.wrap(de.UnwrapErr),
+			}
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Client) displayURL(rawURL string, extraCredentials ...string) string {
 	return c.maskCredentialText(rawURL, extraCredentials...)
 }
 
-func (c *Client) maskError(err error, extraCredentials ...string) error {
-	if err == nil {
-		return nil
-	}
-	raw := err.Error()
-	msg := c.maskCredentialText(raw, extraCredentials...)
-	if msg == raw {
-		return err
-	}
-	return maskedError{msg: msg}
+type credentialMask struct {
+	needle      string
+	replacement string
 }
 
-func (c *Client) maskCredentialText(text string, extraCredentials ...string) string {
-	if text == "" {
-		return text
-	}
-	type credentialMask struct {
-		needle      string
-		replacement string
-	}
+// credentialMasks lists every credential form to hide, longest first.
+func (c *Client) credentialMasks(extraCredentials ...string) []credentialMask {
 	var masks []credentialMask
 	seen := map[string]struct{}{}
 	addValue := func(value string) {
@@ -1076,7 +1647,7 @@ func (c *Client) maskCredentialText(text string, extraCredentials ...string) str
 		if value == "" {
 			return
 		}
-		replacement := maskToken(value)
+		const replacement = "****" // never a fragment of any credential
 		addMask := func(needle string) {
 			if needle == "" {
 				return
@@ -1088,6 +1659,15 @@ func (c *Client) maskCredentialText(text string, extraCredentials ...string) str
 			masks = append(masks, credentialMask{needle: needle, replacement: replacement})
 		}
 		addMask(value)
+		// JSON-escaped forms a server may echo the secret in.
+		if raw, err := json.Marshal(value); err == nil && len(raw) >= 2 {
+			base := string(raw[1 : len(raw)-1])
+			addMask(base)
+			slashed := strings.ReplaceAll(base, "/", `\/`)
+			addMask(slashed)
+			addMask(strings.ReplaceAll(base, "-", `\u002d`))
+			addMask(strings.ReplaceAll(slashed, "-", `\u002d`))
+		}
 		if escaped := url.QueryEscape(value); escaped != value {
 			addMask(escaped)
 		}
@@ -1116,19 +1696,700 @@ func (c *Client) maskCredentialText(text string, extraCredentials ...string) str
 	sort.SliceStable(masks, func(i, j int) bool {
 		return len(masks[i].needle) > len(masks[j].needle)
 	})
-	masked := text
-	for _, mask := range masks {
-		masked = strings.ReplaceAll(masked, mask.needle, mask.replacement)
-	}
-	return masked
+	return masks
 }
 
-func truncateBody(b []byte) string {
-	const maxBytes = 4096
-	if len(b) <= maxBytes {
-		return string(b)
+func (c *Client) maskCredentialText(text string, extraCredentials ...string) string {
+	if text == "" {
+		return text
 	}
-	return strings.ToValidUTF8(string(b[:maxBytes]), "") + "..."
+	return c.newMaskSet(extraCredentials...).mask(text)
+}
+
+// PATCH(redirect-and-redaction-policy): per-attempt credential redaction (mask set, lazy, budgeted).
+// maskSet is the credential masks for one request attempt, built once:
+// every form of every secret, longest first, behind one single-pass replacer.
+type maskSet struct {
+	masks   []credentialMask
+	repl    *strings.Replacer
+	longest int
+	// overflow: the request had more secrets than the complexity budget
+	// allows us to track, so NOTHING derived from it can be redacted safely:
+	// the body copy, the error text and the displayed path are all withheld.
+	overflow bool
+}
+
+// maskSetBuilds counts mask-set constructions (tests assert that success
+// paths build none).
+var maskSetBuilds int32
+
+// lazyMasks builds its maskSet on first use.
+type lazyMasks struct {
+	build func() *maskSet
+	ms    *maskSet
+}
+
+func (l *lazyMasks) get() *maskSet {
+	if l.ms == nil {
+		l.ms = l.build()
+	}
+	return l.ms
+}
+func (l *lazyMasks) mask(text string) string                { return l.get().mask(text) }
+func (l *lazyMasks) maskErr(err error) error                { return l.get().maskErr(err) }
+func (l *lazyMasks) body(b []byte, interrupted bool) string { return l.get().body(b, interrupted) }
+
+func (c *Client) newMaskSet(extraCredentials ...string) *maskSet {
+	atomic.AddInt32(&maskSetBuilds, 1)
+	masks := c.credentialMasks(extraCredentials...)
+	ms := &maskSet{masks: masks}
+	pairs := make([]string, 0, 2*len(masks))
+	for _, m := range masks {
+		pairs = append(pairs, m.needle, m.replacement)
+		if len(m.needle) > ms.longest {
+			ms.longest = len(m.needle)
+		}
+	}
+	ms.repl = strings.NewReplacer(pairs...)
+	return ms
+}
+
+// withheldNote replaces any text that cannot be redacted safely.
+const withheldNote = "[withheld: this request carried too many credentials to redact it safely]"
+
+func (ms *maskSet) mask(text string) string {
+	if text == "" {
+		return text
+	}
+	if ms.overflow {
+		return withheldNote
+	}
+	if len(ms.masks) == 0 {
+		return text
+	}
+	return ms.repl.Replace(text)
+}
+
+func (ms *maskSet) maskErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if len(ms.masks) == 0 && !ms.overflow {
+		return err // nothing to hide
+	}
+	// Always wrap: a secret can sit in a typed field that Error() never
+	// prints (DNSError.UnwrapErr, Addr.Network()), and errors.As must hand out
+	// sanitized clones, never the original.
+	return maskedError{msg: ms.mask(err.Error()), orig: err, mask: ms.mask}
+}
+
+// minCredentialPrefix is the shortest cut-off credential prefix masked at the
+// end of a body. A short coincidental match is an accepted cost.
+const minCredentialPrefix = 3
+
+// body returns a display copy of a response body: at most truncateLimit bytes
+// (plus "..." when cut), credentials masked. One pass: the input is first cut
+// to the limit plus the longest credential (so a token straddling the limit is
+// still whole), then masked, then cut to the limit. When the end of the data
+// is shown (interrupted read or an input cut that masking shrank under the
+// limit), a dangling credential prefix of 3+ bytes becomes a fixed "****".
+func (ms *maskSet) body(b []byte, interrupted bool) string {
+	if ms.overflow {
+		return withheldNote
+	}
+	in := b
+	inputCut := false
+	if limit := truncateLimit + ms.longest; len(in) > limit {
+		in = in[:limit]
+		inputCut = true
+	}
+	text := ms.mask(string(in))
+	needTail := interrupted || inputCut
+	truncated := inputCut
+	if len(text) > truncateLimit {
+		text = text[:truncateLimit]
+		truncated = true
+		needTail = true // the cut may land in the unmasked residue of an input cut
+	}
+	if truncated {
+		text = strings.ToValidUTF8(text, "")
+	}
+	if needTail {
+		for _, m := range ms.masks {
+			for k := len(m.needle) - 1; k >= minCredentialPrefix; k-- {
+				if strings.HasSuffix(text, m.needle[:k]) {
+					text = strings.TrimSuffix(text, m.needle[:k]) + "****"
+					break
+				}
+			}
+		}
+	}
+	if len(text) > truncateLimit {
+		// "****" can be longer than the 3-byte prefix it replaced.
+		text = text[:truncateLimit]
+		truncated = true
+	}
+	if truncated {
+		text = strings.ToValidUTF8(text, "") + "..."
+	}
+	return text
+}
+
+// PATCH(redirect-and-redaction-policy): word-based secret name rule.
+// nameWords splits a header, query or body-field name into lowercase words at
+// delimiters, camelCase, acronym and digit boundaries: "X-API-Key" -> x api key,
+// "APIToken" -> api token, "apiKEY" -> api key, "SessionID" -> session id,
+// "apiKey2" -> api key 2, "keyword" -> keyword.
+func nameWords(name string) []string {
+	var words []string
+	var cur []rune
+	flush := func() {
+		if len(cur) > 0 {
+			words = append(words, strings.ToLower(string(cur)))
+			cur = cur[:0]
+		}
+	}
+	rs := []rune(name)
+	for i, r := range rs {
+		isAlnum := unicode.IsLetter(r) || unicode.IsDigit(r)
+		if !isAlnum {
+			flush()
+			continue
+		}
+		if len(cur) > 0 {
+			prev := cur[len(cur)-1]
+			switch {
+			case unicode.IsDigit(r) != unicode.IsDigit(prev):
+				flush()
+			case unicode.IsUpper(r) && unicode.IsLower(prev):
+				flush()
+			case unicode.IsUpper(r) && unicode.IsUpper(prev) && i+1 < len(rs) && unicode.IsLower(rs[i+1]):
+				flush() // end of an acronym: APIToken -> API, Token
+			}
+		}
+		cur = append(cur, r)
+	}
+	flush()
+	return words
+}
+
+var (
+	// secretWords are secret on their own.
+	secretWords = map[string]bool{
+		"token": true, "tokens": true, "secret": true, "secrets": true,
+		"password": true, "passwords": true, "passwd": true, "pass": true, "passphrase": true, "passcode": true, "pwd": true,
+		"auth": true, "authorization": true, "cookie": true, "cookies": true,
+		"signature": true, "credential": true, "credentials": true,
+		"session": true, "sessionid": true, "jwt": true, "bearer": true, "apikey": true,
+		"otp": true, "totp": true, "pin": true, "csrf": true, "xsrf": true,
+		"verifier": true, "sig": true, "sigs": true, "hmac": true, "signatures": true,
+	}
+	// keyQualifiers make a bare "key" word a secret ("api key", "conduyt key");
+	// "fieldKey", "sortKey" and the like are ordinary.
+	keyQualifiers = map[string]bool{
+		"api": true, "access": true, "secret": true, "private": true, "client": true,
+		"auth": true, "conduyt": true, "license": true, "app": true, "service": true,
+		"signing": true, "encryption": true, "master": true, "admin": true, "bearer": true,
+	}
+	// codeQualifiers make a bare "code" word a secret ("verificationCode");
+	// "zipCode", "statusCode" and "countryCode" stay readable.
+	codeQualifiers = map[string]bool{
+		"verification": true, "recovery": true, "security": true, "backup": true, "reset": true,
+		"confirmation": true, "login": true, "mfa": true, "sms": true, "activation": true,
+		"auth": true, "access": true, "otp": true, "twofactor": true, "2fa": true, "invite": true,
+	}
+)
+
+// isSensitiveName reports whether a header, query or body-field name carries a
+// secret. Whole words and deliberate qualifier rules, not substrings, so
+// "keyword", "passengers", "author", "fieldKey" and "zipCode" stay readable.
+func isSensitiveName(name string) bool {
+	words := nameWords(name)
+	for _, w := range words {
+		if secretWords[w] {
+			return true
+		}
+	}
+	qualified := func(target string, qualifiers map[string]bool) bool {
+		for i, w := range words {
+			if w != target && !(target == "key" && w == "keys") {
+				continue
+			}
+			if len(words) == 1 {
+				return w == target // a bare "keys" stays readable
+			}
+			for j, q := range words {
+				if j != i && qualifiers[q] {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	// "two factor" / "2 fa" spelled as separate words.
+	joined := strings.Join(words, "")
+	if strings.Contains(joined, "twofactor") || strings.Contains(joined, "2fa") {
+		return true
+	}
+	return qualified("key", keyQualifiers) || (!(len(words) == 1) && qualified("code", codeQualifiers))
+}
+
+// minBodySecretLen skips tiny query/body values ("a", "1"): masking them
+// would shred ordinary text. Header values are always masked.
+const minBodySecretLen = 4
+
+// PATCH(redirect-and-redaction-policy): secret collection from the request as sent
+// (budget, sink, path table, sentSecrets).
+
+// Complexity budget for one request's secret set. Past it the error body is
+// withheld rather than redacted incompletely.
+const (
+	maxSecrets     = 256
+	maxSecretBytes = 64 << 10
+)
+
+// secretSink collects distinct secrets within the budget.
+type secretSink struct {
+	seen     map[string]struct{}
+	list     []string
+	bytes    int
+	overflow bool
+}
+
+func (k *secretSink) add(v string) {
+	if v == "" {
+		return
+	}
+	if _, dup := k.seen[v]; dup {
+		return
+	}
+	if len(k.list) >= maxSecrets || k.bytes+len(v) > maxSecretBytes {
+		k.overflow = true
+		return
+	}
+	if k.seen == nil {
+		k.seen = map[string]struct{}{}
+	}
+	k.seen[v] = struct{}{}
+	k.list = append(k.list, v)
+	k.bytes += len(v)
+}
+
+// addURL collects what a URL itself can carry: a userinfo password, the
+// secret path parameters (sensitivePathParams), the values of sensitive query
+// parameters in BOTH raw and decoded form (raw pairs are walked, so lowercase
+// percent-escapes and malformed queries are covered), and sensitive fragment
+// values (#access_token=...).
+func (k *secretSink) addURL(u *url.URL) {
+	if u == nil {
+		return
+	}
+	if u.Opaque != "" { // mailto:x?token=y and the like: no structure we can trust
+		k.addUnsafe(u.String())
+		return
+	}
+	if u.User != nil {
+		if pw, ok := u.User.Password(); ok {
+			k.add(pw)
+		} else {
+			k.add(u.User.Username()) // https://TOKEN@host: the bare userinfo is the credential
+		}
+	}
+	for _, v := range sensitivePathValues(u.EscapedPath()) {
+		k.add(v)
+	}
+	k.addPairs(u.RawQuery)
+	k.addPairs(u.EscapedFragment()) // the raw form: lowercase escapes survive
+	k.addPairs(u.Fragment)
+}
+
+// addUnsafe treats a URL-like value we cannot interpret as wholly secret: the
+// whole value, plus every k=v value inside it (split on & ; ? #), so a bare
+// echoed value is masked even when the surrounding URL is not.
+func (k *secretSink) addUnsafe(raw string) {
+	k.add(raw)
+	for _, part := range strings.FieldsFunc(raw, func(r rune) bool { return r == '&' || r == ';' || r == '?' || r == '#' }) {
+		if _, val, ok := strings.Cut(part, "="); ok && len(val) >= minBodySecretLen {
+			k.add(val)
+			if dv, err := url.QueryUnescape(val); err == nil && len(dv) >= minBodySecretLen {
+				k.add(dv)
+			}
+		}
+	}
+}
+
+// addPairs walks "a=b&c=d" text and collects the values of sensitive names.
+func (k *secretSink) addPairs(raw string) {
+	for _, pair := range strings.FieldsFunc(raw, func(r rune) bool { return r == '&' || r == ';' }) {
+		name, val, ok := strings.Cut(pair, "=")
+		if !ok {
+			continue
+		}
+		if dn, err := url.QueryUnescape(name); err == nil {
+			name = dn
+		}
+		if !isSensitiveName(name) {
+			continue
+		}
+		if len(val) >= minBodySecretLen {
+			k.add(val)
+		}
+		if dv, err := url.QueryUnescape(val); err == nil && len(dv) >= minBodySecretLen {
+			k.add(dv)
+		}
+	}
+}
+
+var linkTarget = regexp.MustCompile(`<([^>]*)>`)
+
+// refreshURL matches the Refresh header form "0; url=/target".
+var refreshURL = regexp.MustCompile(`(?i)^\s*\d+\s*;\s*url\s*=\s*['"]?([^'"]+?)['"]?\s*$`)
+
+// addURLValue collects from one URL-bearing header value (Location, Referer,
+// Content-Location, Link). If it cannot be parsed, the WHOLE value is treated
+// as a secret: fail closed.
+func (k *secretSink) addURLValue(value string) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return
+	}
+	candidates := []string{value}
+	if m := refreshURL.FindStringSubmatch(value); m != nil {
+		candidates = []string{m[1]} // Refresh: 0; url=...
+	} else if m := linkTarget.FindAllStringSubmatch(value, -1); len(m) > 0 {
+		candidates = candidates[:0]
+		for _, mm := range m {
+			candidates = append(candidates, mm[1])
+		}
+	}
+	for _, cand := range candidates {
+		u, err := url.Parse(cand)
+		if err != nil {
+			k.addUnsafe(cand)
+			continue
+		}
+		k.addURL(u)
+	}
+}
+
+// PATCH(redirect-and-redaction-policy): explicit list of secret path parameters.
+// sensitivePathParams lists path templates with secret path parameters. The
+// public API catalog has no generic marker, so this is explicit; a spec guard
+// test fails when a spec path has a sensitive-looking parameter (or "code")
+// that is not listed here.
+var sensitivePathParams = map[string][]string{
+	"/public/screen-share/{code}":  {"code"}, // public screen-share access code
+	"/screen-share/session/{code}": {"code"}, // screen-share session code
+}
+
+// sensitivePathValues returns the secret path-parameter values of a concrete path.
+func sensitivePathValues(path string) []string {
+	path, _, _ = strings.Cut(path, "?")
+	have := strings.Split(strings.Trim(path, "/"), "/")
+	var out []string
+	for tmpl, params := range sensitivePathParams {
+		want := strings.Split(strings.Trim(tmpl, "/"), "/")
+		if len(want) != len(have) {
+			continue
+		}
+		match := true
+		var vals []string
+		for i, seg := range want {
+			if isTemplateSegment(seg) {
+				for _, p := range params {
+					if seg == "{"+p+"}" {
+						vals = append(vals, have[i])
+					}
+				}
+			} else if seg != have[i] {
+				match = false
+				break
+			}
+		}
+		if match {
+			for _, v := range vals {
+				out = append(out, v)
+				if un, err := url.PathUnescape(v); err == nil && un != v {
+					out = append(out, un)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// sentSecrets collects every secret in the request as actually sent, in the
+// redirect targets, and in the response's cookies, within the budget. The
+// cheap and most likely sources go first, so the request's own URL, path and
+// query secrets are in the set before any flood of header, cookie or body
+// secrets can trigger an overflow (which withholds all output, see maskSet).
+// The body is read from its typed form (multipart fields) or its
+// JSON encoding with numbers kept as written.
+func (c *Client) sentSecrets(req *http.Request, resp *http.Response, doErr error, body any, bodyBytes []byte, params map[string]string, path, authHeader string) *secretSink {
+	sink := &secretSink{}
+	// Order matters under the budget: what names the request itself (auth,
+	// path, URL, query params) goes first so a flood of header, cookie or
+	// body secrets can never push it out.
+	sink.add(authHeader)
+	for _, v := range sensitivePathValues(path) {
+		sink.add(v)
+	}
+	sink.addURL(req.URL)
+	for k, v := range params {
+		if isSensitiveName(k) && len(v) >= minBodySecretLen {
+			sink.add(v)
+		}
+	}
+	var ue *url.Error
+	if errors.As(doErr, &ue) { // a redirect refused by CheckRedirect names its target
+		sink.addURLValue(ue.URL)
+	}
+	addReq := func(r *http.Request) {
+		if r == nil {
+			return
+		}
+		if r != req {
+			sink.addURL(r.URL)
+		}
+		for _, name := range []string{"Referer", "Link", "Location", "Content-Location"} {
+			for _, v := range r.Header.Values(name) {
+				sink.addURLValue(v)
+			}
+		}
+		for _, v := range sensitiveHeaderValues(r.Header) {
+			sink.add(v)
+		}
+		for _, ck := range r.Cookies() { // a manually supplied Cookie header, value by value
+			sink.add(ck.Value)
+		}
+		if r.URL != nil && c.HTTPClient != nil && c.HTTPClient.Jar != nil {
+			for _, ck := range c.HTTPClient.Jar.Cookies(r.URL) {
+				sink.add(ck.Value)
+			}
+		}
+	}
+	addReq(req)
+	addResp := func(rs *http.Response) {
+		for _, ck := range rs.Cookies() {
+			sink.add(ck.Value)
+		}
+		for _, name := range []string{"Location", "Content-Location", "Link", "Refresh"} {
+			for _, v := range rs.Header.Values(name) {
+				sink.addURLValue(v)
+			}
+		}
+	}
+	if resp != nil {
+		addResp(resp)
+		// Walk the WHOLE redirect chain: each hop's request names its URL,
+		// and its Referer / Response name the hops before it.
+		visited := map[*http.Request]bool{}
+		for r := resp.Request; r != nil && !visited[r]; {
+			visited[r] = true
+			if r != req {
+				addReq(r)
+			}
+			prev := r.Response
+			if prev == nil {
+				break
+			}
+			addResp(prev)
+			r = prev.Request
+		}
+	}
+	if mp, ok := body.(multipartRequestBody); ok {
+		for k, v := range mp.Fields {
+			if isSensitiveName(k) && len(v) >= minBodySecretLen {
+				sink.add(v)
+			}
+		}
+	} else if len(bodyBytes) > 0 {
+		// Walk the tokens, not a decoded map: a duplicate key
+		// ({"password":"a","password":"b"}) must yield BOTH values.
+		dec := json.NewDecoder(bytes.NewReader(bodyBytes))
+		dec.UseNumber()
+		collectJSONSecrets(dec, sink, false)
+	}
+	return sink
+}
+
+// PATCH(redirect-and-redaction-policy): exported for generated command envelopes.
+// redactJSON returns a copy of a decoded JSON document with every value under
+// a sensitive name (or inside a sensitive container) replaced by "****".
+func redactJSON(v any, inherited bool) any {
+	switch t := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, val := range t {
+			out[k] = redactJSON(val, inherited || isSensitiveName(k))
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, val := range t {
+			out[i] = redactJSON(val, inherited)
+		}
+		return out
+	case string, json.Number:
+		if inherited {
+			return "****"
+		}
+	}
+	return v
+}
+
+// MaskURL redacts a URL for display: userinfo, sensitive query values and
+// sensitive fragment values become "****"; an unparseable URL is withheld.
+func MaskURL(raw string) string {
+	if raw == "" {
+		return raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "[unparseable URL withheld]"
+	}
+	if u.Opaque != "" {
+		return "[opaque URL withheld]"
+	}
+	if u.User != nil {
+		u.User = url.User("****")
+	}
+	// Query and fragment pairs split on both & and ; (delimiters kept).
+	redactPairs := func(in string) string {
+		var out strings.Builder
+		flush := func(pair string) {
+			name, _, ok := strings.Cut(pair, "=")
+			if ok {
+				if dn, err := url.QueryUnescape(name); err == nil {
+					name = dn
+				}
+				if isSensitiveName(name) {
+					n, _, _ := strings.Cut(pair, "=")
+					pair = n + "=****"
+				}
+			}
+			out.WriteString(pair)
+		}
+		start := 0
+		for i := 0; i < len(in); i++ {
+			if in[i] == '&' || in[i] == ';' {
+				flush(in[start:i])
+				out.WriteByte(in[i])
+				start = i + 1
+			}
+		}
+		flush(in[start:])
+		return out.String()
+	}
+	u.RawQuery = redactPairs(u.RawQuery)
+	if frag := u.EscapedFragment(); frag != "" {
+		u.RawFragment = redactPairs(frag)
+		u.Fragment, _ = url.PathUnescape(u.RawFragment)
+	}
+	// Path secrets are matched on the ESCAPED path (so SECRET%2Fpart is one
+	// segment) and written back with valid escaping.
+	if masked := MaskPath(u.EscapedPath()); masked != u.EscapedPath() {
+		if plain, err := url.PathUnescape(masked); err == nil {
+			u.Path, u.RawPath = plain, masked
+		}
+	}
+	out := u.String()
+	if strings.HasSuffix(raw, "#") && !strings.HasSuffix(out, "#") {
+		out += "#" // an empty fragment delimiter is preserved
+	}
+	return out
+}
+
+// maskSetFromSink turns a collected sink into a mask set, carrying the
+// overflow flag so that an over-budget request is withheld, never returned raw.
+func (c *Client) maskSetFromSink(sink *secretSink) *maskSet {
+	m := c.newMaskSet(sink.list...)
+	m.overflow = sink.overflow
+	return m
+}
+
+// MaskErrorForURL redacts an error raised while talking to a URL outside the
+// API client (webhook delivery, the feedback endpoint): the URL's own
+// credentials (userinfo, sensitive query/fragment values, an unparseable URL
+// as a whole) are masked in the error text and its typed fields. Over the
+// secret budget the text is withheld.
+func MaskErrorForURL(err error, rawURL string) error {
+	if err == nil {
+		return nil
+	}
+	sink := &secretSink{}
+	sink.addURLValue(rawURL)
+	var c *Client
+	return c.maskSetFromSink(sink).maskErr(err)
+}
+
+// MaskPath hides the secret path parameters of a request path (public and
+// session screen-share codes) for display, envelopes and logs.
+func MaskPath(path string) string {
+	for _, v := range sensitivePathValues(path) {
+		path = strings.ReplaceAll(path, v, "****")
+	}
+	return path
+}
+
+// collectJSONSecrets walks a JSON token stream. Sensitivity is inherited by
+// every descendant: {"tokens":["x"]} and {"credentials":{"value":"x"}} both
+// yield "x". Strings and numbers count; booleans and null do not. Every
+// occurrence of a duplicate key is visited.
+func collectJSONSecrets(dec *json.Decoder, out *secretSink, inherited bool) {
+	if out.overflow {
+		return
+	}
+	tok, err := dec.Token()
+	if err != nil {
+		return
+	}
+	switch t := tok.(type) {
+	case json.Delim:
+		switch t {
+		case '{':
+			for dec.More() && !out.overflow {
+				keyTok, err := dec.Token()
+				if err != nil {
+					return
+				}
+				key, _ := keyTok.(string)
+				collectJSONSecrets(dec, out, inherited || isSensitiveName(key))
+			}
+			_, _ = dec.Token() // }
+		case '[':
+			for dec.More() && !out.overflow {
+				collectJSONSecrets(dec, out, inherited)
+			}
+			_, _ = dec.Token() // ]
+		}
+	case string:
+		if inherited && len(t) >= minBodySecretLen {
+			out.add(t)
+		}
+	case json.Number:
+		if inherited && len(t) >= minBodySecretLen {
+			out.add(t.String())
+		}
+	}
+}
+
+const truncateLimit = 4096
+
+// sensitiveHeaderValues lists the values of credential-bearing headers.
+func sensitiveHeaderValues(h http.Header) []string {
+	var out []string
+	for name, vals := range h {
+		if !isSensitiveName(name) {
+			continue
+		}
+		for _, v := range vals {
+			if strings.TrimSpace(v) != "" {
+				out = append(out, v)
+			}
+		}
+	}
+	return out
 }
 
 func clientMaxRetries() int {

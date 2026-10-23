@@ -4,6 +4,7 @@
 package cliutil
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -142,6 +143,54 @@ func (l *AdaptiveLimiter) Wait() {
 	l.mu.Unlock()
 	if sleep > 0 {
 		time.Sleep(sleep)
+	}
+}
+
+// PATCH(retry-policy): context-aware Wait that releases its reservation on cancel.
+// WaitContext is Wait that gives up when ctx ends.
+func (l *AdaptiveLimiter) WaitContext(ctx context.Context) error {
+	if l == nil {
+		return ctx.Err()
+	}
+	// Never reserve a slot for a call that is already cancelled.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	l.mu.Lock()
+	delay := time.Duration(float64(time.Second) / l.rate)
+	elapsed := time.Since(l.lastRequest)
+	var sleep time.Duration
+	if elapsed < delay {
+		sleep = delay - elapsed
+	}
+	prev := l.lastRequest
+	reserved := time.Now().Add(sleep)
+	l.lastRequest = reserved
+	l.mu.Unlock()
+	// Give the slot back so a cancelled call does not delay later ones.
+	// If another caller already queued behind us, leave its slot alone.
+	release := func() {
+		l.mu.Lock()
+		if l.lastRequest.Equal(reserved) {
+			l.lastRequest = prev
+		}
+		l.mu.Unlock()
+	}
+	if sleep <= 0 {
+		if err := ctx.Err(); err != nil {
+			release()
+			return err
+		}
+		return nil
+	}
+	t := time.NewTimer(sleep)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		release()
+		return ctx.Err()
 	}
 }
 

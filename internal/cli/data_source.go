@@ -638,7 +638,11 @@ func resolveLocal(ctx context.Context, flags *rootFlags, hintWriter io.Writer, r
 	item, err := db.Get(resourceType, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, DataProvenance{}, fmt.Errorf("resource %q with ID %q not found in local store. Run 'conduyt-crm-pp-cli sync' first", resourceType, id)
+			shown := id
+			if client.MaskPath(path) != path { // PATCH(redirect-and-redaction-policy): the ID is a secret code
+				shown = "****"
+			}
+			return nil, DataProvenance{}, fmt.Errorf("resource %q with ID %q not found in local store. Run 'conduyt-crm-pp-cli sync' first", resourceType, shown)
 		}
 		return nil, DataProvenance{}, fmt.Errorf("querying local store: %w", err)
 	}
