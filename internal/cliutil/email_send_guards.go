@@ -79,6 +79,7 @@ const (
 	EmailSendToPattern    = `@`
 	EmailSendSubjectRE    = `\S`
 	EmailSendContactIDRE  = `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
+	EmailSendReplyToMax   = 254 // the pattern's 1 + 252 + 1, after trimming
 	EmailSendReplyToRE    = `^\s*(\S(?:.{0,252}\S)?)?\s*$`
 	EmailSendSendDomainRE = `^\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?\s*$`
 )
@@ -87,7 +88,13 @@ const (
 // a value the spec accepts (padding with a no-break space) must not be refused here.
 const jsSpace = "\\t\\n\\v\\f\\r \\x{00a0}\\x{1680}\\x{2000}-\\x{200a}\\x{2028}\\x{2029}\\x{202f}\\x{205f}\\x{3000}\\x{feff}"
 
+// compileJSPattern translates the \s and \S of a spec pattern. It refuses a pattern with an unescaped "." (any bounded repeat of
+// it counts UTF-16 code units and skips line terminators in ECMAScript, neither of which Go's regexp does), so such a field must
+// get a dedicated validator on utf16Len instead of a silent copy of the pattern; replyTo is the one that has it today.
 func compileJSPattern(p string) *regexp.Regexp {
+	if strings.Contains(strings.ReplaceAll(p, `\.`, ""), ".") {
+		panic("compileJSPattern: pattern with \".\" needs a dedicated UTF-16 validator: " + p)
+	}
 	p = strings.ReplaceAll(p, `\S`, "[^"+jsSpace+"]")
 	p = strings.ReplaceAll(p, `\s`, "["+jsSpace+"]")
 	return regexp.MustCompile(p)
@@ -97,11 +104,25 @@ var (
 	emailSendToRE      = compileJSPattern(EmailSendToPattern)
 	emailSendSubjectRE = compileJSPattern(EmailSendSubjectRE)
 	emailSendContactRE = compileJSPattern(EmailSendContactIDRE)
-	emailSendReplyToRE = compileJSPattern(EmailSendReplyToRE)
 	emailSendSendDomRE = compileJSPattern(EmailSendSendDomainRE)
 )
 
+// utf16Len is the length JavaScript (and so the spec's maxLength and `.{a,b}` patterns) gives a string: UTF-16 code units, so a
+// character outside the BMP counts 2. Every length check in this file goes through it; none counts runes or bytes.
 func utf16Len(s string) int { return len(utf16.Encode([]rune(s))) }
+
+// trimJS trims what ECMAScript \s matches, from both ends (jsSpace is the same set the pattern translation uses).
+func trimJS(s string) string { return strings.Trim(s, jsSpaceChars) }
+
+const jsSpaceChars = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+
+// replyToOK is the spec's replyTo pattern ^\s*(\S(?:.{0,252}\S)?)?\s*$ evaluated the way ECMAScript does: after JS-whitespace
+// trimming the rest is empty, or at most 254 UTF-16 code units with no line terminator (ECMAScript "." skips \n, \r, U+2028 and
+// U+2029, and Go's does not skip \r, U+2028, U+2029). The end characters are non-space by construction of the trim.
+func replyToOK(s string) bool {
+	t := trimJS(s)
+	return utf16Len(t) <= EmailSendReplyToMax && !strings.ContainsAny(t, "\n\r\u2028\u2029")
+}
 
 // EmailSendFlagBody is what the flags of `email send` would put in the body. HasReplyTo and HasSendDomainID say whether the flag
 // was given (a given empty value is sent and is valid; an absent one is not sent).
@@ -138,7 +159,7 @@ func CheckEmailSendFlags(b EmailSendFlagBody) error {
 	if n := utf16Len(b.Text); n > EmailSendTextMax {
 		return fmt.Errorf("--text is %d characters; the maximum is %d", n, EmailSendTextMax)
 	}
-	if b.HasReplyTo && !emailSendReplyToRE.MatchString(b.ReplyTo) {
+	if b.HasReplyTo && !replyToOK(b.ReplyTo) {
 		return fmt.Errorf("--reply-to must be an email address of at most 254 characters after trimming (got %q)", b.ReplyTo)
 	}
 	if b.HasSendDomainID && !emailSendSendDomRE.MatchString(b.SendDomainID) {
