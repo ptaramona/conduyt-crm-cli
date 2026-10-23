@@ -2474,8 +2474,8 @@ func TestWalkChainWideJoinStopsAtBudget(t *testing.T) {
 	if visited != maxUnwrapNodes {
 		t.Fatalf("visited %d nodes, want exactly the budget %d", visited, maxUnwrapNodes)
 	}
-	if peak > 2 {
-		t.Fatalf("frame stack peaked at %d, want at most one frame per join", peak)
+	if peak != 1 {
+		t.Fatalf("frame stack peaked at %d, want exactly one frame for the single join", peak)
 	}
 	// DFS order is kept: the first kids are the ones reached.
 	var order []string
