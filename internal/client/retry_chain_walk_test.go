@@ -23,6 +23,19 @@ type joinOf struct {
 func (j joinOf) Error() string   { return j.label }
 func (j joinOf) Unwrap() []error { return j.kids }
 
+// nilWrap is a wrapper whose Unwrap() returns nil (a chain that ends there).
+type nilWrap string
+
+func (w nilWrap) Error() string { return string(w) }
+func (w nilWrap) Unwrap() error { return nil }
+
+// linkErr is a constant-message wrapper, so a deep chain of them is linear in
+// memory (fmt.Errorf("w: %w") would retain quadratic message bytes).
+type linkErr struct{ next error }
+
+func (l *linkErr) Error() string { return "w" }
+func (l *linkErr) Unwrap() error { return l.next }
+
 func walkLabels(root error) (labels []string, peak int) {
 	_, peak = walkChainPeak(root, func(n error) bool {
 		labels = append(labels, n.Error())
@@ -49,7 +62,7 @@ func TestWalkChainNilChildrenAreSkipped(t *testing.T) {
 		{"nil run between leaves", joinOf{"J", []error{a, nil, nil, nil, b, nil, c}}, "J,a,b,c"},
 		{"nil in a nested leaf list", joinOf{"J", []error{joinOf{"K", []error{nil, a, nil}}, nil, b}}, "J,K,a,b"},
 		{"nil last child of the inner join", joinOf{"J", []error{joinOf{"K", []error{a, nil}}, b}}, "J,K,a,b"},
-		{"wrapped nil is not visited twice", joinOf{"J", []error{fmt.Errorf("w: %w", a), nil}}, "J,w: a,a"},
+		{"wrapper whose Unwrap returns nil", joinOf{"J", []error{nilWrap("w"), nil, a}}, "J,w,a"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -58,6 +71,17 @@ func TestWalkChainNilChildrenAreSkipped(t *testing.T) {
 				t.Fatalf("visited %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// Mutant: moving `seen++` above the nil handling spends budget on nil slots, so
+// a sentinel after maxUnwrapNodes nil children would never be visited.
+func TestWalkChainNilSlotsDoNotConsumeBudget(t *testing.T) {
+	kids := make([]error, maxUnwrapNodes+10)
+	sentinel := namedErr("sentinel")
+	kids = append(kids, sentinel)
+	if !walkChain(joinOf{"J", kids}, func(n error) bool { return n == sentinel }) {
+		t.Fatal("sentinel after a long run of nil slots was not visited")
 	}
 }
 
@@ -84,6 +108,14 @@ func TestWalkChainNestedJoinsVisitInIsOrderOnce(t *testing.T) {
 	if peak != 3 {
 		t.Fatalf("peak frame stack %d, want 3 for three open join levels", peak)
 	}
+	// A match stops the walk at once: nothing is visited after the target.
+	var order []string
+	if !walkChain(top, func(n error) bool { order = append(order, n.Error()); return n == e }) {
+		t.Fatal("walkChain did not find e")
+	}
+	if got := strings.Join(order, ","); got != "J1,a,J2,b,J3,e" {
+		t.Fatalf("walk continued past the match: %q", got)
+	}
 	// The walk must agree with errors.Is: every node is findable in that order.
 	for _, target := range []error{a, b, e, f, c, d} {
 		if !errors.Is(top, target) {
@@ -104,8 +136,9 @@ func TestWalkChainOneLevelPeakIsExactlyOne(t *testing.T) {
 			kids[i] = namedErr("k")
 		}
 		_, peak := walkChainPeak(joinOf{"J", kids}, func(error) bool { return false })
-		if peak != 1 {
-			t.Fatalf("%d kids: peak %d, want exactly 1", n, peak)
+		// A sole child may be entered without a frame, so 1 kid allows 0 or 1.
+		if (n == 1 && peak > 1) || (n >= 2 && peak != 1) {
+			t.Fatalf("%d kids: peak %d, want exactly 1 (at most 1 for a sole child)", n, peak)
 		}
 	}
 	// A join with no children never pushes a frame; a plain chain never does.
@@ -141,7 +174,7 @@ func TestWalkChainDeepChainsStayWithinBudgetAndFrameBound(t *testing.T) {
 	// Deep wrap chain: budget holds, no frames at all.
 	var wrap error = namedErr("leaf")
 	for i := 0; i < maxUnwrapNodes*2; i++ {
-		wrap = fmt.Errorf("w: %w", wrap)
+		wrap = &linkErr{next: wrap}
 	}
 	visited = 0
 	_, peak = walkChainPeak(wrap, func(error) bool { visited++; return false })
