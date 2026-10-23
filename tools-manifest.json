@@ -6307,77 +6307,135 @@
     },
     {
       "name": "email_send",
-      "description": "Send an email to a contact. Required: body, contactId, subject. Optional: bodyHtml, scheduledAt.",
+      "description": "Send an email to a contact. Required: contactId, subject, to. Optional: html, text, replyTo, sendDomainId, dry_run, sandbox. Needs html or text.",
       "method": "POST",
       "path": "/email/send",
       "params": [
         {
-          "name": "body",
+          "name": "to",
           "type": "string",
           "location": "body",
-          "description": "Body",
+          "description": "Recipient email address (max 254 characters, must contain \"@\"). Must equal the linked contact's registered email, case-insensitive.",
           "required": true
         },
         {
-          "name": "bodyHtml",
+          "name": "subject",
           "type": "string",
           "location": "body",
-          "description": "Body html"
+          "description": "Email subject line (max 998 characters, at least one non-whitespace character)",
+          "required": true
+        },
+        {
+          "name": "html",
+          "type": "string",
+          "location": "body",
+          "description": "HTML body, sanitized server-side (max 500,000 characters). Give html, text or both."
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "location": "body",
+          "description": "Plain-text body (max 100,000 characters). Give html, text or both."
         },
         {
           "name": "contactId",
           "type": "string",
           "location": "body",
-          "description": "Contact id",
+          "description": "The CRM contact this email is sent to and logged against (UUID)",
           "required": true
         },
         {
-          "name": "scheduledAt",
+          "name": "replyTo",
           "type": "string",
           "location": "body",
-          "description": "Scheduled at"
+          "description": "Override the Reply-To header (max 254 characters after trimming)"
         },
         {
-          "name": "subject",
+          "name": "sendDomainId",
           "type": "string",
           "location": "body",
-          "description": "Subject",
-          "required": true
+          "description": "Send from a specific verified extra sending domain (UUID, see GET /email-domains)"
+        },
+        {
+          "name": "dry_run",
+          "type": "bool",
+          "location": "query",
+          "description": "Validate the mutation without persisting changes."
+        },
+        {
+          "name": "sandbox",
+          "type": "bool",
+          "location": "query",
+          "description": "Run the mutation in sandbox mode."
         }
       ]
     },
     {
       "name": "email_send-bulk",
-      "description": "Send bulk emails. Required: body, contactIds, subject. Optional: bodyHtml.",
+      "description": "Send bulk emails. Required: contactIds. Optional: subject, text, html, templateId, subjectEdited, replyTo, sendDomainId, dry_run, sandbox.",
       "method": "POST",
       "path": "/email/send-bulk",
       "params": [
         {
-          "name": "body",
-          "type": "string",
-          "location": "body",
-          "description": "Body",
-          "required": true
-        },
-        {
-          "name": "bodyHtml",
-          "type": "string",
-          "location": "body",
-          "description": "Body html"
-        },
-        {
           "name": "contactIds",
           "type": "string_csv_array",
           "location": "body",
-          "description": "Contact ids",
+          "description": "Contact ids (UUIDs)",
           "required": true
         },
         {
           "name": "subject",
           "type": "string",
           "location": "body",
-          "description": "Subject",
-          "required": true
+          "description": "Email subject. Required unless templateId is given."
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "location": "body",
+          "description": "Plain-text body. Falls back to the template's text when templateId is given."
+        },
+        {
+          "name": "html",
+          "type": "string",
+          "location": "body",
+          "description": "HTML body. Falls back to the template's HTML when templateId is given."
+        },
+        {
+          "name": "templateId",
+          "type": "string",
+          "location": "body",
+          "description": "An active email template of this account (UUID); its subject and HTML fill what is omitted"
+        },
+        {
+          "name": "subjectEdited",
+          "type": "bool",
+          "location": "body",
+          "description": "With templateId, true sends subject verbatim to every recipient; false lets the template's A/B subject pick apply per recipient. Absent: a supplied subject is sent verbatim."
+        },
+        {
+          "name": "replyTo",
+          "type": "string",
+          "location": "body",
+          "description": "Override the Reply-To header"
+        },
+        {
+          "name": "sendDomainId",
+          "type": "string",
+          "location": "body",
+          "description": "Send from a specific verified extra sending domain (UUID)"
+        },
+        {
+          "name": "dry_run",
+          "type": "bool",
+          "location": "query",
+          "description": "Validate the mutation without persisting changes."
+        },
+        {
+          "name": "sandbox",
+          "type": "bool",
+          "location": "query",
+          "description": "Run the mutation in sandbox mode."
         }
       ]
     },
