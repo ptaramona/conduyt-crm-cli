@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -24,9 +23,13 @@ const (
 	esDomain   = "6f1c0000-0000-4000-8000-0000000000a4"
 )
 
-// runEmailSend runs the command against a fake API. stdin non-empty replaces os.Stdin for the run (the generated --stdin path
-// reads os.Stdin). It returns the decoded JSON body of the one request, the number of requests and the command error.
+// runEmailSend runs the command against a fake API with stdin fed through cmd.SetIn. It returns the decoded JSON body of the one
+// request, the number of requests and the command error.
 func runEmailSend(t *testing.T, newCmd func(*rootFlags) *cobra.Command, wantPath, stdin string, args ...string) (body map[string]any, hits int, err error) {
+	return runEmailSendWith(t, newCmd, &rootFlags{noCache: true}, wantPath, stdin, args...)
+}
+
+func runEmailSendWith(t *testing.T, newCmd func(*rootFlags) *cobra.Command, rf *rootFlags, wantPath, stdin string, args ...string) (body map[string]any, hits int, err error) {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits++
@@ -45,23 +48,10 @@ func runEmailSend(t *testing.T, newCmd func(*rootFlags) *cobra.Command, wantPath
 	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
 	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
 	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
-	if stdin != "" {
-		f := filepath.Join(t.TempDir(), "stdin.json")
-		if e := os.WriteFile(f, []byte(stdin), 0o600); e != nil {
-			t.Fatal(e)
-		}
-		in, e := os.Open(f)
-		if e != nil {
-			t.Fatal(e)
-		}
-		defer in.Close()
-		old := os.Stdin
-		os.Stdin = in
-		defer func() { os.Stdin = old }()
-	}
-	cmd := newCmd(&rootFlags{noCache: true})
+	cmd := newCmd(rf)
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
+	cmd.SetIn(strings.NewReader(stdin))
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	return
@@ -193,5 +183,67 @@ func TestEmailSendBulkStdinPassesKnownKeysAndRefusesUnknownOnes(t *testing.T) {
 	_, hits, err = runEmailSend(t, newEmailSendBulkCmd, "/email/send-bulk", `{"contactIds":["`+esContact+`"],"subject":"S","body":"old"}`, "--stdin")
 	if err == nil || hits != 0 || !strings.Contains(err.Error(), `"body"`) || !strings.Contains(err.Error(), "accepted keys: batchDelayMs, contactIds") {
 		t.Errorf("hits=%d err=%v, want a local refusal naming body and listing the accepted keys", hits, err)
+	}
+}
+
+// Go CLI #324 r2: --dry-run validates exactly like a real send and previews only a body that would be posted. A dry run never
+// reaches the server (hits stays 0), so the signal is the error: required and empty values are refused, a valid body is not.
+func TestEmailSendDryRunValidatesLikeARealSend(t *testing.T) {
+	dry := func() *rootFlags { return &rootFlags{noCache: true, dryRun: true} }
+	run := func(newCmd func(*rootFlags) *cobra.Command, path string, args ...string) (int, error) {
+		_, hits, err := runEmailSendWith(t, newCmd, dry(), path, "", args...)
+		return hits, err
+	}
+	sendBad := map[string][]string{
+		"no contact":          {"--to", "a@b.co", "--subject", "S", "--html", "x"},
+		"no to":               {"--contact-id", esContact, "--subject", "S", "--html", "x"},
+		"no subject":          {"--contact-id", esContact, "--to", "a@b.co", "--html", "x"},
+		"no body":             {"--contact-id", esContact, "--to", "a@b.co", "--subject", "S"},
+		"empty body":          {"--contact-id", esContact, "--to", "a@b.co", "--subject", "S", "--html", "", "--text", ""},
+		"empty to":            {"--contact-id", esContact, "--to", "", "--subject", "S", "--html", "x"},
+		"empty subject":       {"--contact-id", esContact, "--to", "a@b.co", "--subject", "", "--html", "x"},
+		"empty contact":       {"--contact-id", "", "--to", "a@b.co", "--subject", "S", "--html", "x"},
+		"subject past limit":  {"--contact-id", esContact, "--to", "a@b.co", "--subject", strings.Repeat("s", 999), "--html", "x"},
+		"bad send domain":     {"--contact-id", esContact, "--to", "a@b.co", "--subject", "S", "--html", "x", "--send-domain-id", "nope"},
+		"reply-to past limit": {"--contact-id", esContact, "--to", "a@b.co", "--subject", "S", "--html", "x", "--reply-to", strings.Repeat("r", 255)},
+	}
+	for name, args := range sendBad {
+		if hits, err := run(newEmailSendCmd, "/email/send", args...); err == nil || hits != 0 {
+			t.Errorf("send %s: hits=%d err=%v, want a local refusal under --dry-run", name, hits, err)
+		}
+	}
+	if hits, err := run(newEmailSendCmd, "/email/send", "--contact-id", esContact, "--to", "a@b.co", "--subject", "S", "--text", "x"); err != nil || hits != 0 {
+		t.Errorf("valid send under --dry-run: hits=%d err=%v", hits, err)
+	}
+	bulkBad := map[string][]string{
+		"no contact ids":  {"--subject", "S", "--html", "x"},
+		"bad contact id":  {"--contact-ids", "nope", "--subject", "S", "--html", "x"},
+		"bad template id": {"--contact-ids", esContact, "--template-id", "nope"},
+	}
+	for name, args := range bulkBad {
+		if hits, err := run(newEmailSendBulkCmd, "/email/send-bulk", args...); err == nil || hits != 0 {
+			t.Errorf("send-bulk %s: hits=%d err=%v, want a local refusal under --dry-run", name, hits, err)
+		}
+	}
+	if hits, err := run(newEmailSendBulkCmd, "/email/send-bulk", "--contact-ids", esContact, "--template-id", esTemplate); err != nil || hits != 0 {
+		t.Errorf("valid send-bulk under --dry-run: hits=%d err=%v", hits, err)
+	}
+}
+
+// The limits of the live spec hold on the flag path too (the unit test pins each one to the spec).
+func TestEmailSendFlagsRefuseValuesPastTheSpecLimits(t *testing.T) {
+	ok := []string{"--contact-id", esContact, "--to", "a@b.co", "--subject", "S", "--html", "x"}
+	for name, extra := range map[string][]string{
+		"reply-to":       {"--reply-to", strings.Repeat("r", 255)},
+		"send-domain-id": {"--send-domain-id", "nope"},
+	} {
+		_, hits, err := runEmailSend(t, newEmailSendCmd, "/email/send", "", append(append([]string{}, ok...), extra...)...)
+		if err == nil || hits != 0 {
+			t.Errorf("%s: hits=%d err=%v, want a local refusal", name, hits, err)
+		}
+	}
+	_, hits, err := runEmailSend(t, newEmailSendCmd, "/email/send", "", "--contact-id", esContact, "--to", "a@b.co", "--subject", strings.Repeat("s", 999), "--html", "x")
+	if err == nil || hits != 0 {
+		t.Errorf("subject past 998: hits=%d err=%v", hits, err)
 	}
 }

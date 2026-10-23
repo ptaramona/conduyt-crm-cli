@@ -2,8 +2,10 @@ package cliutil
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf16"
 )
 
 // Hand-written (Go CLI #324): the request-body keys POST /email/send and POST /email/send-bulk accept in the live public
@@ -66,20 +68,81 @@ func quoteAll(in []string) []string {
 	return out
 }
 
-// CheckEmailSendFlags checks what the live spec requires of the flag-built POST /email/send body, so a body the CLI builds
-// is one the spec accepts: to (contains "@"), a non-blank subject, a contact UUID, and at least one of html or text.
-func CheckEmailSendFlags(to, subject, contactID, html, text string) error {
-	if !strings.Contains(to, "@") {
+// The request-body limits of POST /email/send in the live spec. Constants, not parsed at run time, so the binary needs no spec file;
+// TestEmailSendLimitsMatchPublicSpec reads maxLength and pattern for each from upstream/openapi.yaml and fails on any difference,
+// so a spec refresh that moves a limit cannot go unnoticed. Lengths are UTF-16 code units, as the spec states.
+const (
+	EmailSendToMax        = 254
+	EmailSendSubjectMax   = 998
+	EmailSendHTMLMax      = 500000
+	EmailSendTextMax      = 100000
+	EmailSendToPattern    = `@`
+	EmailSendSubjectRE    = `\S`
+	EmailSendContactIDRE  = `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
+	EmailSendReplyToRE    = `^\s*(\S(?:.{0,252}\S)?)?\s*$`
+	EmailSendSendDomainRE = `^\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?\s*$`
+)
+
+// jsSpace is the character set of ECMAScript \s. The spec's patterns are JavaScript regular expressions; Go's \s is ASCII only, so
+// a value the spec accepts (padding with a no-break space) must not be refused here.
+const jsSpace = "\\t\\n\\v\\f\\r \\x{00a0}\\x{1680}\\x{2000}-\\x{200a}\\x{2028}\\x{2029}\\x{202f}\\x{205f}\\x{3000}\\x{feff}"
+
+func compileJSPattern(p string) *regexp.Regexp {
+	p = strings.ReplaceAll(p, `\S`, "[^"+jsSpace+"]")
+	p = strings.ReplaceAll(p, `\s`, "["+jsSpace+"]")
+	return regexp.MustCompile(p)
+}
+
+var (
+	emailSendToRE      = compileJSPattern(EmailSendToPattern)
+	emailSendSubjectRE = compileJSPattern(EmailSendSubjectRE)
+	emailSendContactRE = compileJSPattern(EmailSendContactIDRE)
+	emailSendReplyToRE = compileJSPattern(EmailSendReplyToRE)
+	emailSendSendDomRE = compileJSPattern(EmailSendSendDomainRE)
+)
+
+func utf16Len(s string) int { return len(utf16.Encode([]rune(s))) }
+
+// EmailSendFlagBody is what the flags of `email send` would put in the body. HasReplyTo and HasSendDomainID say whether the flag
+// was given (a given empty value is sent and is valid; an absent one is not sent).
+type EmailSendFlagBody struct {
+	To, Subject, ContactID, HTML, Text, ReplyTo, SendDomainID string
+	HasReplyTo, HasSendDomainID                               bool
+}
+
+// CheckEmailSendFlags checks the flag-built POST /email/send body against the live spec, so a body the CLI builds is one the spec
+// accepts: required to, subject, contactId and one of html/text; maxLength and pattern of every field; no unsent junk. It runs for
+// --dry-run too, so a dry run previews only a body a real send would post.
+func CheckEmailSendFlags(b EmailSendFlagBody) error {
+	if !emailSendToRE.MatchString(b.To) {
 		return fmt.Errorf("--to must be an email address (it must contain \"@\")")
 	}
-	if strings.TrimSpace(subject) == "" {
+	if n := utf16Len(b.To); n > EmailSendToMax {
+		return fmt.Errorf("--to is %d characters; the maximum is %d", n, EmailSendToMax)
+	}
+	if !emailSendSubjectRE.MatchString(b.Subject) {
 		return fmt.Errorf("--subject must contain at least one non-whitespace character")
 	}
-	if err := CheckUUID("--contact-id", contactID); err != nil {
-		return err
+	if n := utf16Len(b.Subject); n > EmailSendSubjectMax {
+		return fmt.Errorf("--subject is %d characters; the maximum is %d", n, EmailSendSubjectMax)
 	}
-	if html == "" && text == "" {
+	if !emailSendContactRE.MatchString(b.ContactID) {
+		return fmt.Errorf("--contact-id must be a UUID (got %q)", b.ContactID)
+	}
+	if b.HTML == "" && b.Text == "" {
 		return fmt.Errorf("give --html, --text or both: the send needs at least one body")
+	}
+	if n := utf16Len(b.HTML); n > EmailSendHTMLMax {
+		return fmt.Errorf("--html is %d characters; the maximum is %d", n, EmailSendHTMLMax)
+	}
+	if n := utf16Len(b.Text); n > EmailSendTextMax {
+		return fmt.Errorf("--text is %d characters; the maximum is %d", n, EmailSendTextMax)
+	}
+	if b.HasReplyTo && !emailSendReplyToRE.MatchString(b.ReplyTo) {
+		return fmt.Errorf("--reply-to must be an email address of at most 254 characters after trimming (got %q)", b.ReplyTo)
+	}
+	if b.HasSendDomainID && !emailSendSendDomRE.MatchString(b.SendDomainID) {
+		return fmt.Errorf("--send-domain-id must be a UUID or blank (got %q)", b.SendDomainID)
 	}
 	return nil
 }

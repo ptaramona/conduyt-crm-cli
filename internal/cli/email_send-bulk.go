@@ -37,11 +37,11 @@ other key is refused locally and nothing is sent.`,
 			// Bare invocation of a command with required input prints help
 			// instead of pflag's terse "required flag not set" error. Optional-
 			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("contact-ids") && !flags.dryRun {
+				if !cmd.Flags().Changed("contact-ids") {
 					return fmt.Errorf("required flag \"%s\" not set", "contact-ids")
 				}
 			}
@@ -53,7 +53,7 @@ other key is refused locally and nothing is sent.`,
 			params := map[string]string{}
 			var body any
 			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
+				stdinData, err := io.ReadAll(cmd.InOrStdin())
 				if err != nil {
 					return fmt.Errorf("reading stdin: %w", err)
 				}

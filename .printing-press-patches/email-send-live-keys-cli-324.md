@@ -24,6 +24,12 @@ is always sent, including an empty one. Not exposed as flags (reachable with --s
 when non-empty), `batchDelayMs` (type undeclared in the live spec), the `Idempotency-Key` header and the `dry_run` / `sandbox` query
 parameters (MCP executor binds `dry_run` and `sandbox`; this print has no header binding).
 
+Round 2: `--dry-run` runs the same required-field and limit checks as a real send (no `!flags.dryRun` exception on either command), so
+a preview is always a body that would be posted. `CheckEmailSendFlags` also enforces the spec's maxLength / pattern for to, subject,
+html, text, contactId, replyTo and sendDomainId; the constants live in `email_send_guards.go` and `TestEmailSendLimitsMatchPublicSpec`
+pins every one to `upstream/openapi.yaml`. `/email/send-bulk` declares no maxLength or pattern in the live spec (only `format: uuid`
+on ids, which are checked), so it has no further limits to mirror. `--stdin` reads `cmd.InOrStdin()`.
+
 ## Hand-fixes a reprint must keep
 
 - `internal/cliutil/email_send_guards.go`: `EmailSendKeys` / `EmailSendBulkKeys` and the checks. The pass-through modes (`--stdin` JSON on

@@ -38,23 +38,26 @@ replyTo, cc, bcc, sendDomainId. Any other key is refused locally and nothing is 
 			// Bare invocation of a command with required input prints help
 			// instead of pflag's terse "required flag not set" error. Optional-
 			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
+				if !cmd.Flags().Changed("contact-id") {
 					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
 				}
-				if !cmd.Flags().Changed("to") && !flags.dryRun {
+				if !cmd.Flags().Changed("to") {
 					return fmt.Errorf("required flag \"%s\" not set", "to")
 				}
-				if !cmd.Flags().Changed("subject") && !flags.dryRun {
+				if !cmd.Flags().Changed("subject") {
 					return fmt.Errorf("required flag \"%s\" not set", "subject")
 				}
-				if !flags.dryRun {
-					if err := cliutil.CheckEmailSendFlags(bodyTo, bodySubject, bodyContactId, bodyHtml, bodyText); err != nil {
-						return err
-					}
+				// Hand-written (Go CLI #324 r2): --dry-run validates exactly like a real send, so it previews only a body that would be posted.
+				if err := cliutil.CheckEmailSendFlags(cliutil.EmailSendFlagBody{
+					To: bodyTo, Subject: bodySubject, ContactID: bodyContactId, HTML: bodyHtml, Text: bodyText,
+					ReplyTo: bodyReplyTo, SendDomainID: bodySendDomainId,
+					HasReplyTo: cmd.Flags().Changed("reply-to"), HasSendDomainID: cmd.Flags().Changed("send-domain-id"),
+				}); err != nil {
+					return err
 				}
 			}
 			path := "/email/send"
@@ -65,7 +68,7 @@ replyTo, cc, bcc, sendDomainId. Any other key is refused locally and nothing is 
 			params := map[string]string{}
 			var body any
 			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
+				stdinData, err := io.ReadAll(cmd.InOrStdin())
 				if err != nil {
 					return fmt.Errorf("reading stdin: %w", err)
 				}
