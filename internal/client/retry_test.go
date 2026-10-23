@@ -1044,7 +1044,7 @@ func Test429WithResettingBodyStillPacesAndIsNotANetworkFailure(t *testing.T) {
 }
 
 func TestMaskedBodyHidesTokenAcrossTheBoundaryAndInterruptedReads(t *testing.T) {
-	const token = "sk_live_TESTKEY1"
+	const token = "sk-ABCDEFGHIJKLMNOPQRSTUVWX1234"
 	c := newRetryClient("http://example.invalid", nil)
 	cred := "Bearer " + token
 
@@ -1077,7 +1077,7 @@ func TestMaskedBodyHidesTokenAcrossTheBoundaryAndInterruptedReads(t *testing.T) 
 
 func TestInterruptedErrorBodyDoesNotLeakTokenPrefix(t *testing.T) {
 	retryHarness(t, 0)
-	const token = "sk_live_TESTKEY1"
+	const token = "sk-ABCDEFGHIJKLMNOPQRSTUVWX1234"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", "1000")
 		w.WriteHeader(503)
@@ -1095,7 +1095,7 @@ func TestInterruptedErrorBodyDoesNotLeakTokenPrefix(t *testing.T) {
 	defer cancel()
 	_, status, err := c.do(ctx, "GET", "/x", nil, nil, nil)
 	var apiErr *APIError
-	if status != 503 || !errors.As(err, &apiErr) || strings.Contains(apiErr.Body, "sk_liv") || strings.Contains(err.Error(), "sk_liv") {
+	if status != 503 || !errors.As(err, &apiErr) || strings.Contains(apiErr.Body, "ABCDEFGH") || strings.Contains(err.Error(), "ABCDEFGH") {
 		t.Fatalf("status=%d err=%v, want a masked 503 body", status, err)
 	}
 }
@@ -1314,7 +1314,7 @@ func TestCookieJarAndXConduytKeyAreMaskedFromTheSentRequest(t *testing.T) {
 }
 
 func TestPrefixMaskIsFixedAndStaysInTheBound(t *testing.T) {
-	const token = "sk_live_TESTKEY1"
+	const token = "sk-ABCDEFGHIJKLMNOPQRSTUVWX1234"
 	c := newRetryClient("http://example.invalid", nil)
 	got := c.maskedBody([]byte(`{"echo":"`+token[:10]), true, token)
 	if !strings.HasSuffix(got, `"echo":"****`) || strings.Contains(got, token[len(token)-4:]) {
@@ -1561,7 +1561,7 @@ func TestHTTPSToHTTPRedirectOnTheSameHostDropsEverything(t *testing.T) {
 }
 
 func TestBodyStaysWithinTheBoundAfterTailMasking(t *testing.T) {
-	const token = "sk_live_TESTKEY1"
+	const token = "sk-ABCDEFGHIJKLMNOPQRSTUVWX1234"
 	c := newRetryClient("http://example.invalid", nil)
 	for _, n := range []int{3, 4, 10} {
 		in := strings.Repeat("a", 4096-n) + token[:n] + strings.Repeat("b", 500)
