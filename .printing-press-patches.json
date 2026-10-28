@@ -41,6 +41,21 @@
       ],
       "validated_outcome": "A 308 to another origin for a keyed POST sends nothing; an echoed Authorization, X-API-Key, cookie, password, token array, Location/Referer token or screen-share code never appears in APIError, err.Error(), stderr, dry-run or the JSON envelopes; with more than 256 secrets the output is withheld.",
       "upstream_issue": "To file against mvanhorn/cli-printing-press: client-level redirect policy and secret redaction as generator features; path-parameter secrecy as spec metadata (x-secret) so generated envelopes mask it."
+    },
+    {
+      "id": "slack-settings-typed-body-578",
+      "summary": "integrations post-slack-settings takes typed --channel and --notify-events flags (board #578; app route changed under small563). A flag that was not passed is not sent (keep); an explicit empty value (--notify-events \"\" or =, --channel \"\") is sent as [] / \"\" via Changed() (clear); Long states keep / clear / 400; --stdin passes the body through untouched and reads cmd.InOrStdin(). spec.yaml and upstream/openapi.yaml carry the live typed requestBody for this one operation only (the rest of the live document, 98 more operations, is a separate reprint). Prose note: .printing-press-patches/slack-settings-typed-body-578.md.",
+      "reason": "The generated command was printed from the untyped body, so it offered only --stdin; a reprint from the untyped spec, or a hand edit that drops Changed(), would silently send nothing or drop the explicit empty list, which the API reads as clear-every-event.",
+      "files": [
+        "internal/cli/integrations_post-slack-settings.go",
+        "internal/cli/integrations_post_slack_settings_test.go",
+        "internal/cli/slack_settings_spec_parity_test.go",
+        "spec.yaml",
+        "upstream/openapi.yaml",
+        "tools-manifest.json"
+      ],
+      "validated_outcome": "Wire body is exactly the flags passed ({}, {channel}, {notifyEvents:[]} for an explicit empty value, both); --stdin bodies (including a non-array notifyEvents) reach the API unchanged for its 400; spec.yaml and upstream/openapi.yaml requestBody are deep-equal and typed; TestSpecMatchesUpstreamPublicAPI, go build, go test ./... and go vet pass.",
+      "upstream_issue": "None: the generator already emits typed flags from a typed body; only Long, the Changed()-gated empty-list send and InOrStdin are local."
     }
   ]
 }

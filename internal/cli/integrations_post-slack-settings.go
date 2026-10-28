@@ -20,6 +20,7 @@ func newIntegrationsPostSlackSettingsCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "post-slack-settings",
 		Short: "Create / invoke integrations slack settings",
+		// PATCH(slack-settings-typed-body-578): Long states the keep / clear / 400 semantics; see .printing-press-patches.json.
 		Long: `Create / invoke integrations slack settings.
 
 Each field is optional and a field you leave out keeps its stored value:
@@ -41,7 +42,7 @@ Each field is optional and a field you leave out keeps its stored value:
 			params := map[string]string{}
 			var body any
 			if stdinBody {
-				stdinData, err := io.ReadAll(cmd.InOrStdin())
+				stdinData, err := io.ReadAll(cmd.InOrStdin()) // PATCH(slack-settings-typed-body-578): testable stdin, same as os.Stdin by default
 				if err != nil {
 					return fmt.Errorf("reading stdin: %w", err)
 				}
@@ -53,10 +54,11 @@ Each field is optional and a field you leave out keeps its stored value:
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				// PATCH(slack-settings-typed-body-578): an explicit empty --channel is sent (clear the destination)
 				if cmd.Flags().Changed("channel") || bodyChannel != "" {
 					bodyMap["channel"] = bodyChannel
 				}
-				// Changed(), not len(): an explicit empty list must reach the API as [] (clear every event)
+				// PATCH(slack-settings-typed-body-578): Changed(), not len(): an explicit empty list must reach the API as [] (clear every event)
 				if cmd.Flags().Changed("notify-events") || len(bodyNotifyEvents) > 0 {
 					if bodyNotifyEvents == nil {
 						bodyNotifyEvents = []string{}
