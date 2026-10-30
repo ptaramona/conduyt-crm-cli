@@ -31,20 +31,60 @@ func specArrayQueryParams(t *testing.T) []arrayQueryParam {
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
 		t.Fatal(err)
 	}
+	// resolve follows a $ref chain; a ref cycle ends the chain (nil) instead of looping.
 	resolve := func(v any) map[string]any {
 		m, _ := v.(map[string]any)
+		seen := map[string]bool{}
 		for m != nil {
 			ref, ok := m["$ref"].(string)
 			if !ok {
 				break
 			}
+			if seen[ref] {
+				return nil
+			}
+			seen[ref] = true
 			var node any = doc
 			for _, k := range strings.Split(strings.TrimPrefix(ref, "#/"), "/") {
-				node = node.(map[string]any)[k]
+				nm, ok := node.(map[string]any)
+				if !ok {
+					return nil
+				}
+				node = nm[k]
 			}
 			m, _ = node.(map[string]any)
 		}
 		return m
+	}
+	// isArray reports an array schema, also through oneOf / anyOf / allOf branches and a type list. Cycle protection: a $ref
+	// cycle ends in resolve, and the walk stops at depth 32 (a schema that composes itself through refs).
+	var isArray func(v any, depth int) bool
+	isArray = func(v any, depth int) bool {
+		s := resolve(v)
+		if s == nil || depth > 32 {
+			return false
+		}
+		switch ty := s["type"].(type) {
+		case string:
+			if ty == "array" {
+				return true
+			}
+		case []any:
+			for _, x := range ty {
+				if x == "array" {
+					return true
+				}
+			}
+		}
+		for _, k := range []string{"oneOf", "anyOf", "allOf"} {
+			branches, _ := s[k].([]any)
+			for _, b := range branches {
+				if isArray(b, depth+1) {
+					return true
+				}
+			}
+		}
+		return false
 	}
 	var out []arrayQueryParam
 	for path, item := range doc["paths"].(map[string]any) {
@@ -61,7 +101,7 @@ func specArrayQueryParams(t *testing.T) []arrayQueryParam {
 				if pm == nil || pm["in"] != "query" {
 					continue
 				}
-				if s := resolve(pm["schema"]); s != nil && s["type"] == "array" {
+				if isArray(pm["schema"], 0) {
 					out = append(out, arrayQueryParam{strings.ToUpper(method), path, pm["name"].(string)})
 				}
 			}

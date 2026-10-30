@@ -28,7 +28,6 @@ func newUsersCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newUsersUpdateCmd(flags))
 	cmd.AddCommand(newUsersAvatarCmd(flags))
 	cmd.AddCommand(newUsersDeactivateCmd(flags))
-	cmd.AddCommand(newUsersInviteCmd(flags))
 	cmd.AddCommand(newUsersNotificationsCmd(flags))
 	cmd.AddCommand(newUsersReactivateCmd(flags))
 	cmd.AddCommand(newUsersResetPasswordCmd(flags))

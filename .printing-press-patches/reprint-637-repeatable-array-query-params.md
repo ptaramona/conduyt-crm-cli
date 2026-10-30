@@ -17,3 +17,6 @@ was printed as a flag named `cf-key` that sent the literal key `cf[<key>]`, whic
 command, and the `cf[<key>]` bindings are removed from `internal/mcp/code_orch.go` and `tools-manifest.json`. The documented filter
 stays `--cf` (`cf`: comma-separated `fieldKey=value` pairs or a JSON object; values exact, `__notempty__` or `__empty__`).
 Pinned by `TestLiteralCfKeyFlagIsAbsent`. The MCP executor already sends array values as repeated keys (`codeOrchAddArrayQuery`).
+
+Round 4: the spec scan resolves $ref chains with cycle protection and finds array schemas through oneOf / anyOf / allOf and type lists
+(still 9 parameters on this spec.yaml).

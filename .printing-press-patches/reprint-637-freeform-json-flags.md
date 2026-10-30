@@ -27,3 +27,6 @@ A reprint must keep:
   `TestEmailsCreateTemplateTypedFlagsAsBefore`).
 
 Upstream issue (for the board, not filed): keep a whole-object JSON flag next to the sub-property flags when a property is an object.
+
+Round 4: every row of the test now pins the mixing refusal (forms `--settings-consent-link-url`, integrations
+`--credentials-api-key`, scoring-rules `--condition-field` added); a row without a sub-flag fails the test.

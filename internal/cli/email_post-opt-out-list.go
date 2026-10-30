@@ -19,8 +19,8 @@ func newEmailPostOptOutListCmd(flags *rootFlags) *cobra.Command {
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:         "post-opt-out-list",
-		Aliases:     []string{"create"},
+		Use: "post-opt-out-list",
+		// PATCH(reprint-637-users-invite): no generated "create" alias; `email create` stays the pre-reprint alias of `email send`
 		Short:       "Create / invoke email opt-out-list",
 		Example:     "  conduyt-crm-pp-cli email post-opt-out-list",
 		Annotations: map[string]string{"pp:endpoint": "email.post-opt-out-list", "pp:method": "POST", "pp:path": "/email/opt-out-list"},

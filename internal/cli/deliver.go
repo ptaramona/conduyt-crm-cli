@@ -6,6 +6,7 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -113,4 +114,30 @@ func deliverWebhook(url string, body []byte, compact bool) error {
 		return fmt.Errorf("webhook returned %s", resp.Status)
 	}
 	return nil
+}
+
+// finishDelivery hands a buffered command output to its --deliver sink after a successful run.
+// PATCH(reprint-637-server-dry-run): under the global --dry-run a webhook sink is never called; the POST it would make is
+// printed (same shape as the client's dry-run preview) and nothing is sent. stdout and file sinks are local and still run.
+func finishDelivery(flags *rootFlags, stderr io.Writer) error {
+	if flags.deliverBuf == nil {
+		return nil
+	}
+	if flags.dryRun && flags.deliverSink.Scheme == "webhook" {
+		previewWebhookDelivery(stderr, flags.deliverSink.Target, flags.deliverBuf.Bytes(), flags.compact)
+		return nil
+	}
+	if derr := Deliver(flags.deliverSink, flags.deliverBuf.Bytes(), flags.compact); derr != nil {
+		fmt.Fprintln(stderr, deliverFailureWarning(flags.deliverSink, derr))
+		return derr
+	}
+	return nil
+}
+
+func previewWebhookDelivery(w io.Writer, url string, body []byte, compact bool) {
+	contentType := "application/json"
+	if compact {
+		contentType = "application/x-ndjson"
+	}
+	fmt.Fprintf(w, "POST %s\n  Content-Type: %s\n  Body:\n%s\n\n(dry run - webhook delivery not sent)\n", client.MaskURL(url), contentType, strings.TrimRight(string(body), "\n"))
 }

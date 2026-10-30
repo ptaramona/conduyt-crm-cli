@@ -111,9 +111,8 @@ func Execute() (retErr error) {
 			}
 		}
 	}
-	if err == nil && flags.deliverBuf != nil {
-		if derr := Deliver(flags.deliverSink, flags.deliverBuf.Bytes(), flags.compact); derr != nil {
-			fmt.Fprintln(os.Stderr, deliverFailureWarning(flags.deliverSink, derr))
+	if err == nil {
+		if derr := finishDelivery(&flags, os.Stderr); derr != nil {
 			return derr
 		}
 	}

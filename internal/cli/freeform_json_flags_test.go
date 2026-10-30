@@ -27,10 +27,10 @@ func TestFreeformJSONFlagsLandInTheBodyAsBefore(t *testing.T) {
 		{"bulk edit-contacts", newBulkEditContactsCmd, []string{"--ids", "a"}, "updates", "updates", "--updates-city"},
 		{"bulk edit-deals", newBulkEditDealsCmd, []string{"--ids", "a"}, "updates", "updates", "--updates-title"},
 		{"contacts create", newContactsCreateCmd, []string{"--first-name", "f"}, "custom-fields", "customFields", "--custom-fields-website"},
-		{"forms create", newFormsCreateCmd, []string{"--name", "n", "--slug", "s", "--fields", "[]"}, "settings", "settings", ""},
+		{"forms create", newFormsCreateCmd, []string{"--name", "n", "--slug", "s", "--fields", "[]"}, "settings", "settings", "--settings-consent-link-url"},
 		{"integrations connect --config", newIntegrationsConnectCmd, []string{"slack"}, "config", "config", "--config-channel"},
-		{"integrations connect --credentials", newIntegrationsConnectCmd, []string{"slack"}, "credentials", "credentials", ""},
-		{"scoring-rules create", newScoringRulesCreateCmd, []string{"--name", "n", "--points", "5"}, "condition", "condition", ""},
+		{"integrations connect --credentials", newIntegrationsConnectCmd, []string{"slack"}, "credentials", "credentials", "--credentials-api-key"},
+		{"scoring-rules create", newScoringRulesCreateCmd, []string{"--name", "n", "--points", "5"}, "condition", "condition", "--condition-field"},
 	}
 	for _, tc := range cases {
 		cmd := tc.build(&rootFlags{})
@@ -50,6 +50,7 @@ func TestFreeformJSONFlagsLandInTheBodyAsBefore(t *testing.T) {
 			t.Errorf("%s --%s: malformed JSON err = %v", tc.name, tc.flag, err)
 		}
 		if tc.sub == "" {
+			t.Errorf("%s: no sub-flag in the row; every restored flag pins its mixing refusal", tc.name)
 			continue
 		}
 		subFlag := strings.TrimPrefix(tc.sub, "--")

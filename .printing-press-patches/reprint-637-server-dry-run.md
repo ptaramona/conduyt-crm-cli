@@ -21,3 +21,17 @@ any local `--dry-run`, requires `--server-dry-run` on every command whose spec.y
 the two email operations), and runs each of them with the global `--dry-run` against a counting server that must see zero requests.
 
 Upstream issue (for the board, not filed): never emit a local flag whose name a persistent root flag already uses.
+
+## Round 4 (Codex reprint637-r1 P1-1): the two direct HTTP paths
+
+- `feedback --send` (or the auto-send env) under the global `--dry-run` records nothing locally and sends nothing; it prints the POST
+  it would make on stderr in the client's preview shape (`POST <masked endpoint>`, `  Body:`, the indented entry JSON,
+  `(dry run - no request sent)`) and says "dry run: feedback not recorded and not sent" on stdout (`--json`: `recorded: false,
+  dry_run: true, upstream: {sent: false, would_send}`). internal/cli/feedback.go.
+- `--deliver webhook:<url>` under the global `--dry-run` never calls the webhook: `finishDelivery` (internal/cli/deliver.go, called
+  from Execute in root.go) prints `POST <masked url>`, `  Content-Type: ...`, `  Body:`, the buffered output and
+  `(dry run - webhook delivery not sent)` on stderr. stdout and file sinks are local and still run.
+- Pinned by `TestFeedbackSendUnderDryRunPrintsAndSendsNothing` and `TestWebhookDeliveryUnderDryRunPrintsAndSendsNothing` (counting
+  server: zero requests, a successful run, the printed preview, and a control run without `--dry-run` that does send once).
+  `TestNoLocalDryRunAndServerDryRunIsBound` now also requires every one of the 161 previews to succeed and print
+  `<METHOD> <base>/api/v1...` with `dry_run=true` and `(dry run - no request sent)`.

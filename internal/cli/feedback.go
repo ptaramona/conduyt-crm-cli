@@ -137,6 +137,27 @@ maintainer sees it.`,
 				AgentID:   os.Getenv("AGENT_ID"),
 				Timestamp: time.Now().UTC(),
 			}
+			// PATCH(reprint-637-server-dry-run): the global --dry-run has no side effect here either: nothing is recorded, and the
+			// upstream POST that would be made is printed (same shape as the client's dry-run preview) instead of sent.
+			if flags.dryRun {
+				endpoint := feedbackEndpoint()
+				wouldSend := endpoint != "" && (send || feedbackAutoSend())
+				if wouldSend {
+					body, _ := json.MarshalIndent(entry, "", "  ")
+					fmt.Fprintf(cmd.ErrOrStderr(), "POST %s\n  Body:\n%s\n\n(dry run - no request sent)\n", client.MaskURL(endpoint), body)
+				}
+				if flags.asJSON {
+					return printJSONFiltered(cmd.OutOrStdout(), map[string]any{
+						"recorded":  false,
+						"dry_run":   true,
+						"truncated": truncated,
+						"upstream":  map[string]any{"sent": false, "would_send": wouldSend},
+						"entry":     entry,
+					}, flags)
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), "dry run: feedback not recorded and not sent")
+				return nil
+			}
 			if err := appendFeedback(entry); err != nil {
 				return err
 			}

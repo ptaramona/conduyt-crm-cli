@@ -124,8 +124,131 @@ func dryRunPreviewSendsNothing(t *testing.T, c *cobra.Command, chain []string) {
 	root.SetArgs(args)
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)
-	err := root.Execute()
+	var err error
+	preview := captureStderr(t, func() { err = root.Execute() })
 	if n := atomic.LoadInt32(&hits); n != 0 {
 		t.Errorf("%s --dry-run sent %d request(s) (err %v), want none", c.CommandPath(), n, err)
+	}
+	if err != nil {
+		t.Errorf("%s --dry-run: %v, want a successful preview", c.CommandPath(), err)
+		return
+	}
+	method := c.Annotations["pp:method"]
+	if !strings.Contains(preview, method+" "+srv.URL+"/api/v1") || !strings.Contains(preview, "dry_run=true") || !strings.Contains(preview, "(dry run - no request sent)") {
+		t.Errorf("%s --dry-run printed no %s preview carrying dry_run=true:\n%s", c.CommandPath(), method, preview)
+	}
+}
+
+// captureStderr returns what fn wrote to os.Stderr (the client's dry-run preview writes there).
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := os.Stderr
+	os.Stderr = w
+	done := make(chan string)
+	go func() {
+		b, _ := io.ReadAll(r)
+		done <- string(b)
+	}()
+	defer func() { os.Stderr = orig }()
+	fn()
+	_ = w.Close()
+	os.Stderr = orig
+	return <-done
+}
+
+// countingServer counts every request it receives.
+func countingServer(t *testing.T) (*httptest.Server, *int32) {
+	t.Helper()
+	var hits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+	return srv, &hits
+}
+
+func isolateCLIEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+	t.Setenv("CONDUYT_CRM_NO_LEARN", "true")
+	t.Setenv("HOME", t.TempDir())
+}
+
+// PATCH(reprint-637-server-dry-run): `feedback --send` under the global --dry-run prints the POST it would make and sends nothing.
+func TestFeedbackSendUnderDryRunPrintsAndSendsNothing(t *testing.T) {
+	srv, hits := countingServer(t)
+	isolateCLIEnv(t)
+	t.Setenv("CONDUYT_CRM_FEEDBACK_ENDPOINT", srv.URL+"/feedback")
+	root := newRootCmd(&rootFlags{})
+	var out, errOut strings.Builder
+	root.SetOut(&out)
+	root.SetErr(&errOut)
+	root.SetArgs([]string{"feedback", "--send", "--dry-run", "flag names are hard to guess"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("feedback --send --dry-run: %v", err)
+	}
+	if n := atomic.LoadInt32(hits); n != 0 {
+		t.Errorf("feedback --send --dry-run sent %d request(s), want none", n)
+	}
+	for _, want := range []string{"POST " + srv.URL + "/feedback", `"text": "flag names are hard to guess"`, "(dry run - no request sent)"} {
+		if !strings.Contains(errOut.String(), want) {
+			t.Errorf("preview is missing %q:\n%s", want, errOut.String())
+		}
+	}
+	if !strings.Contains(out.String(), "dry run: feedback not recorded and not sent") {
+		t.Errorf("stdout = %q", out.String())
+	}
+	// control: without --dry-run the same invocation does reach the endpoint
+	root = newRootCmd(&rootFlags{})
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs([]string{"feedback", "--send", "flag names are hard to guess"})
+	if err := root.Execute(); err != nil || atomic.LoadInt32(hits) != 1 {
+		t.Errorf("control run: err %v, %d request(s), want 1", err, atomic.LoadInt32(hits))
+	}
+}
+
+// PATCH(reprint-637-server-dry-run): `--deliver webhook:<url>` under the global --dry-run prints the delivery it would make and
+// sends nothing.
+func TestWebhookDeliveryUnderDryRunPrintsAndSendsNothing(t *testing.T) {
+	srv, hits := countingServer(t)
+	isolateCLIEnv(t)
+	run := func(dry bool) (string, error) {
+		f := &rootFlags{}
+		root := newRootCmd(f)
+		root.SetOut(io.Discard)
+		root.SetErr(io.Discard)
+		args := []string{"--deliver", "webhook:" + srv.URL + "/hook", "feedback", "hello"}
+		if dry {
+			args = append([]string{"--dry-run"}, args...)
+		}
+		root.SetArgs(args)
+		if err := root.Execute(); err != nil {
+			return "", err
+		}
+		var errOut strings.Builder
+		err := finishDelivery(f, &errOut)
+		return errOut.String(), err
+	}
+	preview, err := run(true)
+	if err != nil {
+		t.Fatalf("--dry-run --deliver webhook: %v", err)
+	}
+	if n := atomic.LoadInt32(hits); n != 0 {
+		t.Errorf("--dry-run --deliver webhook sent %d request(s), want none", n)
+	}
+	for _, want := range []string{"POST " + srv.URL + "/hook", "Content-Type: application/json", "Body:", "dry run: feedback not recorded and not sent", "(dry run - webhook delivery not sent)"} {
+		if !strings.Contains(preview, want) {
+			t.Errorf("preview is missing %q:\n%s", want, preview)
+		}
+	}
+	// control: without --dry-run the webhook is called once
+	if _, err := run(false); err != nil || atomic.LoadInt32(hits) != 1 {
+		t.Errorf("control run: err %v, %d request(s), want 1", err, atomic.LoadInt32(hits))
 	}
 }

@@ -275,3 +275,19 @@ priority/status defaults, page-size defaults), and request-body properties that 
 - webhooks voice-status --stdin: upstream: request body removed or no longer JSON (content types now ['application/x-www-form-urlencoded', 'multipart/form-data'])
 - webhooks voice-voicemail --stdin: upstream: request body removed or no longer JSON (content types now ['application/x-www-form-urlencoded', 'multipart/form-data'])
 - workflows test workflow --contact-id: upstream: body property dropped (new body keys: sampleData)
+
+
+## Round 4 (Codex reprint637-r1): reachability and duplicate commands
+
+- `users invite`: the press names both POST /users/invite and the invite sub-resource group (cancel, resend) `users invite` and kept
+  only the group, so the endpoint was never reachable from the CLI (true since the July print). The endpoint command keeps the press's
+  own name and carries the two children: `users invite --email <e> --role admin|member [--first-name --last-name --phone --extension
+  --permissions | --stdin]` runs POST /users/invite; `users invite post-users-id-cancel <id>` / `post-users-id-resend <id>` are
+  unchanged; bare `users invite` prints help (listing both children). internal/cli/users_invite.go, `// PATCH(reprint-637-users-invite)`.
+- Duplicate AddCommand removed: `contacts duplicate-proposals` (contacts.go; the second registration came from the reprint merge) and
+  `users invite` (users.go).
+- Duplicate alias removed: the generated `email post-opt-out-list` carried the alias `create`, which `email send` has had since before
+  the reprint; cobra resolved `email create` to the new command. The generated alias is dropped.
+- Pinned by `internal/cli/command_tree_test.go`: `TestEverySpecOperationHasExactlyOneCommand` (943/943 non-OPTIONS operations, each
+  through exactly one command annotation; 942/943 without the users invite fix) and `TestSiblingCommandNamesAreUnique` (names and
+  aliases unique at every level of the tree).

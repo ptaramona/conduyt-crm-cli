@@ -153,7 +153,7 @@
     },
     {
       "id": "reprint-637-server-dry-run",
-      "summary": "The API dry_run query parameter is the local flag --server-dry-run on all 161 commands that have it (plus calls link call-to-contact and imports repair post-imports-id for their body dry-run); no command registers a local --dry-run (import <resource> uses the global one), so the global --dry-run always prints and sends nothing. email send/send-bulk unchanged (exempt). Prose note: .printing-press-patches/reprint-637-server-dry-run.md.",
+      "summary": "The API dry_run query parameter is the local flag --server-dry-run on all 161 commands that have it (plus calls link call-to-contact and imports repair post-imports-id for their body dry-run); no command registers a local --dry-run (import <resource> uses the global one), so the global --dry-run always prints and sends nothing. email send/send-bulk unchanged (exempt). Prose note: .printing-press-patches/reprint-637-server-dry-run.md. Round 4: feedback --send and --deliver webhook:<url> under the global --dry-run print the POST they would make and send nothing.",
       "reason": "4.28.0 prints dry_run as a local --dry-run that shadows the global preview, so a requested local preview sent a real request on 153 pre-existing commands after the full reprint.",
       "files": [
         "internal/cli/*.go (161 generated commands, // PATCH(reprint-637-server-dry-run))",
@@ -164,10 +164,27 @@
         "internal/cli/unknown_caller_test.go",
         "tools-manifest.json",
         "README.md",
-        "SKILL.md"
+        "SKILL.md",
+        "internal/cli/feedback.go",
+        "internal/cli/deliver.go",
+        "internal/cli/root.go"
       ],
       "validated_outcome": "No local --dry-run anywhere in the tree; --server-dry-run bound on every dry_run operation but the two email ones; the global --dry-run on each of them sends zero requests. TestNoLocalDryRunAndServerDryRunIsBound.",
       "upstream_issue": "For the press board (not filed): never emit a local flag that shadows a persistent root flag."
+    },
+    {
+      "id": "reprint-637-users-invite",
+      "summary": "`users invite` is the POST /users/invite endpoint command (the press name) and carries the cancel/resend children; duplicate AddCommand registrations (contacts duplicate-proposals, users invite) and the generated `create` alias on email post-opt-out-list (it shadowed email send's) are removed. Prose: reprint-637-full-public-api.md, round 4.",
+      "reason": "The press names the endpoint and the sub-resource group alike and keeps only the group, so POST /users/invite was unreachable from the CLI; cobra keeps duplicate children silently.",
+      "files": [
+        "internal/cli/users_invite.go",
+        "internal/cli/users.go",
+        "internal/cli/contacts.go",
+        "internal/cli/email_post-opt-out-list.go",
+        "internal/cli/command_tree_test.go"
+      ],
+      "validated_outcome": "943/943 spec operations reachable through exactly one command; no duplicate sibling names or aliases. TestEverySpecOperationHasExactlyOneCommand, TestSiblingCommandNamesAreUnique.",
+      "upstream_issue": "For the press board (not filed): an endpoint whose name equals a sub-resource group must become the group command (or a named child), never vanish."
     }
   ]
 }
