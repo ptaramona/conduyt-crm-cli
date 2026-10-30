@@ -228,7 +228,7 @@ func newDripTracksPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagDryRun, "server-dry-run", false, "ask the server to validate without saving; the request IS sent (the API's dry_run query parameter; the global --dry-run prints the request and sends nothing)") // PATCH(reprint-637-server-dry-run)
 	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyChannel, "channel", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyComplianceProfile, "compliance-profile", "", "Read by the handler from the JSON body (the route declares no schema for its type).")

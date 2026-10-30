@@ -271,7 +271,7 @@ func newEmailsUpdateSequenceCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagDryRun, "server-dry-run", false, "ask the server to validate without saving; the request IS sent (the API's dry_run query parameter; the global --dry-run prints the request and sends nothing)") // PATCH(reprint-637-server-dry-run)
 	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().BoolVar(&bodyAllowAutomationEnroll, "allow-automation-enroll", true, "Let the automation action enroll_in_sequence put contacts in.")
 	cmd.Flags().BoolVar(&bodyAllowReenroll, "allow-reenroll", false, "Let a contact go through it again once their earlier run ENDED (replied, meeting booked, deal closed, removed")

@@ -469,7 +469,7 @@ func newBookingPagesUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagDryRun, "server-dry-run", false, "ask the server to validate without saving; the request IS sent (the API's dry_run query parameter; the global --dry-run prints the request and sends nothing)") // PATCH(reprint-637-server-dry-run)
 	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyAvailabilityRules, "availability-rules", "", "Availability windows overriding the host's global rules; null or an empty list uses the global rules.")
 	cmd.Flags().StringVar(&bodyBrandName, "brand-name", "", "Brand name")

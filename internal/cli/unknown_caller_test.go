@@ -85,7 +85,7 @@ func TestCallsLinkCallToContactBodyShapes(t *testing.T) {
 	}{
 		{nil, map[string]any{"contactId": ucContact}},
 		{[]string{"--attach-number"}, map[string]any{"contactId": ucContact, "attachNumber": true}},
-		{[]string{"--attach-number", "--dry-run"}, map[string]any{"contactId": ucContact, "attachNumber": true, "dryRun": true}},
+		{[]string{"--attach-number", "--server-dry-run"}, map[string]any{"contactId": ucContact, "attachNumber": true, "dryRun": true}},
 	}
 	for _, c := range cases {
 		args := append([]string{ucCall, "--contact-id", ucContact}, c.flags...)

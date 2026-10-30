@@ -221,7 +221,7 @@ func newPipelinesReorderCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagDryRun, "server-dry-run", false, "ask the server to validate without saving; the request IS sent (the API's dry_run query parameter; the global --dry-run prints the request and sends nothing)") // PATCH(reprint-637-server-dry-run)
 	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyExpectedRevision, "expected-revision", "", "The current order as the caller read it (ids comma-joined); a mismatch is a 409")
 	cmd.Flags().StringVar(&bodyOrder, "order", "", "Every active pipeline id, in the new order")

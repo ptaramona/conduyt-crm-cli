@@ -150,6 +150,24 @@
       ],
       "validated_outcome": "For every array query param in spec.yaml the flag is a stringArray and three occurrences reach the API as repeated keys; no command registers --cf-key and the manifest has no cf[<key>]. TestEveryArrayQueryParamIsRepeatable, TestLiteralCfKeyFlagIsAbsent.",
       "upstream_issue": "For the press board (not filed): emit repeatable flags for exploded array query params; skip or expand deep-object params."
+    },
+    {
+      "id": "reprint-637-server-dry-run",
+      "summary": "The API dry_run query parameter is the local flag --server-dry-run on all 161 commands that have it (plus calls link call-to-contact and imports repair post-imports-id for their body dry-run); no command registers a local --dry-run (import <resource> uses the global one), so the global --dry-run always prints and sends nothing. email send/send-bulk unchanged (exempt). Prose note: .printing-press-patches/reprint-637-server-dry-run.md.",
+      "reason": "4.28.0 prints dry_run as a local --dry-run that shadows the global preview, so a requested local preview sent a real request on 153 pre-existing commands after the full reprint.",
+      "files": [
+        "internal/cli/*.go (161 generated commands, // PATCH(reprint-637-server-dry-run))",
+        "internal/cli/calls_link_call-to-contact.go",
+        "internal/cli/imports_repair_post-imports-id.go",
+        "internal/cli/import.go",
+        "internal/cli/server_dry_run_test.go",
+        "internal/cli/unknown_caller_test.go",
+        "tools-manifest.json",
+        "README.md",
+        "SKILL.md"
+      ],
+      "validated_outcome": "No local --dry-run anywhere in the tree; --server-dry-run bound on every dry_run operation but the two email ones; the global --dry-run on each of them sends zero requests. TestNoLocalDryRunAndServerDryRunIsBound.",
+      "upstream_issue": "For the press board (not filed): never emit a local flag that shadows a persistent root flag."
     }
   ]
 }

@@ -204,7 +204,7 @@ func newImportsRepairPostImportsIdCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyAction, "action", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
-	cmd.Flags().StringVar(&bodyDryRun, "dry-run", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDryRun, "server-dry-run", "", "Body dry_run: ask the server to report the repair without applying it; the request IS sent (the global --dry-run prints the request and sends nothing)") // PATCH(reprint-637-server-dry-run)
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

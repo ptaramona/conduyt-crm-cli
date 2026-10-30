@@ -121,7 +121,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -1189,7 +1189,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -1297,7 +1297,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -1401,7 +1401,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -2227,7 +2227,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -2372,7 +2372,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Query parameter read by this route."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "automations",
@@ -2459,7 +2459,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -3306,7 +3306,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -3656,7 +3656,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -3736,7 +3736,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -4175,7 +4175,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -4223,7 +4223,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -4334,7 +4334,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -4532,7 +4532,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5127,7 +5127,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5205,7 +5205,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5232,7 +5232,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5334,7 +5334,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5367,7 +5367,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5458,7 +5458,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5545,7 +5545,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5596,7 +5596,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5687,7 +5687,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -5800,7 +5800,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -7529,7 +7529,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -7659,7 +7659,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "force",
@@ -7845,7 +7845,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -7905,7 +7905,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -8077,7 +8077,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -8117,7 +8117,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -8159,7 +8159,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -9047,7 +9047,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -9308,7 +9308,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -9886,7 +9886,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -9978,7 +9978,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Query parameter read by this route."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -10236,7 +10236,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -10479,7 +10479,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -10541,7 +10541,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -10728,7 +10728,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Query parameter read by this route."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -10776,7 +10776,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -10809,7 +10809,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -10864,7 +10864,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -11198,7 +11198,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -11277,7 +11277,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -11363,7 +11363,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -11811,7 +11811,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -11943,7 +11943,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -11970,7 +11970,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -12503,7 +12503,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -12571,7 +12571,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -12603,7 +12603,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -12672,7 +12672,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -12877,7 +12877,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -12926,7 +12926,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -12959,7 +12959,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -13072,7 +13072,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -13099,7 +13099,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -13159,7 +13159,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -14769,7 +14769,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -14879,7 +14879,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -14940,7 +14940,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -14967,7 +14967,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -15109,7 +15109,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -15160,7 +15160,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -15211,7 +15211,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -15329,7 +15329,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -15378,7 +15378,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -15446,7 +15446,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -15514,7 +15514,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -15884,7 +15884,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16002,7 +16002,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16029,7 +16029,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16056,7 +16056,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16305,7 +16305,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16356,7 +16356,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16382,7 +16382,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16433,7 +16433,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16467,7 +16467,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16590,7 +16590,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16875,7 +16875,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -16966,7 +16966,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -17046,7 +17046,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -17712,7 +17712,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19005,7 +19005,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19093,7 +19093,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19192,7 +19192,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19323,7 +19323,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19365,7 +19365,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19450,7 +19450,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19477,7 +19477,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19577,7 +19577,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19689,7 +19689,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19769,7 +19769,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -19829,7 +19829,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -20099,7 +20099,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -20308,7 +20308,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -20429,7 +20429,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -20481,7 +20481,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -20555,7 +20555,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -20780,7 +20780,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -20838,7 +20838,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "force",
@@ -20905,7 +20905,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -20946,7 +20946,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21009,7 +21009,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21048,7 +21048,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21075,7 +21075,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21140,7 +21140,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "expected_settings_revision",
@@ -21223,7 +21223,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21271,7 +21271,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21462,7 +21462,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21511,7 +21511,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21561,7 +21561,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21620,7 +21620,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21662,7 +21662,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21718,7 +21718,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21774,7 +21774,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21857,7 +21857,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -21931,7 +21931,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -23091,7 +23091,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -23132,7 +23132,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -23176,7 +23176,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -25089,7 +25089,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -25164,7 +25164,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -25210,7 +25210,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -25251,7 +25251,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -26058,7 +26058,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -26096,7 +26096,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -26123,7 +26123,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27074,7 +27074,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27126,7 +27126,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27175,7 +27175,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27232,7 +27232,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27265,7 +27265,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27298,7 +27298,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27374,7 +27374,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27407,7 +27407,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27523,7 +27523,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27570,7 +27570,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -27992,7 +27992,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28131,7 +28131,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "expected_updated_at",
@@ -28286,7 +28286,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28360,7 +28360,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28457,7 +28457,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28548,7 +28548,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28588,7 +28588,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28661,7 +28661,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28700,7 +28700,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28732,7 +28732,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -28820,7 +28820,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -29010,7 +29010,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -29043,7 +29043,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -29076,7 +29076,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -29109,7 +29109,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -29149,7 +29149,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -29850,7 +29850,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -29870,7 +29870,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -29981,7 +29981,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -30027,7 +30027,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -30080,7 +30080,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",
@@ -31325,7 +31325,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "event",
@@ -31358,7 +31358,7 @@
           "name": "dry_run",
           "type": "bool",
           "location": "query",
-          "description": "Validate the mutation without persisting changes."
+          "description": "Ask the server to validate without saving; the request IS sent (CLI flag --server-dry-run; the CLI's global --dry-run sends nothing)."
         },
         {
           "name": "sandbox",

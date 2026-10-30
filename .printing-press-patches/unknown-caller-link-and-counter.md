@@ -51,3 +51,6 @@ App main f132ed6f0 (live 2026-10-15 9:45 PM PT). The public OpenAPI at that comm
 
 GET /dialer/history is paginated in the public document (page, per_page, q, recorded_only, ...). `--unmatched` stays the hand-written
 bool that sends `unmatched=1` (the print emits a string enum flag); the bare read now sends page=1&per_page=50 (test updated).
+
+Round 3 (reprint 637): the local `--dry-run` on `calls link call-to-contact` is now `--server-dry-run` (body `dryRun: true`, request sent);
+the global `--dry-run` prints and sends nothing there too. See reprint-637-server-dry-run.md.
