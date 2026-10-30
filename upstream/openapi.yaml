@@ -224,7 +224,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ email, password, accountName ]
+              required:
+                - email
+                - password
+                - accountName
+                - termsAccepted
               properties:
                 email:
                   type: string
@@ -240,6 +244,48 @@ paths:
                 accountName:
                   type: string
                   minLength: 2
+                attribution:
+                  type: object
+                  properties:
+                    gbraid:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    gclid:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    landing_page:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    msclkid:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    referrer:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    utm_campaign:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    utm_content:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    utm_medium:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    utm_source:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    utm_term:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    wbraid:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    cy_ft_cmp:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    cy_ft_landing:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    cy_ft_ref:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                    cy_ft_src:
+                      description: Read by the handler from the JSON body (the route declares no schema for its type).
+                  description: Read by the handler from the JSON body (the route declares no schema for its type).
+                signupFunnelId:
+                  type: string
+                  format: uuid
+                  description: The sign-up page's anonymous funnel id; signup_succeeded is sent under it. Optional; a malformed value is ignored.
+                termsAccepted:
+                  type: boolean
+                  const: true
+                  description: "Required, true only: consent to the Terms of Service (/terms, version 2026-04-19) and the Privacy Policy (/privacy), the sign-up page's terms box. Any other value, or none, is a 400 (field termsAccepted, code required) checked before the rate limit is charged, and nothing is created; the acceptance time and the Terms version are recorded on the new owner user."
       responses:
         "200":
           description: Registration successful

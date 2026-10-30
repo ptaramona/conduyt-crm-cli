@@ -56,6 +56,22 @@
       ],
       "validated_outcome": "Wire body is exactly the flags passed ({}, {channel}, {notifyEvents:[]} for an explicit empty value, both); --stdin bodies (including a non-array notifyEvents) reach the API unchanged for its 400; spec.yaml and upstream/openapi.yaml requestBody are deep-equal and typed; TestSpecMatchesUpstreamPublicAPI, go build, go test ./... and go vet pass.",
       "upstream_issue": "None: the generator already emits typed flags from a typed body; only Long, the Changed()-gated empty-list send and InOrStdin are local."
+    },
+    {
+      "id": "register-terms-accepted-601",
+      "summary": "conduyt-auth register takes a required --terms-accepted flag that sends termsAccepted true (board #601; POST /auth/register requires it since #575). The command takes no positional arguments (pflag reads `--terms-accepted false` as the bare flag plus a stray \"false\"; that spelling is refused locally, nothing sent). Without the flag (or with --terms-accepted=false) the command refuses locally, naming the Terms and Privacy Policy, and sends nothing; --stdin passes the body through untouched (reads cmd.InOrStdin()). spec.yaml and upstream/openapi.yaml carry the live requestBody for this one operation only (the rest of the live document is a separate reprint). Prose note: .printing-press-patches/register-terms-accepted-601.md.",
+      "reason": "A reprint from the old spec would drop the flag and every CLI registration would answer 400.",
+      "files": [
+        "internal/cli/conduyt-auth_register.go",
+        "internal/cli/conduyt_auth_register_test.go",
+        "spec.yaml",
+        "upstream/openapi.yaml",
+        "tools-manifest.json",
+        "README.md",
+        "SKILL.md"
+      ],
+      "validated_outcome": "With --terms-accepted the wire body carries termsAccepted true; without it (or =false) no request is sent and the error names the terms; spec.yaml and upstream/openapi.yaml requestBody are deep-equal and require termsAccepted; TestSpecMatchesUpstreamPublicAPI, go build and go test ./... pass.",
+      "upstream_issue": "None: the generator emits a bool flag from the const-true property; only the required-true local refusal, Long and InOrStdin are local."
     }
   ]
 }
