@@ -116,6 +116,40 @@
       ],
       "validated_outcome": "TestSpecMatchesUpstreamPublicAPI green on 948 operations; go build, go vet and go test ./... pass; every earlier patch test passes.",
       "upstream_issue": "None for the merge itself; see nested-required-flags-637."
+    },
+    {
+      "id": "reprint-637-freeform-json-flags",
+      "summary": "Restores the free-form JSON body flags the full reprint dropped as a generator artefact (activities create-activity --metadata, automations update --trigger-conditions, bulk edit-contacts/edit-deals --updates, contacts create --custom-fields, forms create --settings, integrations connect --config/--credentials, scoring-rules create --condition) and the seven typed flags of emails create-template beside --body-json; each sends the parsed JSON under its body key as before and refuses to mix with the generated sub-flags. Prose note: .printing-press-patches/reprint-637-freeform-json-flags.md.",
+      "reason": "4.28.0 prints an object with declared sub-properties as sub-flags only and a oneOf body as --body-json only, so a reprint on the full public document removed flags existing users had while the API still reads the same keys.",
+      "files": [
+        "internal/cli/activities_create-activity.go",
+        "internal/cli/automations_update.go",
+        "internal/cli/bulk_edit-contacts.go",
+        "internal/cli/bulk_edit-deals.go",
+        "internal/cli/contacts_create.go",
+        "internal/cli/forms_create.go",
+        "internal/cli/integrations_connect.go",
+        "internal/cli/scoring-rules_create.go",
+        "internal/cli/emails_create-template.go",
+        "internal/cli/freeform_json_flags_test.go"
+      ],
+      "validated_outcome": "Every restored flag is registered and its JSON lands deep-equal under its body key; malformed JSON names the flag; mixing with a sub-flag sends nothing; create-template typed flags send the pre-reprint body. TestFreeformJSONFlagsLandInTheBodyAsBefore, TestEmailsCreateTemplateTypedFlagsAsBefore.",
+      "upstream_issue": "For the press board (not filed): keep a whole-object JSON flag next to sub-property flags."
+    },
+    {
+      "id": "reprint-637-repeatable-array-query-params",
+      "summary": "Every public array query parameter (9 on spec.yaml at reprint 637: email, tag, tagId on contacts list, contacts get-count, contacts export) is a repeatable StringArrayVar flag sent as one key per value via appendRepeatableArrayQueryParam; the literal --cf-key flag (cf[<key>]) is not registered and its MCP bindings are removed; --cf stays the documented custom-field filter. Prose note: .printing-press-patches/reprint-637-repeatable-array-query-params.md.",
+      "reason": "4.28.0 prints exploded array query params as single string flags (one comma-joined value) and the deep-object cf[<key>] as a literal parameter name the API never reads.",
+      "files": [
+        "internal/cli/contacts_list.go",
+        "internal/cli/contacts_get-count.go",
+        "internal/cli/contacts_export.go",
+        "internal/mcp/code_orch.go",
+        "tools-manifest.json",
+        "internal/cli/array_query_params_test.go"
+      ],
+      "validated_outcome": "For every array query param in spec.yaml the flag is a stringArray and three occurrences reach the API as repeated keys; no command registers --cf-key and the manifest has no cf[<key>]. TestEveryArrayQueryParamIsRepeatable, TestLiteralCfKeyFlagIsAbsent.",
+      "upstream_issue": "For the press board (not filed): emit repeatable flags for exploded array query params; skip or expand deep-object params."
     }
   ]
 }
