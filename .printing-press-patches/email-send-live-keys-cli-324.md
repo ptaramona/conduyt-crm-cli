@@ -45,3 +45,10 @@ Version: none (this repo carries no per-change version; `AGENTS.md` says release
 
 Tests: `internal/cli/email_send_test.go` (exact JSON bodies for both commands, refusals, --stdin known/unknown keys),
 `internal/cliutil/email_send_guards_test.go` (spec parity), `internal/mcp/email_send_guards_test.go` (executor).
+
+## Reprint 637 (2026-10-30)
+
+`email_send.go` and `email_send-bulk.go` are kept as they were (the print still emits `--dry-run`, `--sandbox`, `--batch-delay-ms` and
+plain flags). The full document now declares the send-bulk `replyTo` and `sendDomainId` patterns, so `email send-bulk` refuses a bad
+`--reply-to` / `--send-domain-id` locally (`CheckEmailSendBulkReplyTo`, `CheckEmailSendBulkSendDomainID`), and the spec readers in
+`email_send_guards_test.go` read bounds from the string branch of an `anyOf [string, null]` property.

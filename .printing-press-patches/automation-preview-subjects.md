@@ -39,3 +39,10 @@ New flags (dry-run automation and test-node post-automations-id): `--deal-id`, `
 
 Tests: `internal/cli/automations_preview_subjects_test.go` (each flag alone on both commands, all together with `--source`, omitted
 fields not sent, test-node refuses a missing `--node-id` before any request, help text, manifest params).
+
+## Reprint 637 (2026-10-30)
+
+The live document now carries the full dry-run and test-node bodies, so the print adds `--appointment-id`, `--previous-pipeline-id`,
+`--previous-stage-id` and `--trigger-node-id` on both commands, and `--mode` / `--source` take the documented enums. The hand-fixes
+above were re-applied: every subject flag is sent when passed (`Changed()`), and the new flags' help is written out in full instead of
+the generator's cut at the first ".". The `tools-manifest.json` entries are the fresh print's (they now list all eight body fields).

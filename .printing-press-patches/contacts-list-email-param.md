@@ -35,3 +35,8 @@ here, and a reprint from a newer generator must keep them (the tests below fail 
   `client.do` drops empty values, so the request went out unfiltered. The execute handler now routes any empty scalar through the path
   `url.Values` as `name=`, the same as an empty array, so the API answers its 400. Pinned by
   `TestCodeOrchExecuteContactsListEmptyEmailScalarIsNotAbsence`. A reprint must keep this.
+
+## Reprint 637 (2026-10-30)
+
+`--email` stays the repeatable StringArrayVar with `appendRepeatableArrayQueryParam` (the print emits a plain string flag again). The
+other public array params of GET /contacts (`tag`, `tagId`) are printed as plain string flags sent once; not made repeatable here.

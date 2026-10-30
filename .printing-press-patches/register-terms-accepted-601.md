@@ -15,3 +15,8 @@
     `termsAccepted` itself, else the API answers 400).
 - Not added (narrowest option): `--signup-funnel-id` and `attribution`, which are optional.
 - No version bump and no CHANGELOG edit: release-automation owned (AGENTS.md).
+
+## Reprint 637 (2026-10-30)
+
+The print now also emits `--signup-funnel-id` and the `--attribution-*` flags from the live body; they are kept. `--terms-accepted`
+stays the hand-written bool with the local refusal (the print emits a string flag parsed with ParseBool).

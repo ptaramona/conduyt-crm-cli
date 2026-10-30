@@ -46,3 +46,8 @@ App main f132ed6f0 (live 2026-10-15 9:45 PM PT). The public OpenAPI at that comm
 - Tests: `internal/mcp/unknown_caller_guards_test.go` (callId+source, callId+assignedTo refused with zero HTTP hits; callId alone posts; offset-less,
   2026-02-31, leading-space and non-date `since` refused with zero hits; valid `since` sent).
 - The Round 2 note above that places the guard in `internal/cli/unknown_caller_guards.go` is superseded by the cliutil location.
+
+## Reprint 637 (2026-10-30)
+
+GET /dialer/history is paginated in the public document (page, per_page, q, recorded_only, ...). `--unmatched` stays the hand-written
+bool that sends `unmatched=1` (the print emits a string enum flag); the bare read now sends page=1&per_page=50 (test updated).

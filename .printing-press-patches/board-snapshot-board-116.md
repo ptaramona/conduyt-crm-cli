@@ -65,3 +65,12 @@ Applied by hand in the 4.28.0 print's style. Not applied: `.printing-press.json`
   `github.com/google/jsonschema-go`, now direct requires in go.mod (both were already in the module cache and go.sum; jsonschema-go
   was an indirect dependency). Mutants: the round 2 spec (permissive `PaginatedResponse` branch), and the new branch without
   `required: [data, meta]` and `not`, both fail it.
+
+## Reprint 637 (2026-10-30)
+
+The full public GET /deals adds about 30 query parameters (stage aliases, health_*, rows_only, summary, search, ...), now generated as
+flags. `runDealsBoardSnapshot` forwards only --pipeline, --status, --assigned-to, --sort, --order and --per-page, so it now refuses
+EVERY other local flag with --board-snapshot (before: only --page, --stage, --all) instead of silently dropping it; Long says so.
+--status, --sort and --order keep the curated enums and defaults (createdAt / desc), which the public document no longer declares.
+`deals_spec_branches_test.go` resolves only the components a branch reaches (the full document has lookahead patterns Go cannot
+compile), and its half-and-half check now asserts "never two branches" (the public list branch does not forbid extra keys).

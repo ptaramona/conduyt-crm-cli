@@ -58,3 +58,8 @@ trailing nil, the 4.28 `resolvePaginatedReadWithStrategy` signature without resp
   terminal path runs).
 - P3, cursor wording: CLI flag help and both manifest cursor descriptions say "Omit it for the first page; an explicitly blank value
   is refused", matching `CheckCursor`.
+
+## Reprint 637 (2026-10-30)
+
+Kept: the cursor / page bindings in `code_orch.go`, the decide-contact Long and Example, the hand parameter texts and the two alias tools in
+`tools-manifest.json`, the legacy endpoint ids.
