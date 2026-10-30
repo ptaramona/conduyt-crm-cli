@@ -13,6 +13,16 @@ import (
 )
 
 func newStatusMetadataPostCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyBucket string
+	var bodyCode string
+	var bodyDripEligible string
+	var bodyDripTrackId string
+	var bodyIsTerminal string
+	var bodyLifecycleStage string
+	var bodyNotes string
+	var bodyStageId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -30,6 +40,12 @@ func newStatusMetadataPostCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -44,6 +60,30 @@ func newStatusMetadataPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBucket != "" {
+					bodyMap["bucket"] = bodyBucket
+				}
+				if bodyCode != "" {
+					bodyMap["code"] = bodyCode
+				}
+				if bodyDripEligible != "" {
+					bodyMap["dripEligible"] = bodyDripEligible
+				}
+				if bodyDripTrackId != "" {
+					bodyMap["dripTrackId"] = bodyDripTrackId
+				}
+				if bodyIsTerminal != "" {
+					bodyMap["isTerminal"] = bodyIsTerminal
+				}
+				if bodyLifecycleStage != "" {
+					bodyMap["lifecycleStage"] = bodyLifecycleStage
+				}
+				if bodyNotes != "" {
+					bodyMap["notes"] = bodyNotes
+				}
+				if bodyStageId != "" {
+					bodyMap["stageId"] = bodyStageId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +228,16 @@ func newStatusMetadataPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyBucket, "bucket", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCode, "code", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDripEligible, "drip-eligible", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDripTrackId, "drip-track-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsTerminal, "is-terminal", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLifecycleStage, "lifecycle-stage", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyNotes, "notes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStageId, "stage-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -9,48 +9,30 @@ import (
 	"io"
 	"os"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newCustomFieldsUpdateCmd(flags *rootFlags) *cobra.Command {
-	var bodyEntityType string
-	var bodyFieldKey string
-	var bodyFieldType string
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyConfirmRequired bool
 	var bodyIsRequired bool
 	var bodyLabel string
 	var bodyOptions string
+	var bodySection string
 	var bodySortOrder int
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
 		Short:       "Update a custom field definition",
-		Example:     "  conduyt-crm-pp-cli custom-fields update 550e8400-e29b-41d4-a716-446655440000 --entity-type contact",
+		Example:     "  conduyt-crm-pp-cli custom-fields update 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "custom-fields.update", "pp:method": "PATCH", "pp:path": "/custom-fields/{id}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("entity-type") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "entity-type")
-				}
-				if !cmd.Flags().Changed("field-key") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "field-key")
-				}
-				if !cmd.Flags().Changed("field-type") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "field-type")
-				}
-				if !cmd.Flags().Changed("label") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "label")
-				}
 			}
 			path := "/custom-fields/{id}"
 			if len(args) < 1 || args[0] == "" {
@@ -62,6 +44,12 @@ func newCustomFieldsUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -76,14 +64,8 @@ func newCustomFieldsUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEntityType != "" {
-					bodyMap["entityType"] = bodyEntityType
-				}
-				if bodyFieldKey != "" {
-					bodyMap["fieldKey"] = bodyFieldKey
-				}
-				if bodyFieldType != "" {
-					bodyMap["fieldType"] = bodyFieldType
+				if cmd.Flags().Changed("confirm-required") {
+					bodyMap["confirmRequired"] = bodyConfirmRequired
 				}
 				if cmd.Flags().Changed("is-required") {
 					bodyMap["isRequired"] = bodyIsRequired
@@ -92,11 +74,18 @@ func newCustomFieldsUpdateCmd(flags *rootFlags) *cobra.Command {
 					bodyMap["label"] = bodyLabel
 				}
 				if bodyOptions != "" {
-					parsedOptions, parseErr := cliutil.ParseStringList(bodyOptions)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --options list: %w", parseErr)
+					if looksLikeJSONComposite(bodyOptions) {
+						var parsedOptions any
+						if err := json.Unmarshal([]byte(bodyOptions), &parsedOptions); err != nil {
+							return fmt.Errorf("parsing --options JSON: %w", err)
+						}
+						bodyMap["options"] = parsedOptions
+					} else {
+						bodyMap["options"] = bodyOptions
 					}
-					bodyMap["options"] = parsedOptions
+				}
+				if bodySection != "" {
+					bodyMap["section"] = bodySection
 				}
 				if bodySortOrder != 0 {
 					bodyMap["sortOrder"] = bodySortOrder
@@ -245,12 +234,13 @@ func newCustomFieldsUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyEntityType, "entity-type", "", "Entity type")
-	cmd.Flags().StringVar(&bodyFieldKey, "field-key", "", "Machine-readable key (e.g., 'industry_vertical')")
-	cmd.Flags().StringVar(&bodyFieldType, "field-type", "", "Field type")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().BoolVar(&bodyConfirmRequired, "confirm-required", false, "Confirm required")
 	cmd.Flags().BoolVar(&bodyIsRequired, "is-required", false, "Is required")
-	cmd.Flags().StringVar(&bodyLabel, "label", "", "Human-readable label (e.g., 'Industry Vertical')")
+	cmd.Flags().StringVar(&bodyLabel, "label", "", "Human-readable label (e.g.")
 	cmd.Flags().StringVar(&bodyOptions, "options", "", "Options for select/multiselect fields")
+	cmd.Flags().StringVar(&bodySection, "section", "", "Section")
 	cmd.Flags().IntVar(&bodySortOrder, "sort-order", 0, "Sort order")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

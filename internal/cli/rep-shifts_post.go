@@ -13,16 +13,41 @@ import (
 )
 
 func newRepShiftsPostCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDayOfWeek int
+	var bodyEndMinute int
+	var bodyIsActive bool
+	var bodyStartMinute int
+	var bodyUserId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post",
 		Aliases:     []string{"create"},
 		Short:       "Create / invoke rep-shifts",
-		Example:     "  conduyt-crm-pp-cli rep-shifts post",
+		Example:     "  conduyt-crm-pp-cli rep-shifts post --user-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "rep-shifts.post", "pp:method": "POST", "pp:path": "/rep-shifts"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("day-of-week") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "day-of-week")
+				}
+				if !cmd.Flags().Changed("end-minute") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "end-minute")
+				}
+				if !cmd.Flags().Changed("start-minute") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "start-minute")
+				}
+				if !cmd.Flags().Changed("user-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "user-id")
+				}
 			}
 			path := "/rep-shifts"
 			c, err := flags.newClient()
@@ -30,6 +55,12 @@ func newRepShiftsPostCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -44,6 +75,21 @@ func newRepShiftsPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDayOfWeek != 0 {
+					bodyMap["dayOfWeek"] = bodyDayOfWeek
+				}
+				if bodyEndMinute != 0 {
+					bodyMap["endMinute"] = bodyEndMinute
+				}
+				if cmd.Flags().Changed("is-active") {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyStartMinute != 0 {
+					bodyMap["startMinute"] = bodyStartMinute
+				}
+				if bodyUserId != "" {
+					bodyMap["userId"] = bodyUserId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +234,13 @@ func newRepShiftsPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().IntVar(&bodyDayOfWeek, "day-of-week", 0, "Day of week")
+	cmd.Flags().IntVar(&bodyEndMinute, "end-minute", 0, "Must differ from startMinute; otherwise a 400.")
+	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
+	cmd.Flags().IntVar(&bodyStartMinute, "start-minute", 0, "Start minute")
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "User id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

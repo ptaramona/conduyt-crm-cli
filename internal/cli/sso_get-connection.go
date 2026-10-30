@@ -16,7 +16,7 @@ func newSsoGetConnectionCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "get-connection",
 		Aliases:     []string{"list"},
-		Short:       "List sso connection",
+		Short:       "Answers 200 with `data.connection` set to null when the account has no enabled SSO connection (not a 404).",
 		Example:     "  conduyt-crm-pp-cli sso get-connection",
 		Annotations: map[string]string{"pp:endpoint": "sso.get-connection", "pp:method": "GET", "pp:path": "/sso/connection", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {

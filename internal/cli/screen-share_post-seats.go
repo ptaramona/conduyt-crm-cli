@@ -8,21 +8,36 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
 
 func newScreenSharePostSeatsCmd(flags *rootFlags) *cobra.Command {
+	var bodyEnabled string
+	var bodyUserId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-seats",
 		Aliases:     []string{"create"},
 		Short:       "Create / invoke screen-share seats",
-		Example:     "  conduyt-crm-pp-cli screen-share post-seats",
+		Example:     "  conduyt-crm-pp-cli screen-share post-seats --user-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "screen-share.post-seats", "pp:method": "POST", "pp:path": "/screen-share/seats"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("enabled") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "enabled")
+				}
+				if !cmd.Flags().Changed("user-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "user-id")
+				}
 			}
 			path := "/screen-share/seats"
 			c, err := flags.newClient()
@@ -44,6 +59,16 @@ func newScreenSharePostSeatsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyEnabled != "" {
+					parsedEnabled, err := strconv.ParseBool(bodyEnabled)
+					if err != nil {
+						return fmt.Errorf("parsing --enabled as bool: %w", err)
+					}
+					bodyMap["enabled"] = parsedEnabled
+				}
+				if bodyUserId != "" {
+					bodyMap["userId"] = bodyUserId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +213,8 @@ func newScreenSharePostSeatsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyEnabled, "enabled", "", "Enabled")
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "User id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

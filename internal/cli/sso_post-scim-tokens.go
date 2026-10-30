@@ -13,16 +13,26 @@ import (
 )
 
 func newSsoPostScimTokensCmd(flags *rootFlags) *cobra.Command {
+	var bodyName string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-scim-tokens",
 		Aliases:     []string{"create"},
 		Short:       "Create / invoke sso scim-tokens",
-		Example:     "  conduyt-crm-pp-cli sso post-scim-tokens",
+		Example:     "  conduyt-crm-pp-cli sso post-scim-tokens --name example-resource",
 		Annotations: map[string]string{"pp:endpoint": "sso.post-scim-tokens", "pp:method": "POST", "pp:path": "/sso/scim-tokens"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("name") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "name")
+				}
 			}
 			path := "/sso/scim-tokens"
 			c, err := flags.newClient()
@@ -44,6 +54,9 @@ func newSsoPostScimTokensCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +201,7 @@ func newSsoPostScimTokensCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyName, "name", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

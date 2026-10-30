@@ -13,6 +13,15 @@ import (
 )
 
 func newDashboardsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyDescription string
+	var bodyFiltersAssignedTo string
+	var bodyFiltersDateRange string
+	var bodyFiltersEnd string
+	var bodyFiltersSources string
+	var bodyFiltersStart string
+	var bodyIsShared string
+	var bodyName string
+	var bodyTileOrder string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +60,39 @@ func newDashboardsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				{
+					nestedFilters := map[string]any{}
+					if bodyFiltersAssignedTo != "" {
+						nestedFilters["assignedTo"] = bodyFiltersAssignedTo
+					}
+					if bodyFiltersDateRange != "" {
+						nestedFilters["dateRange"] = bodyFiltersDateRange
+					}
+					if bodyFiltersEnd != "" {
+						nestedFilters["end"] = bodyFiltersEnd
+					}
+					if bodyFiltersSources != "" {
+						nestedFilters["sources"] = bodyFiltersSources
+					}
+					if bodyFiltersStart != "" {
+						nestedFilters["start"] = bodyFiltersStart
+					}
+					if len(nestedFilters) > 0 {
+						bodyMap["filters"] = nestedFilters
+					}
+				}
+				if bodyIsShared != "" {
+					bodyMap["isShared"] = bodyIsShared
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyTileOrder != "" {
+					bodyMap["tileOrder"] = bodyTileOrder
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +237,15 @@ func newDashboardsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersAssignedTo, "filters-assigned-to", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersDateRange, "filters-date-range", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersEnd, "filters-end", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersSources, "filters-sources", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersStart, "filters-start", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsShared, "is-shared", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTileOrder, "tile-order", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,16 +13,32 @@ import (
 )
 
 func newPlaybookEnrollmentsPostCmd(flags *rootFlags) *cobra.Command {
+	var bodyAssignTo string
+	var bodyContactId string
+	var bodyPlaybookId string
+	var bodyRestart bool
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post",
 		Aliases:     []string{"create"},
 		Short:       "Create / invoke playbook-enrollments",
-		Example:     "  conduyt-crm-pp-cli playbook-enrollments post",
+		Example:     "  conduyt-crm-pp-cli playbook-enrollments post --contact-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "playbook-enrollments.post", "pp:method": "POST", "pp:path": "/playbook-enrollments"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
+				}
+				if !cmd.Flags().Changed("playbook-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "playbook-id")
+				}
 			}
 			path := "/playbook-enrollments"
 			c, err := flags.newClient()
@@ -44,6 +60,18 @@ func newPlaybookEnrollmentsPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAssignTo != "" {
+					bodyMap["assignTo"] = bodyAssignTo
+				}
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if bodyPlaybookId != "" {
+					bodyMap["playbookId"] = bodyPlaybookId
+				}
+				if cmd.Flags().Changed("restart") {
+					bodyMap["restart"] = bodyRestart
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +216,10 @@ func newPlaybookEnrollmentsPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAssignTo, "assign-to", "", "Assign to")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodyPlaybookId, "playbook-id", "", "Playbook id")
+	cmd.Flags().BoolVar(&bodyRestart, "restart", false, "Restart")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

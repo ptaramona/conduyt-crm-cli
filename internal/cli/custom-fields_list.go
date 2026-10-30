@@ -13,6 +13,9 @@ import (
 
 func newCustomFieldsListCmd(flags *rootFlags) *cobra.Command {
 	var flagEntityType string
+	var flagPage string
+	var flagPerPage string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -20,29 +23,16 @@ func newCustomFieldsListCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli custom-fields list",
 		Annotations: map[string]string{"pp:endpoint": "custom-fields.list", "pp:method": "GET", "pp:path": "/custom-fields", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Changed("entity-type") {
-				allowedEntityType := []string{"contact", "deal"}
-				validEntityType := false
-				for _, v := range allowedEntityType {
-					if flagEntityType == v {
-						validEntityType = true
-						break
-					}
-				}
-				if !validEntityType {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagEntityType, "entity-type", allowedEntityType)
-				}
-			}
 			path := "/custom-fields"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			if flagEntityType != "" {
-				params["entity_type"] = formatCLIParamValue(flagEntityType)
-			}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "custom-fields", true, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "custom-fields", path, map[string]string{
+				"entityType": formatCLIParamValue(flagEntityType),
+				"page":       formatCLIParamValue(flagPage),
+				"per_page":   formatCLIParamValue(flagPerPage),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -90,7 +80,10 @@ func newCustomFieldsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagEntityType, "entity-type", "", "Entity type (one of: contact, deal)")
+	cmd.Flags().StringVar(&flagEntityType, "entity-type", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 1000, default 50), or the word all: every definition of the filters in one query.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

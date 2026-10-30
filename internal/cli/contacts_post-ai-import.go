@@ -9,10 +9,24 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newContactsPostAiImportCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyContacts string
+	var bodyCustomFieldMapping string
+	var bodyFieldMapping string
+	var bodyOptionsDuplicateMatchOn string
+	var bodyOptionsEnrollInAutomation string
+	var bodyOptionsLabel string
+	var bodyOptionsResolveNames bool
+	var bodyOptionsSkipDuplicates bool
+	var bodyOptionsSmartListName string
+	var bodyOptionsTags string
+	var bodyTagIds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -21,7 +35,16 @@ func newContactsPostAiImportCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli contacts post-ai-import",
 		Annotations: map[string]string{"pp:endpoint": "contacts.post-ai-import", "pp:method": "POST", "pp:path": "/contacts/ai-import"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("contacts") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contacts")
+				}
 			}
 			path := "/contacts/ai-import"
 			c, err := flags.newClient()
@@ -29,6 +52,12 @@ func newContactsPostAiImportCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +72,65 @@ func newContactsPostAiImportCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContacts != "" {
+					var parsedContacts any
+					if err := json.Unmarshal([]byte(bodyContacts), &parsedContacts); err != nil {
+						return fmt.Errorf("parsing --contacts JSON: %w", err)
+					}
+					bodyMap["contacts"] = parsedContacts
+				}
+				if bodyCustomFieldMapping != "" {
+					var parsedCustomFieldMapping any
+					if err := json.Unmarshal([]byte(bodyCustomFieldMapping), &parsedCustomFieldMapping); err != nil {
+						return fmt.Errorf("parsing --custom-field-mapping JSON: %w", err)
+					}
+					bodyMap["customFieldMapping"] = parsedCustomFieldMapping
+				}
+				if bodyFieldMapping != "" {
+					var parsedFieldMapping any
+					if err := json.Unmarshal([]byte(bodyFieldMapping), &parsedFieldMapping); err != nil {
+						return fmt.Errorf("parsing --field-mapping JSON: %w", err)
+					}
+					bodyMap["fieldMapping"] = parsedFieldMapping
+				}
+				{
+					nestedOptions := map[string]any{}
+					if bodyOptionsDuplicateMatchOn != "" {
+						nestedOptions["duplicateMatchOn"] = bodyOptionsDuplicateMatchOn
+					}
+					if bodyOptionsEnrollInAutomation != "" {
+						nestedOptions["enrollInAutomation"] = bodyOptionsEnrollInAutomation
+					}
+					if bodyOptionsLabel != "" {
+						nestedOptions["label"] = bodyOptionsLabel
+					}
+					if cmd.Flags().Changed("options-resolve-names") {
+						nestedOptions["resolveNames"] = bodyOptionsResolveNames
+					}
+					if cmd.Flags().Changed("options-skip-duplicates") {
+						nestedOptions["skipDuplicates"] = bodyOptionsSkipDuplicates
+					}
+					if bodyOptionsSmartListName != "" {
+						nestedOptions["smartListName"] = bodyOptionsSmartListName
+					}
+					if bodyOptionsTags != "" {
+						parsedOptionsTags, parseErr := cliutil.ParseStringList(bodyOptionsTags)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --options-tags list: %w", parseErr)
+						}
+						nestedOptions["tags"] = parsedOptionsTags
+					}
+					if len(nestedOptions) > 0 {
+						bodyMap["options"] = nestedOptions
+					}
+				}
+				if bodyTagIds != "" {
+					parsedTagIds, parseErr := cliutil.ParseStringList(bodyTagIds)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --tag-ids list: %w", parseErr)
+					}
+					bodyMap["tagIds"] = parsedTagIds
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +275,19 @@ func newContactsPostAiImportCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&bodyContacts, "contacts", "", "Contacts")
+	cmd.Flags().StringVar(&bodyCustomFieldMapping, "custom-field-mapping", "", "Custom field mapping")
+	cmd.Flags().StringVar(&bodyFieldMapping, "field-mapping", "", "Field mapping")
+	cmd.Flags().StringVar(&bodyOptionsDuplicateMatchOn, "options-duplicate-match-on", "", "Duplicate match on")
+	cmd.Flags().StringVar(&bodyOptionsEnrollInAutomation, "options-enroll-in-automation", "", "Enroll in automation")
+	cmd.Flags().StringVar(&bodyOptionsLabel, "options-label", "", "Label")
+	cmd.Flags().BoolVar(&bodyOptionsResolveNames, "options-resolve-names", false, "Resolve names")
+	cmd.Flags().BoolVar(&bodyOptionsSkipDuplicates, "options-skip-duplicates", false, "Skip duplicates")
+	cmd.Flags().StringVar(&bodyOptionsSmartListName, "options-smart-list-name", "", "Smart list name")
+	cmd.Flags().StringVar(&bodyOptionsTags, "options-tags", "", "Tags")
+	cmd.Flags().StringVar(&bodyTagIds, "tag-ids", "", "Tag ids")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

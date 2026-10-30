@@ -13,7 +13,11 @@ import (
 )
 
 func newPipelinesCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyColor string
 	var bodyDescription string
+	var bodyIsDefault bool
 	var bodyName string
 	var bodyStages string
 	var stdinBody bool
@@ -41,6 +45,12 @@ func newPipelinesCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -55,8 +65,14 @@ func newPipelinesCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyColor != "" {
+					bodyMap["color"] = bodyColor
+				}
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
+				}
+				if cmd.Flags().Changed("is-default") {
+					bodyMap["isDefault"] = bodyIsDefault
 				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
@@ -212,8 +228,12 @@ func newPipelinesCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyColor, "color", "", "The pipeline's colour, the dot next to its name in the board's pipeline menu (any case accepted")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
-	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().BoolVar(&bodyIsDefault, "is-default", false, "Is default")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Must not start with '[Archived]' (archive with DELETE); otherwise a 400.")
 	cmd.Flags().StringVar(&bodyStages, "stages", "", "Stages")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

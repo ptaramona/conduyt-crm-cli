@@ -13,6 +13,22 @@ import (
 )
 
 func newDripCampaignsUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyBaseUrl string
+	var bodyBatchSize string
+	var bodyIsActive string
+	var bodyName string
+	var bodyProvider string
+	var bodySendDays string
+	var bodySendEndHour string
+	var bodySendStartHour string
+	var bodySmsProviderId string
+	var bodyStepDelays string
+	var bodyTagPrefix string
+	var bodyTimezone string
+	var bodyTotalSteps string
+	var bodyUrlSegment string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -36,6 +52,12 @@ func newDripCampaignsUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -50,6 +72,48 @@ func newDripCampaignsUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBaseUrl != "" {
+					bodyMap["baseUrl"] = bodyBaseUrl
+				}
+				if bodyBatchSize != "" {
+					bodyMap["batchSize"] = bodyBatchSize
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyProvider != "" {
+					bodyMap["provider"] = bodyProvider
+				}
+				if bodySendDays != "" {
+					bodyMap["sendDays"] = bodySendDays
+				}
+				if bodySendEndHour != "" {
+					bodyMap["sendEndHour"] = bodySendEndHour
+				}
+				if bodySendStartHour != "" {
+					bodyMap["sendStartHour"] = bodySendStartHour
+				}
+				if bodySmsProviderId != "" {
+					bodyMap["smsProviderId"] = bodySmsProviderId
+				}
+				if bodyStepDelays != "" {
+					bodyMap["stepDelays"] = bodyStepDelays
+				}
+				if bodyTagPrefix != "" {
+					bodyMap["tagPrefix"] = bodyTagPrefix
+				}
+				if bodyTimezone != "" {
+					bodyMap["timezone"] = bodyTimezone
+				}
+				if bodyTotalSteps != "" {
+					bodyMap["totalSteps"] = bodyTotalSteps
+				}
+				if bodyUrlSegment != "" {
+					bodyMap["urlSegment"] = bodyUrlSegment
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +258,22 @@ func newDripCampaignsUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyBaseUrl, "base-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyBatchSize, "batch-size", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyProvider, "provider", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySendDays, "send-days", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySendEndHour, "send-end-hour", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySendStartHour, "send-start-hour", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySmsProviderId, "sms-provider-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStepDelays, "step-delays", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTagPrefix, "tag-prefix", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTimezone, "timezone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTotalSteps, "total-steps", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUrlSegment, "url-segment", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

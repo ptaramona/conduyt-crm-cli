@@ -14,6 +14,7 @@ import (
 func newWebhooksListDeliveriesCmd(flags *rootFlags) *cobra.Command {
 	var flagPage string
 	var flagPerPage int
+	var flagStatus string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -37,7 +38,8 @@ func newWebhooksListDeliveriesCmd(flags *rootFlags) *cobra.Command {
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "webhooks", path, map[string]string{
 				"page":     formatCLIParamValue(flagPage),
 				"per_page": formatCLIParamValue(flagPerPage),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+				"status":   formatCLIParamValue(flagStatus),
+			}, nil, flagAll, "page", "page", "per_page", 25, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -86,7 +88,8 @@ func newWebhooksListDeliveriesCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 25, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

@@ -12,6 +12,9 @@ import (
 )
 
 func newReportsGetSubscriptionsSidDeliveriesCmd(flags *rootFlags) *cobra.Command {
+	var flagCursor string
+	var flagLimit int
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-subscriptions-sid-deliveries <sid>",
@@ -31,8 +34,10 @@ func newReportsGetSubscriptionsSidDeliveriesCmd(flags *rootFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "reports", path, map[string]string{
+				"cursor": formatCLIParamValue(flagCursor),
+				"limit":  formatCLIParamValue(flagLimit),
+			}, nil, flagAll, "cursor", "cursor", "limit", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -80,6 +85,9 @@ func newReportsGetSubscriptionsSidDeliveriesCmd(flags *rootFlags) *cobra.Command
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 50, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

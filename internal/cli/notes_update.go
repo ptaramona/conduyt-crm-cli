@@ -13,6 +13,8 @@ import (
 )
 
 func newNotesUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyBody string
 	var bodyIsPinned bool
 	var stdinBody bool
@@ -38,6 +40,12 @@ func newNotesUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -202,7 +210,9 @@ func newNotesUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyBody, "body", "", "Body")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyBody, "body", "", "Must contain a non-whitespace character and be at most 51200 bytes (50 KB) of UTF-8")
 	cmd.Flags().BoolVar(&bodyIsPinned, "is-pinned", false, "Is pinned")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

@@ -6,14 +6,19 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newWebhooksVoiceInboundCmd(flags *rootFlags) *cobra.Command {
-	var stdinBody bool
+	var bodyAccountSid string
+	var bodyCallSid string
+	var bodyCalled string
+	var bodyCaller string
+	var bodyFrom string
+	var bodyParentCallSid string
+	var bodyTo string
 
 	cmd := &cobra.Command{
 		Use:         "voice-inbound",
@@ -21,30 +26,37 @@ func newWebhooksVoiceInboundCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli webhooks voice-inbound",
 		Annotations: map[string]string{"pp:endpoint": "webhooks.voice-inbound", "pp:method": "POST", "pp:path": "/webhooks/voice/inbound"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !stdinBody {
-			}
 			path := "/webhooks/voice/inbound"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			var body any
-			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return fmt.Errorf("reading stdin: %w", err)
-				}
-				var jsonBody map[string]any
-				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
-					return fmt.Errorf("parsing stdin JSON: %w", err)
-				}
-				body = jsonBody
-			} else {
-				bodyMap := map[string]any{}
-				body = bodyMap
+			fields := map[string]string{}
+			fileFields := map[string]string{}
+			if bodyAccountSid != "" {
+				fields["AccountSid"] = bodyAccountSid
 			}
-			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
+			if bodyCallSid != "" {
+				fields["CallSid"] = bodyCallSid
+			}
+			if bodyCalled != "" {
+				fields["Called"] = bodyCalled
+			}
+			if bodyCaller != "" {
+				fields["Caller"] = bodyCaller
+			}
+			if bodyFrom != "" {
+				fields["From"] = bodyFrom
+			}
+			if bodyParentCallSid != "" {
+				fields["ParentCallSid"] = bodyParentCallSid
+			}
+			if bodyTo != "" {
+				fields["To"] = bodyTo
+			}
+
+			data, statusCode, err := c.PostMultipartWithParams(cmd.Context(), path, params, fields, fileFields)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -187,7 +199,13 @@ func newWebhooksVoiceInboundCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
+	cmd.Flags().StringVar(&bodyAccountSid, "account-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCallSid, "call-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCalled, "called", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCaller, "caller", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyFrom, "from", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyParentCallSid, "parent-call-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "A form field the handler reads")
 
 	return cmd
 }

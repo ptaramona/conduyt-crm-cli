@@ -212,7 +212,7 @@ func newConduytAuthLoginCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyAccountId, "account-id", "", "Target account ID (optional, defaults to first account)")
-	cmd.Flags().StringVar(&bodyEmail, "email", "", "Email")
+	cmd.Flags().StringVar(&bodyEmail, "email", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
 	cmd.Flags().StringVar(&bodyPassword, "password", "", "Password")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

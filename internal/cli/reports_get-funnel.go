@@ -12,19 +12,56 @@ import (
 )
 
 func newReportsGetFunnelCmd(flags *rootFlags) *cobra.Command {
+	var flagFrom string
+	var flagPipelineId string
+	var flagTo string
+	var flagDateRange string
+	var flagRange string
+	var flagStart string
+	var flagEnd string
 
 	cmd := &cobra.Command{
 		Use:         "get-funnel",
 		Short:       "List reports funnel",
-		Example:     "  conduyt-crm-pp-cli reports get-funnel",
+		Example:     "  conduyt-crm-pp-cli reports get-funnel --pipeline-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "reports.get-funnel", "pp:method": "GET", "pp:path": "/reports/funnel", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("pipeline-id") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "pipeline-id")
+			}
 			path := "/reports/funnel"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
+			if flagFrom != "" {
+				params["from"] = formatCLIParamValue(flagFrom)
+			}
+			if flagPipelineId != "" {
+				params["pipelineId"] = formatCLIParamValue(flagPipelineId)
+			}
+			if flagTo != "" {
+				params["to"] = formatCLIParamValue(flagTo)
+			}
+			if flagDateRange != "" {
+				params["dateRange"] = formatCLIParamValue(flagDateRange)
+			}
+			if flagRange != "" {
+				params["range"] = formatCLIParamValue(flagRange)
+			}
+			if flagStart != "" {
+				params["start"] = formatCLIParamValue(flagStart)
+			}
+			if flagEnd != "" {
+				params["end"] = formatCLIParamValue(flagEnd)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +110,13 @@ func newReportsGetFunnelCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagFrom, "from", "", "ISO datetime — window start (spans over 90 days clamp to the last 90 before `to`)")
+	cmd.Flags().StringVar(&flagPipelineId, "pipeline-id", "", "uuid — REQUIRED: the pipeline to report on (must be visible to the caller)")
+	cmd.Flags().StringVar(&flagTo, "to", "", "ISO datetime — window end (default now)")
+	cmd.Flags().StringVar(&flagDateRange, "date-range", "", "string — shared dashboard range key (today, week, month, last_month, quarter, custom, ...")
+	cmd.Flags().StringVar(&flagRange, "range", "", "string — alias of dateRange")
+	cmd.Flags().StringVar(&flagStart, "start", "", "ISO datetime — with dateRange=custom: the custom window start")
+	cmd.Flags().StringVar(&flagEnd, "end", "", "ISO datetime — with dateRange=custom: the custom window end")
 
 	return cmd
 }

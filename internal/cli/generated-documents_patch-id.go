@@ -13,6 +13,8 @@ import (
 )
 
 func newGeneratedDocumentsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyMetadata string
+	var bodyStatus string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +53,12 @@ func newGeneratedDocumentsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyMetadata != "" {
+					bodyMap["metadata"] = bodyMetadata
+				}
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +203,8 @@ func newGeneratedDocumentsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

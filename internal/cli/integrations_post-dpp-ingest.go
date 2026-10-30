@@ -13,6 +13,8 @@ import (
 )
 
 func newIntegrationsPostDppIngestCmd(flags *rootFlags) *cobra.Command {
+	var bodyParsed string
+	var bodyReceivedAt string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +45,12 @@ func newIntegrationsPostDppIngestCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyParsed != "" {
+					bodyMap["parsed"] = bodyParsed
+				}
+				if bodyReceivedAt != "" {
+					bodyMap["receivedAt"] = bodyReceivedAt
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +195,8 @@ func newIntegrationsPostDppIngestCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyParsed, "parsed", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReceivedAt, "received-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

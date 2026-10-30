@@ -13,14 +13,16 @@ import (
 )
 
 func newDripCampaignsCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyBaseUrl string
 	var bodyBatchSize int
-	var bodyIsActive bool
 	var bodyName string
 	var bodyProvider string
 	var bodySendDays string
 	var bodySendEndHour int
 	var bodySendStartHour int
+	var bodySmsProviderId string
 	var bodyStepDelays string
 	var bodyTagPrefix string
 	var bodyTimezone string
@@ -63,6 +65,12 @@ func newDripCampaignsCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -83,9 +91,6 @@ func newDripCampaignsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyBatchSize != 0 {
 					bodyMap["batchSize"] = bodyBatchSize
 				}
-				if cmd.Flags().Changed("is-active") {
-					bodyMap["isActive"] = bodyIsActive
-				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
 				}
@@ -104,6 +109,9 @@ func newDripCampaignsCreateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodySendStartHour != 0 {
 					bodyMap["sendStartHour"] = bodySendStartHour
+				}
+				if bodySmsProviderId != "" {
+					bodyMap["smsProviderId"] = bodySmsProviderId
 				}
 				if bodyStepDelays != "" {
 					var parsedStepDelays any
@@ -268,14 +276,16 @@ func newDripCampaignsCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyBaseUrl, "base-url", "", "Base url")
 	cmd.Flags().IntVar(&bodyBatchSize, "batch-size", 500, "Batch size")
-	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().StringVar(&bodyProvider, "provider", "", "Provider")
 	cmd.Flags().StringVar(&bodySendDays, "send-days", "", "Days of week to send (1=Mon, 5=Fri)")
 	cmd.Flags().IntVar(&bodySendEndHour, "send-end-hour", 17, "Send end hour")
 	cmd.Flags().IntVar(&bodySendStartHour, "send-start-hour", 9, "Send start hour")
+	cmd.Flags().StringVar(&bodySmsProviderId, "sms-provider-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyStepDelays, "step-delays", "", "Delay in days between steps (e.g., [0,2,2,2,3,4,4,7,10])")
 	cmd.Flags().StringVar(&bodyTagPrefix, "tag-prefix", "", "Tag prefix")
 	cmd.Flags().StringVar(&bodyTimezone, "timezone", "America/New_York", "Timezone")

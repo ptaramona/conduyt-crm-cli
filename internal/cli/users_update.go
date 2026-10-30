@@ -13,10 +13,27 @@ import (
 )
 
 func newUsersUpdateCmd(flags *rootFlags) *cobra.Command {
+	var bodyAvatarUrl string
+	var bodyCustom1 string
+	var bodyCustom2 string
+	var bodyCustom3 string
+	var bodyCustom4 string
+	var bodyDid string
+	var bodyEmail string
+	var bodyEmailSenderLocal string
+	var bodyEmailSenderName string
+	var bodyExtension string
 	var bodyFirstName string
-	var bodyIsActive bool
+	var bodyGroupId string
 	var bodyLastName string
+	var bodyMobilePhone string
+	var bodyPermissions string
+	var bodyPhone string
+	var bodyPoolClaimDailyLimit string
+	var bodyPosition string
+	var bodyReceivingLeads bool
 	var bodyRole string
+	var bodyVisiblePipelineIds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -54,17 +71,84 @@ func newUsersUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAvatarUrl != "" {
+					bodyMap["avatarUrl"] = bodyAvatarUrl
+				}
+				if bodyCustom1 != "" {
+					bodyMap["custom1"] = bodyCustom1
+				}
+				if bodyCustom2 != "" {
+					bodyMap["custom2"] = bodyCustom2
+				}
+				if bodyCustom3 != "" {
+					bodyMap["custom3"] = bodyCustom3
+				}
+				if bodyCustom4 != "" {
+					bodyMap["custom4"] = bodyCustom4
+				}
+				if bodyDid != "" {
+					bodyMap["did"] = bodyDid
+				}
+				if bodyEmail != "" {
+					bodyMap["email"] = bodyEmail
+				}
+				if bodyEmailSenderLocal != "" {
+					bodyMap["emailSenderLocal"] = bodyEmailSenderLocal
+				}
+				if bodyEmailSenderName != "" {
+					bodyMap["emailSenderName"] = bodyEmailSenderName
+				}
+				if bodyExtension != "" {
+					bodyMap["extension"] = bodyExtension
+				}
 				if bodyFirstName != "" {
 					bodyMap["firstName"] = bodyFirstName
 				}
-				if cmd.Flags().Changed("is-active") {
-					bodyMap["isActive"] = bodyIsActive
+				if bodyGroupId != "" {
+					bodyMap["groupId"] = bodyGroupId
 				}
 				if bodyLastName != "" {
 					bodyMap["lastName"] = bodyLastName
 				}
+				if bodyMobilePhone != "" {
+					bodyMap["mobilePhone"] = bodyMobilePhone
+				}
+				if bodyPermissions != "" {
+					if looksLikeJSONComposite(bodyPermissions) {
+						var parsedPermissions any
+						if err := json.Unmarshal([]byte(bodyPermissions), &parsedPermissions); err != nil {
+							return fmt.Errorf("parsing --permissions JSON: %w", err)
+						}
+						bodyMap["permissions"] = parsedPermissions
+					} else {
+						bodyMap["permissions"] = bodyPermissions
+					}
+				}
+				if bodyPhone != "" {
+					bodyMap["phone"] = bodyPhone
+				}
+				if bodyPoolClaimDailyLimit != "" {
+					bodyMap["poolClaimDailyLimit"] = bodyPoolClaimDailyLimit
+				}
+				if bodyPosition != "" {
+					bodyMap["position"] = bodyPosition
+				}
+				if cmd.Flags().Changed("receiving-leads") {
+					bodyMap["receivingLeads"] = bodyReceivingLeads
+				}
 				if bodyRole != "" {
 					bodyMap["role"] = bodyRole
+				}
+				if bodyVisiblePipelineIds != "" {
+					if looksLikeJSONComposite(bodyVisiblePipelineIds) {
+						var parsedVisiblePipelineIds any
+						if err := json.Unmarshal([]byte(bodyVisiblePipelineIds), &parsedVisiblePipelineIds); err != nil {
+							return fmt.Errorf("parsing --visible-pipeline-ids JSON: %w", err)
+						}
+						bodyMap["visiblePipelineIds"] = parsedVisiblePipelineIds
+					} else {
+						bodyMap["visiblePipelineIds"] = bodyVisiblePipelineIds
+					}
 				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
@@ -210,10 +294,27 @@ func newUsersUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAvatarUrl, "avatar-url", "", "Avatar url")
+	cmd.Flags().StringVar(&bodyCustom1, "custom1", "", "Custom1")
+	cmd.Flags().StringVar(&bodyCustom2, "custom2", "", "Custom2")
+	cmd.Flags().StringVar(&bodyCustom3, "custom3", "", "Custom3")
+	cmd.Flags().StringVar(&bodyCustom4, "custom4", "", "Custom4")
+	cmd.Flags().StringVar(&bodyDid, "did", "", "Did")
+	cmd.Flags().StringVar(&bodyEmail, "email", "", "The pattern above is the server's rule (Zod's email check). It accepts a domain label that ends in a hyphen (a@b-.")
+	cmd.Flags().StringVar(&bodyEmailSenderLocal, "email-sender-local", "", "Email sender local")
+	cmd.Flags().StringVar(&bodyEmailSenderName, "email-sender-name", "", "Email sender name")
+	cmd.Flags().StringVar(&bodyExtension, "extension", "", "Extension")
 	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name")
-	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "Is active")
+	cmd.Flags().StringVar(&bodyGroupId, "group-id", "", "Group id")
 	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
+	cmd.Flags().StringVar(&bodyMobilePhone, "mobile-phone", "", "Mobile phone")
+	cmd.Flags().StringVar(&bodyPermissions, "permissions", "", "Permissions")
+	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
+	cmd.Flags().StringVar(&bodyPoolClaimDailyLimit, "pool-claim-daily-limit", "", "Pool claim daily limit")
+	cmd.Flags().StringVar(&bodyPosition, "position", "", "Position")
+	cmd.Flags().BoolVar(&bodyReceivingLeads, "receiving-leads", false, "Receiving leads")
 	cmd.Flags().StringVar(&bodyRole, "role", "", "Role")
+	cmd.Flags().StringVar(&bodyVisiblePipelineIds, "visible-pipeline-ids", "", "Visible pipeline ids")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

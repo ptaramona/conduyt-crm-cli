@@ -18,10 +18,12 @@ func newUsersCmd(flags *rootFlags) *cobra.Command {
 
 	cmd.AddCommand(newUsersGetCmd(flags))
 	cmd.AddCommand(newUsersGetMeCmd(flags))
+	cmd.AddCommand(newUsersGetMeTourCmd(flags))
 	cmd.AddCommand(newUsersInviteCmd(flags))
 	cmd.AddCommand(newUsersListCmd(flags))
 	cmd.AddCommand(newUsersPatchMeCmd(flags))
 	cmd.AddCommand(newUsersPostCmd(flags))
+	cmd.AddCommand(newUsersPostMeTourCmd(flags))
 	cmd.AddCommand(newUsersRemoveCmd(flags))
 	cmd.AddCommand(newUsersUpdateCmd(flags))
 	cmd.AddCommand(newUsersAvatarCmd(flags))

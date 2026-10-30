@@ -13,11 +13,15 @@ import (
 )
 
 func newTasksCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyAssignedTo string
+	var bodyCheckOrigin string
 	var bodyContactId string
 	var bodyDealId string
 	var bodyDescription string
 	var bodyDueDate string
+	var bodyExpectedDealUpdatedAt string
 	var bodyPriority string
 	var bodyStatus string
 	var bodyTitle string
@@ -25,7 +29,7 @@ func newTasksCreateCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "create",
-		Short:       "Create a task",
+		Short:       "Creates a task, optionally on a contact and/or a deal.",
 		Example:     "  conduyt-crm-pp-cli tasks create --title example-resource",
 		Annotations: map[string]string{"pp:endpoint": "tasks.create", "pp:method": "POST", "pp:path": "/tasks"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -46,6 +50,12 @@ func newTasksCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -63,6 +73,9 @@ func newTasksCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyAssignedTo != "" {
 					bodyMap["assignedTo"] = bodyAssignedTo
 				}
+				if bodyCheckOrigin != "" {
+					bodyMap["checkOrigin"] = bodyCheckOrigin
+				}
 				if bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
 				}
@@ -74,6 +87,9 @@ func newTasksCreateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyDueDate != "" {
 					bodyMap["dueDate"] = bodyDueDate
+				}
+				if bodyExpectedDealUpdatedAt != "" {
+					bodyMap["expectedDealUpdatedAt"] = bodyExpectedDealUpdatedAt
 				}
 				if bodyPriority != "" {
 					bodyMap["priority"] = bodyPriority
@@ -228,14 +244,18 @@ func newTasksCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "A member's user id, `@me` (the caller) or `@owner` (the account owner)")
+	cmd.Flags().StringVar(&bodyCheckOrigin, "check-origin", "", "Pipeline health quick fix ('Set next action'): the health check this task fixes.")
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
 	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "Deal id")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
-	cmd.Flags().StringVar(&bodyDueDate, "due-date", "", "Due date")
-	cmd.Flags().StringVar(&bodyPriority, "priority", "medium", "Priority")
-	cmd.Flags().StringVar(&bodyStatus, "status", "todo", "Status")
-	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")
+	cmd.Flags().StringVar(&bodyDueDate, "due-date", "", "Any parseable date: a date-only `YYYY-MM-DD` is stored as noon UTC that day; a date-time is stored as given.")
+	cmd.Flags().StringVar(&bodyExpectedDealUpdatedAt, "expected-deal-updated-at", "", "With `checkOrigin` only: the deal's `updatedAt` as the health row carried it (PipelineHealthDeal.updatedAt).")
+	cmd.Flags().StringVar(&bodyPriority, "priority", "", "Priority")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Status")
+	cmd.Flags().StringVar(&bodyTitle, "title", "", "Trimmed; blank after trimming is refused.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

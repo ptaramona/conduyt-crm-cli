@@ -12,20 +12,39 @@ import (
 )
 
 func newAutomationsGetFailuresDrilldownCmd(flags *rootFlags) *cobra.Command {
+	var flagCursor string
+	var flagKind string
+	var flagLimit int
+	var flagOffset string
+	var flagAll bool
 
 	cmd := &cobra.Command{
-		Use:         "get-failures-drilldown",
-		Short:       "List automations failures drilldown",
-		Example:     "  conduyt-crm-pp-cli automations get-failures-drilldown",
+		Use:   "get-failures-drilldown",
+		Short: "List automations failures drilldown",
+		// TODO: replace placeholder example values before relying on this for live dogfood.
+		Example:     "  conduyt-crm-pp-cli automations get-failures-drilldown --kind example-value",
 		Annotations: map[string]string{"pp:endpoint": "automations.get-failures-drilldown", "pp:method": "GET", "pp:path": "/automations/failures/drilldown", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("kind") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "kind")
+			}
 			path := "/automations/failures/drilldown"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "automations", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "automations", path, map[string]string{
+				"cursor": formatCLIParamValue(flagCursor),
+				"kind":   formatCLIParamValue(flagKind),
+				"limit":  formatCLIParamValue(flagLimit),
+				"offset": formatCLIParamValue(flagOffset),
+			}, nil, flagAll, "cursor", "cursor", "limit", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +92,11 @@ func newAutomationsGetFailuresDrilldownCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagKind, "kind", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 50, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOffset, "offset", "0", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

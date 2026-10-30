@@ -12,6 +12,11 @@ import (
 )
 
 func newDialerGetRecordingsCmd(flags *rootFlags) *cobra.Command {
+	var flagContactId string
+	var flagPage string
+	var flagPerPage int
+	var flagType string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-recordings",
@@ -24,8 +29,12 @@ func newDialerGetRecordingsCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "dialer", path, map[string]string{
+				"contactId": formatCLIParamValue(flagContactId),
+				"page":      formatCLIParamValue(flagPage),
+				"per_page":  formatCLIParamValue(flagPerPage),
+				"type":      formatCLIParamValue(flagType),
+			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +82,11 @@ func newDialerGetRecordingsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagType, "type", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

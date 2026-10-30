@@ -167,3 +167,20 @@ func CheckEmailSendFlags(b EmailSendFlagBody) error {
 	}
 	return nil
 }
+
+// CheckEmailSendBulkReplyTo and CheckEmailSendBulkSendDomainID apply the send-bulk body's replyTo and sendDomainId patterns,
+// which the full public document declares since the reprint637 refresh (the same patterns as POST /email/send), before any
+// request: --reply-to at most 254 UTF-16 code units after trimming, --send-domain-id a UUID or blank.
+func CheckEmailSendBulkReplyTo(v string) error {
+	if !replyToOK(v) {
+		return fmt.Errorf("--reply-to must be an email address of at most 254 characters after trimming (got %q)", v)
+	}
+	return nil
+}
+
+func CheckEmailSendBulkSendDomainID(v string) error {
+	if !emailSendSendDomRE.MatchString(v) {
+		return fmt.Errorf("--send-domain-id must be a UUID or blank (got %q)", v)
+	}
+	return nil
+}

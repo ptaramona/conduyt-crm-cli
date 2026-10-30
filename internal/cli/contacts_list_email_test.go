@@ -146,3 +146,22 @@ func TestContactsListEmailPlusIsEncodedAndRoundTrips(t *testing.T) {
 		t.Fatalf("raw query %q must carry the + as %%2B", raw)
 	}
 }
+
+// PATCH(reprint-637-full-public-api): contacts list pages on per_page and sends limit only when --limit is passed (the API answers 400
+// when limit and per_page differ).
+func TestContactsListPagesOnPerPageNotLimit(t *testing.T) {
+	for _, tc := range []struct {
+		args      []string
+		perPage   string
+		limitSent bool
+	}{
+		{nil, "50", false},
+		{[]string{"--per-page", "100"}, "100", false},
+		{[]string{"--per-page", "100", "--limit", "100"}, "100", true},
+	} {
+		q, _ := runContactsList(t, tc.args...)
+		if q.Get("per_page") != tc.perPage || q.Has("limit") != tc.limitSent {
+			t.Errorf("%v sent %v, want per_page=%s and limit sent=%v", tc.args, q, tc.perPage, tc.limitSent)
+		}
+	}
+}

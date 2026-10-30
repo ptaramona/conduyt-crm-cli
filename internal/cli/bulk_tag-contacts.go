@@ -9,14 +9,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newBulkTagContactsCmd(flags *rootFlags) *cobra.Command {
-	var bodyAddTags string
-	var bodyIds string
-	var bodyRemoveTags string
+	var bodyContactIds string
+	var bodyTagId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -25,16 +23,7 @@ func newBulkTagContactsCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli bulk tag-contacts",
 		Annotations: map[string]string{"pp:endpoint": "bulk.tag-contacts", "pp:method": "POST", "pp:path": "/bulk/contacts/tag"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("ids") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "ids")
-				}
 			}
 			path := "/bulk/contacts/tag"
 			c, err := flags.newClient()
@@ -56,26 +45,11 @@ func newBulkTagContactsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAddTags != "" {
-					parsedAddTags, parseErr := cliutil.ParseStringList(bodyAddTags)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --add-tags list: %w", parseErr)
-					}
-					bodyMap["addTags"] = parsedAddTags
+				if bodyContactIds != "" {
+					bodyMap["contactIds"] = bodyContactIds
 				}
-				if bodyIds != "" {
-					parsedIds, parseErr := cliutil.ParseStringList(bodyIds)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --ids list: %w", parseErr)
-					}
-					bodyMap["ids"] = parsedIds
-				}
-				if bodyRemoveTags != "" {
-					parsedRemoveTags, parseErr := cliutil.ParseStringList(bodyRemoveTags)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --remove-tags list: %w", parseErr)
-					}
-					bodyMap["removeTags"] = parsedRemoveTags
+				if bodyTagId != "" {
+					bodyMap["tagId"] = bodyTagId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -221,9 +195,8 @@ func newBulkTagContactsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyAddTags, "add-tags", "", "Add tags")
-	cmd.Flags().StringVar(&bodyIds, "ids", "", "Ids")
-	cmd.Flags().StringVar(&bodyRemoveTags, "remove-tags", "", "Remove tags")
+	cmd.Flags().StringVar(&bodyContactIds, "contact-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTagId, "tag-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

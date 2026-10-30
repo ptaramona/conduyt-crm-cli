@@ -8,14 +8,115 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
-	var bodyDomain string
-	var bodyName string
-	var bodySettings string
+	var bodyAgentStatusesHidden string
+	var bodyAgentStatusesLabels string
+	var bodyAiDispositionAutoApply bool
+	var bodyAiDispositionAutoApplyAsync bool
+	var bodyAiDispositionAutoApplyOnTimeout bool
+	var bodyAiDispositionEnabled bool
+	var bodyAiDispositionTimeoutSeconds int
+	var bodyAppointmentOutcomeStages string
+	var bodyAutoEnrichmentEnabled bool
+	var bodyBookingCreatesOwnCard bool
+	var bodyBookingMessageGuardAcknowledgeSendAfterAppointment bool
+	var bodyBookingMessageGuardEnabled string
+	var bodyCallDispositionsCustom string
+	var bodyCallDispositionsDescriptions string
+	var bodyCallDispositionsHidden string
+	var bodyCallDispositionsHighStakes string
+	var bodyCallDispositionsLabels string
+	var bodyCallDispositionsStatusMap string
+	var bodyCallingWindowAcknowledgeAnyHour bool
+	var bodyCallingWindowEnabled string
+	var bodyCallingWindowEnd string
+	var bodyCallingWindowStart string
+	var bodyCallingWindowTimezone string
+	var bodyCompanyName string
+	var bodyContactTableDefaultsColumns string
+	var bodyContactTableDefaultsExpectedRevision string
+	var bodyCurrency string
+	var bodyDateFormat string
+	var bodyDealCardFields string
+	var bodyDealVelocityEnabled bool
+	var bodyDealVelocityNotifyRoles string
+	var bodyDealVelocityStaleDays int
+	var bodyDealWorkingMode string
+	var bodyDefaultCountry string
+	var bodyDppIngestConduytDealIdKey string
+	var bodyDppIngestConduytIdKey string
+	var bodyDppIngestPostClosePipelineId string
+	var bodyDppIngestReviewerUserId string
+	var bodyDppIngestStatusShortFieldKey string
+	var bodyDppStatusMap string
+	var bodyExpectedSettingsRevision string
+	var bodyFiscalYearStart string
+	var bodyHighValueIdleDays int
+	var bodyHighValueThreshold int
+	var bodyInboundEmailDispatchPolicy string
+	var bodyIntakeDealsEnabled string
+	var bodyIntakeDealsPipelineId string
+	var bodyIntakeDealsReInbound string
+	var bodyIntakeDealsStageId string
+	var bodyInternalEmailDomains string
+	var bodyLocalPresenceAutoSync bool
+	var bodyLocalPresenceEnabled bool
+	var bodyLocalPresenceNumberPool string
+	var bodyLostPropagationEnabled string
+	var bodyMasterStatuses string
+	var bodyMessageCheckMinimumGradeAdminOverride string
+	var bodyMessageCheckMinimumGradeEnabled string
+	var bodyMissedCallTextBackDelaySeconds int
+	var bodyMissedCallTextBackEnabled bool
+	var bodyMissedCallTextBackMessage string
+	var bodyNotifications string
+	var bodyOnboardingComplete bool
+	var bodyOnboardingWizardCompleted bool
+	var bodyOpId string
+	var bodyPipelineRotDays string
+	var bodyPipelineStageRules string
+	var bodyPoolClaimDailyLimit int
+	var bodyPoolFilterCreatedWithinDays string
+	var bodyPoolFilterEnabled string
+	var bodyPoolFilterMaxScore string
+	var bodyPoolFilterMinScore string
+	var bodyPoolFilterSources string
+	var bodyPoolFilterTagIds string
+	var bodyPoolPagesLeadPoolAfterHoursBroadcast bool
+	var bodyPoolPagesLeadPoolDisplayedCustomFields string
+	var bodyPoolPagesLeadPoolDisplayedFields string
+	var bodyPoolPagesUpForGrabsAfterHoursBroadcast bool
+	var bodyPoolPagesUpForGrabsDisplayedCustomFields string
+	var bodyPoolPagesUpForGrabsDisplayedFields string
+	var bodyProjectBlueRecordingConsentGreeting string
+	var bodyProjectBlueRecordingDisclosureEnabled string
+	var bodyProjectBlueRecordingDisclosureOn string
+	var bodyProjectBlueRecordingEnabled bool
+	var bodyProjectBlueRecordingInbound bool
+	var bodyProjectBlueRecordingOutbound bool
+	var bodyRecordingConsentGreeting string
+	var bodyRecordingDisclosureEnabled string
+	var bodyRecordingDisclosureOn string
+	var bodyRecordingEnabled bool
+	var bodyRecordingInbound bool
+	var bodyRecordingOutbound bool
+	var bodyRequiredContactFields string
+	var bodySpeedToLeadEnabled bool
+	var bodySpeedToLeadNotifyRoles string
+	var bodySpeedToLeadThresholdMinutes int
+	var bodyTeamChatDigestMinutes int
+	var bodyTeamChatQuietHours string
+	var bodyTeamChatRealtime bool
+	var bodyTeamChatRealtimePresence bool
+	var bodyTimezone string
+	var bodyVoicemailDropDefaultAudioUrl string
+	var bodyVoicemailDropTemplates string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -24,7 +125,70 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli settings update",
 		Annotations: map[string]string{"pp:endpoint": "settings.update", "pp:method": "PATCH", "pp:path": "/settings"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("booking-message-guard-enabled") && nestedFlagGroupChanged(cmd, "booking-message-guard") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "booking-message-guard-enabled")
+				}
+				if !cmd.Flags().Changed("calling-window-enabled") && nestedFlagGroupChanged(cmd, "calling-window") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "calling-window-enabled")
+				}
+				if !cmd.Flags().Changed("calling-window-end") && nestedFlagGroupChanged(cmd, "calling-window") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "calling-window-end")
+				}
+				if !cmd.Flags().Changed("calling-window-start") && nestedFlagGroupChanged(cmd, "calling-window") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "calling-window-start")
+				}
+				if !cmd.Flags().Changed("contact-table-defaults-columns") && nestedFlagGroupChanged(cmd, "contact-table-defaults") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contact-table-defaults-columns")
+				}
+				if !cmd.Flags().Changed("contact-table-defaults-expected-revision") && nestedFlagGroupChanged(cmd, "contact-table-defaults") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contact-table-defaults-expected-revision")
+				}
+				if !cmd.Flags().Changed("intake-deals-enabled") && nestedFlagGroupChanged(cmd, "intake-deals") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "intake-deals-enabled")
+				}
+				if !cmd.Flags().Changed("intake-deals-pipeline-id") && nestedFlagGroupChanged(cmd, "intake-deals") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "intake-deals-pipeline-id")
+				}
+				if !cmd.Flags().Changed("intake-deals-stage-id") && nestedFlagGroupChanged(cmd, "intake-deals") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "intake-deals-stage-id")
+				}
+				if !cmd.Flags().Changed("lost-propagation-enabled") && nestedFlagGroupChanged(cmd, "lost-propagation") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "lost-propagation-enabled")
+				}
+				if !cmd.Flags().Changed("message-check-minimum-grade-admin-override") && nestedFlagGroupChanged(cmd, "message-check-minimum-grade") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "message-check-minimum-grade-admin-override")
+				}
+				if !cmd.Flags().Changed("message-check-minimum-grade-enabled") && nestedFlagGroupChanged(cmd, "message-check-minimum-grade") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "message-check-minimum-grade-enabled")
+				}
+				if !cmd.Flags().Changed("pool-filter-enabled") && nestedFlagGroupChanged(cmd, "pool-filter") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "pool-filter-enabled")
+				}
+				if !cmd.Flags().Changed("pool-pages-lead-pool-displayed-fields") && nestedFlagGroupChanged(cmd, "pool-pages-lead-pool") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "pool-pages-lead-pool-displayed-fields")
+				}
+				if !cmd.Flags().Changed("pool-pages-up-for-grabs-displayed-fields") && nestedFlagGroupChanged(cmd, "pool-pages-up-for-grabs") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "pool-pages-up-for-grabs-displayed-fields")
+				}
+				if !cmd.Flags().Changed("project-blue-recording-disclosure-enabled") && nestedFlagGroupChanged(cmd, "project-blue-recording-disclosure") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "project-blue-recording-disclosure-enabled")
+				}
+				if !cmd.Flags().Changed("project-blue-recording-disclosure-on") && nestedFlagGroupChanged(cmd, "project-blue-recording-disclosure") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "project-blue-recording-disclosure-on")
+				}
+				if !cmd.Flags().Changed("recording-disclosure-enabled") && nestedFlagGroupChanged(cmd, "recording-disclosure") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "recording-disclosure-enabled")
+				}
+				if !cmd.Flags().Changed("recording-disclosure-on") && nestedFlagGroupChanged(cmd, "recording-disclosure") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "recording-disclosure-on")
+				}
 			}
 			path := "/settings"
 			c, err := flags.newClient()
@@ -46,18 +210,623 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyDomain != "" {
-					bodyMap["domain"] = bodyDomain
-				}
-				if bodyName != "" {
-					bodyMap["name"] = bodyName
-				}
-				if bodySettings != "" {
-					var parsedSettings any
-					if err := json.Unmarshal([]byte(bodySettings), &parsedSettings); err != nil {
-						return fmt.Errorf("parsing --settings JSON: %w", err)
+				{
+					nestedAgentStatuses := map[string]any{}
+					if bodyAgentStatusesHidden != "" {
+						parsedAgentStatusesHidden, parseErr := cliutil.ParseStringList(bodyAgentStatusesHidden)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --agent-statuses-hidden list: %w", parseErr)
+						}
+						nestedAgentStatuses["hidden"] = parsedAgentStatusesHidden
 					}
-					bodyMap["settings"] = parsedSettings
+					if bodyAgentStatusesLabels != "" {
+						var parsedAgentStatusesLabels any
+						if err := json.Unmarshal([]byte(bodyAgentStatusesLabels), &parsedAgentStatusesLabels); err != nil {
+							return fmt.Errorf("parsing --agent-statuses-labels JSON: %w", err)
+						}
+						nestedAgentStatuses["labels"] = parsedAgentStatusesLabels
+					}
+					if len(nestedAgentStatuses) > 0 {
+						bodyMap["agentStatuses"] = nestedAgentStatuses
+					}
+				}
+				{
+					nestedAiDisposition := map[string]any{}
+					if cmd.Flags().Changed("ai-disposition-auto-apply") {
+						nestedAiDisposition["autoApply"] = bodyAiDispositionAutoApply
+					}
+					if cmd.Flags().Changed("ai-disposition-auto-apply-async") {
+						nestedAiDisposition["autoApplyAsync"] = bodyAiDispositionAutoApplyAsync
+					}
+					if cmd.Flags().Changed("ai-disposition-auto-apply-on-timeout") {
+						nestedAiDisposition["autoApplyOnTimeout"] = bodyAiDispositionAutoApplyOnTimeout
+					}
+					if cmd.Flags().Changed("ai-disposition-enabled") {
+						nestedAiDisposition["enabled"] = bodyAiDispositionEnabled
+					}
+					if bodyAiDispositionTimeoutSeconds != 0 {
+						nestedAiDisposition["timeoutSeconds"] = bodyAiDispositionTimeoutSeconds
+					}
+					if len(nestedAiDisposition) > 0 {
+						bodyMap["aiDisposition"] = nestedAiDisposition
+					}
+				}
+				if bodyAppointmentOutcomeStages != "" {
+					var parsedAppointmentOutcomeStages any
+					if err := json.Unmarshal([]byte(bodyAppointmentOutcomeStages), &parsedAppointmentOutcomeStages); err != nil {
+						return fmt.Errorf("parsing --appointment-outcome-stages JSON: %w", err)
+					}
+					bodyMap["appointmentOutcomeStages"] = parsedAppointmentOutcomeStages
+				}
+				{
+					nestedAutoEnrichment := map[string]any{}
+					if cmd.Flags().Changed("auto-enrichment-enabled") {
+						nestedAutoEnrichment["enabled"] = bodyAutoEnrichmentEnabled
+					}
+					if len(nestedAutoEnrichment) > 0 {
+						bodyMap["autoEnrichment"] = nestedAutoEnrichment
+					}
+				}
+				if cmd.Flags().Changed("booking-creates-own-card") {
+					bodyMap["bookingCreatesOwnCard"] = bodyBookingCreatesOwnCard
+				}
+				{
+					nestedBookingMessageGuard := map[string]any{}
+					if cmd.Flags().Changed("booking-message-guard-acknowledge-send-after-appointment") {
+						nestedBookingMessageGuard["acknowledgeSendAfterAppointment"] = bodyBookingMessageGuardAcknowledgeSendAfterAppointment
+					}
+					if bodyBookingMessageGuardEnabled != "" {
+						parsedBookingMessageGuardEnabled, err := strconv.ParseBool(bodyBookingMessageGuardEnabled)
+						if err != nil {
+							return fmt.Errorf("parsing --booking-message-guard-enabled as bool: %w", err)
+						}
+						nestedBookingMessageGuard["enabled"] = parsedBookingMessageGuardEnabled
+					}
+					if len(nestedBookingMessageGuard) > 0 {
+						bodyMap["bookingMessageGuard"] = nestedBookingMessageGuard
+					}
+				}
+				{
+					nestedCallDispositions := map[string]any{}
+					if bodyCallDispositionsCustom != "" {
+						var parsedCallDispositionsCustom any
+						if err := json.Unmarshal([]byte(bodyCallDispositionsCustom), &parsedCallDispositionsCustom); err != nil {
+							return fmt.Errorf("parsing --call-dispositions-custom JSON: %w", err)
+						}
+						nestedCallDispositions["custom"] = parsedCallDispositionsCustom
+					}
+					if bodyCallDispositionsDescriptions != "" {
+						var parsedCallDispositionsDescriptions any
+						if err := json.Unmarshal([]byte(bodyCallDispositionsDescriptions), &parsedCallDispositionsDescriptions); err != nil {
+							return fmt.Errorf("parsing --call-dispositions-descriptions JSON: %w", err)
+						}
+						nestedCallDispositions["descriptions"] = parsedCallDispositionsDescriptions
+					}
+					if bodyCallDispositionsHidden != "" {
+						parsedCallDispositionsHidden, parseErr := cliutil.ParseStringList(bodyCallDispositionsHidden)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --call-dispositions-hidden list: %w", parseErr)
+						}
+						nestedCallDispositions["hidden"] = parsedCallDispositionsHidden
+					}
+					if bodyCallDispositionsHighStakes != "" {
+						parsedCallDispositionsHighStakes, parseErr := cliutil.ParseStringList(bodyCallDispositionsHighStakes)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --call-dispositions-high-stakes list: %w", parseErr)
+						}
+						nestedCallDispositions["highStakes"] = parsedCallDispositionsHighStakes
+					}
+					if bodyCallDispositionsLabels != "" {
+						var parsedCallDispositionsLabels any
+						if err := json.Unmarshal([]byte(bodyCallDispositionsLabels), &parsedCallDispositionsLabels); err != nil {
+							return fmt.Errorf("parsing --call-dispositions-labels JSON: %w", err)
+						}
+						nestedCallDispositions["labels"] = parsedCallDispositionsLabels
+					}
+					if bodyCallDispositionsStatusMap != "" {
+						var parsedCallDispositionsStatusMap any
+						if err := json.Unmarshal([]byte(bodyCallDispositionsStatusMap), &parsedCallDispositionsStatusMap); err != nil {
+							return fmt.Errorf("parsing --call-dispositions-status-map JSON: %w", err)
+						}
+						nestedCallDispositions["statusMap"] = parsedCallDispositionsStatusMap
+					}
+					if len(nestedCallDispositions) > 0 {
+						bodyMap["callDispositions"] = nestedCallDispositions
+					}
+				}
+				{
+					nestedCallingWindow := map[string]any{}
+					if cmd.Flags().Changed("calling-window-acknowledge-any-hour") {
+						nestedCallingWindow["acknowledgeAnyHour"] = bodyCallingWindowAcknowledgeAnyHour
+					}
+					if bodyCallingWindowEnabled != "" {
+						parsedCallingWindowEnabled, err := strconv.ParseBool(bodyCallingWindowEnabled)
+						if err != nil {
+							return fmt.Errorf("parsing --calling-window-enabled as bool: %w", err)
+						}
+						nestedCallingWindow["enabled"] = parsedCallingWindowEnabled
+					}
+					if bodyCallingWindowEnd != "" {
+						nestedCallingWindow["end"] = bodyCallingWindowEnd
+					}
+					if bodyCallingWindowStart != "" {
+						nestedCallingWindow["start"] = bodyCallingWindowStart
+					}
+					if bodyCallingWindowTimezone != "" {
+						nestedCallingWindow["timezone"] = bodyCallingWindowTimezone
+					}
+					if len(nestedCallingWindow) > 0 {
+						bodyMap["callingWindow"] = nestedCallingWindow
+					}
+				}
+				if bodyCompanyName != "" {
+					bodyMap["companyName"] = bodyCompanyName
+				}
+				{
+					nestedContactTableDefaults := map[string]any{}
+					if bodyContactTableDefaultsColumns != "" {
+						parsedContactTableDefaultsColumns, parseErr := cliutil.ParseStringList(bodyContactTableDefaultsColumns)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --contact-table-defaults-columns list: %w", parseErr)
+						}
+						nestedContactTableDefaults["columns"] = parsedContactTableDefaultsColumns
+					}
+					if bodyContactTableDefaultsExpectedRevision != "" {
+						nestedContactTableDefaults["expectedRevision"] = bodyContactTableDefaultsExpectedRevision
+					}
+					if len(nestedContactTableDefaults) > 0 {
+						bodyMap["contactTableDefaults"] = nestedContactTableDefaults
+					}
+				}
+				if bodyCurrency != "" {
+					bodyMap["currency"] = bodyCurrency
+				}
+				if bodyDateFormat != "" {
+					bodyMap["dateFormat"] = bodyDateFormat
+				}
+				if bodyDealCardFields != "" {
+					var parsedDealCardFields any
+					if err := json.Unmarshal([]byte(bodyDealCardFields), &parsedDealCardFields); err != nil {
+						return fmt.Errorf("parsing --deal-card-fields JSON: %w", err)
+					}
+					bodyMap["dealCardFields"] = parsedDealCardFields
+				}
+				{
+					nestedDealVelocity := map[string]any{}
+					if cmd.Flags().Changed("deal-velocity-enabled") {
+						nestedDealVelocity["enabled"] = bodyDealVelocityEnabled
+					}
+					if bodyDealVelocityNotifyRoles != "" {
+						parsedDealVelocityNotifyRoles, parseErr := cliutil.ParseStringList(bodyDealVelocityNotifyRoles)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --deal-velocity-notify-roles list: %w", parseErr)
+						}
+						nestedDealVelocity["notifyRoles"] = parsedDealVelocityNotifyRoles
+					}
+					if bodyDealVelocityStaleDays != 0 {
+						nestedDealVelocity["staleDays"] = bodyDealVelocityStaleDays
+					}
+					if len(nestedDealVelocity) > 0 {
+						bodyMap["dealVelocity"] = nestedDealVelocity
+					}
+				}
+				if bodyDealWorkingMode != "" {
+					bodyMap["dealWorkingMode"] = bodyDealWorkingMode
+				}
+				if bodyDefaultCountry != "" {
+					bodyMap["defaultCountry"] = bodyDefaultCountry
+				}
+				{
+					nestedDppIngest := map[string]any{}
+					if bodyDppIngestConduytDealIdKey != "" {
+						nestedDppIngest["conduytDealIdKey"] = bodyDppIngestConduytDealIdKey
+					}
+					if bodyDppIngestConduytIdKey != "" {
+						nestedDppIngest["conduytIdKey"] = bodyDppIngestConduytIdKey
+					}
+					if bodyDppIngestPostClosePipelineId != "" {
+						nestedDppIngest["postClosePipelineId"] = bodyDppIngestPostClosePipelineId
+					}
+					if bodyDppIngestReviewerUserId != "" {
+						nestedDppIngest["reviewerUserId"] = bodyDppIngestReviewerUserId
+					}
+					if bodyDppIngestStatusShortFieldKey != "" {
+						nestedDppIngest["statusShortFieldKey"] = bodyDppIngestStatusShortFieldKey
+					}
+					if len(nestedDppIngest) > 0 {
+						bodyMap["dppIngest"] = nestedDppIngest
+					}
+				}
+				if bodyDppStatusMap != "" {
+					var parsedDppStatusMap any
+					if err := json.Unmarshal([]byte(bodyDppStatusMap), &parsedDppStatusMap); err != nil {
+						return fmt.Errorf("parsing --dpp-status-map JSON: %w", err)
+					}
+					bodyMap["dppStatusMap"] = parsedDppStatusMap
+				}
+				if bodyExpectedSettingsRevision != "" {
+					bodyMap["expectedSettingsRevision"] = bodyExpectedSettingsRevision
+				}
+				if bodyFiscalYearStart != "" {
+					bodyMap["fiscalYearStart"] = bodyFiscalYearStart
+				}
+				if bodyHighValueIdleDays != 0 {
+					bodyMap["highValueIdleDays"] = bodyHighValueIdleDays
+				}
+				if bodyHighValueThreshold != 0 {
+					bodyMap["highValueThreshold"] = bodyHighValueThreshold
+				}
+				if bodyInboundEmailDispatchPolicy != "" {
+					bodyMap["inboundEmailDispatchPolicy"] = bodyInboundEmailDispatchPolicy
+				}
+				{
+					nestedIntakeDeals := map[string]any{}
+					if bodyIntakeDealsEnabled != "" {
+						parsedIntakeDealsEnabled, err := strconv.ParseBool(bodyIntakeDealsEnabled)
+						if err != nil {
+							return fmt.Errorf("parsing --intake-deals-enabled as bool: %w", err)
+						}
+						nestedIntakeDeals["enabled"] = parsedIntakeDealsEnabled
+					}
+					if bodyIntakeDealsPipelineId != "" {
+						nestedIntakeDeals["pipelineId"] = bodyIntakeDealsPipelineId
+					}
+					if bodyIntakeDealsReInbound != "" {
+						nestedIntakeDeals["reInbound"] = bodyIntakeDealsReInbound
+					}
+					if bodyIntakeDealsStageId != "" {
+						nestedIntakeDeals["stageId"] = bodyIntakeDealsStageId
+					}
+					if len(nestedIntakeDeals) > 0 {
+						bodyMap["intakeDeals"] = nestedIntakeDeals
+					}
+				}
+				if bodyInternalEmailDomains != "" {
+					parsedInternalEmailDomains, parseErr := cliutil.ParseStringList(bodyInternalEmailDomains)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --internal-email-domains list: %w", parseErr)
+					}
+					bodyMap["internalEmailDomains"] = parsedInternalEmailDomains
+				}
+				{
+					nestedLocalPresence := map[string]any{}
+					if cmd.Flags().Changed("local-presence-auto-sync") {
+						nestedLocalPresence["autoSync"] = bodyLocalPresenceAutoSync
+					}
+					if cmd.Flags().Changed("local-presence-enabled") {
+						nestedLocalPresence["enabled"] = bodyLocalPresenceEnabled
+					}
+					if bodyLocalPresenceNumberPool != "" {
+						parsedLocalPresenceNumberPool, parseErr := cliutil.ParseStringList(bodyLocalPresenceNumberPool)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --local-presence-number-pool list: %w", parseErr)
+						}
+						nestedLocalPresence["numberPool"] = parsedLocalPresenceNumberPool
+					}
+					if len(nestedLocalPresence) > 0 {
+						bodyMap["localPresence"] = nestedLocalPresence
+					}
+				}
+				{
+					nestedLostPropagation := map[string]any{}
+					if bodyLostPropagationEnabled != "" {
+						parsedLostPropagationEnabled, err := strconv.ParseBool(bodyLostPropagationEnabled)
+						if err != nil {
+							return fmt.Errorf("parsing --lost-propagation-enabled as bool: %w", err)
+						}
+						nestedLostPropagation["enabled"] = parsedLostPropagationEnabled
+					}
+					if len(nestedLostPropagation) > 0 {
+						bodyMap["lostPropagation"] = nestedLostPropagation
+					}
+				}
+				if bodyMasterStatuses != "" {
+					parsedMasterStatuses, parseErr := cliutil.ParseStringList(bodyMasterStatuses)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --master-statuses list: %w", parseErr)
+					}
+					bodyMap["masterStatuses"] = parsedMasterStatuses
+				}
+				{
+					nestedMessageCheck := map[string]any{}
+					{
+						nestedMessageCheckMinimumGrade := map[string]any{}
+						if bodyMessageCheckMinimumGradeAdminOverride != "" {
+							parsedMessageCheckMinimumGradeAdminOverride, err := strconv.ParseBool(bodyMessageCheckMinimumGradeAdminOverride)
+							if err != nil {
+								return fmt.Errorf("parsing --message-check-minimum-grade-admin-override as bool: %w", err)
+							}
+							nestedMessageCheckMinimumGrade["adminOverride"] = parsedMessageCheckMinimumGradeAdminOverride
+						}
+						if bodyMessageCheckMinimumGradeEnabled != "" {
+							parsedMessageCheckMinimumGradeEnabled, err := strconv.ParseBool(bodyMessageCheckMinimumGradeEnabled)
+							if err != nil {
+								return fmt.Errorf("parsing --message-check-minimum-grade-enabled as bool: %w", err)
+							}
+							nestedMessageCheckMinimumGrade["enabled"] = parsedMessageCheckMinimumGradeEnabled
+						}
+						if len(nestedMessageCheckMinimumGrade) > 0 {
+							nestedMessageCheck["minimumGrade"] = nestedMessageCheckMinimumGrade
+						}
+					}
+					if len(nestedMessageCheck) > 0 {
+						bodyMap["messageCheck"] = nestedMessageCheck
+					}
+				}
+				{
+					nestedMissedCallTextBack := map[string]any{}
+					if bodyMissedCallTextBackDelaySeconds != 0 {
+						nestedMissedCallTextBack["delaySeconds"] = bodyMissedCallTextBackDelaySeconds
+					}
+					if cmd.Flags().Changed("missed-call-text-back-enabled") {
+						nestedMissedCallTextBack["enabled"] = bodyMissedCallTextBackEnabled
+					}
+					if bodyMissedCallTextBackMessage != "" {
+						nestedMissedCallTextBack["message"] = bodyMissedCallTextBackMessage
+					}
+					if len(nestedMissedCallTextBack) > 0 {
+						bodyMap["missedCallTextBack"] = nestedMissedCallTextBack
+					}
+				}
+				if bodyNotifications != "" {
+					var parsedNotifications any
+					if err := json.Unmarshal([]byte(bodyNotifications), &parsedNotifications); err != nil {
+						return fmt.Errorf("parsing --notifications JSON: %w", err)
+					}
+					bodyMap["notifications"] = parsedNotifications
+				}
+				if cmd.Flags().Changed("onboarding-complete") {
+					bodyMap["onboardingComplete"] = bodyOnboardingComplete
+				}
+				if cmd.Flags().Changed("onboarding-wizard-completed") {
+					bodyMap["onboardingWizardCompleted"] = bodyOnboardingWizardCompleted
+				}
+				if bodyOpId != "" {
+					bodyMap["opId"] = bodyOpId
+				}
+				if bodyPipelineRotDays != "" {
+					var parsedPipelineRotDays any
+					if err := json.Unmarshal([]byte(bodyPipelineRotDays), &parsedPipelineRotDays); err != nil {
+						return fmt.Errorf("parsing --pipeline-rot-days JSON: %w", err)
+					}
+					bodyMap["pipelineRotDays"] = parsedPipelineRotDays
+				}
+				if bodyPipelineStageRules != "" {
+					var parsedPipelineStageRules any
+					if err := json.Unmarshal([]byte(bodyPipelineStageRules), &parsedPipelineStageRules); err != nil {
+						return fmt.Errorf("parsing --pipeline-stage-rules JSON: %w", err)
+					}
+					bodyMap["pipelineStageRules"] = parsedPipelineStageRules
+				}
+				if bodyPoolClaimDailyLimit != 0 {
+					bodyMap["poolClaimDailyLimit"] = bodyPoolClaimDailyLimit
+				}
+				{
+					nestedPoolFilter := map[string]any{}
+					if bodyPoolFilterCreatedWithinDays != "" {
+						nestedPoolFilter["createdWithinDays"] = bodyPoolFilterCreatedWithinDays
+					}
+					if bodyPoolFilterEnabled != "" {
+						parsedPoolFilterEnabled, err := strconv.ParseBool(bodyPoolFilterEnabled)
+						if err != nil {
+							return fmt.Errorf("parsing --pool-filter-enabled as bool: %w", err)
+						}
+						nestedPoolFilter["enabled"] = parsedPoolFilterEnabled
+					}
+					if bodyPoolFilterMaxScore != "" {
+						nestedPoolFilter["maxScore"] = bodyPoolFilterMaxScore
+					}
+					if bodyPoolFilterMinScore != "" {
+						nestedPoolFilter["minScore"] = bodyPoolFilterMinScore
+					}
+					if bodyPoolFilterSources != "" {
+						parsedPoolFilterSources, parseErr := cliutil.ParseStringList(bodyPoolFilterSources)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --pool-filter-sources list: %w", parseErr)
+						}
+						nestedPoolFilter["sources"] = parsedPoolFilterSources
+					}
+					if bodyPoolFilterTagIds != "" {
+						parsedPoolFilterTagIds, parseErr := cliutil.ParseStringList(bodyPoolFilterTagIds)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --pool-filter-tag-ids list: %w", parseErr)
+						}
+						nestedPoolFilter["tagIds"] = parsedPoolFilterTagIds
+					}
+					if len(nestedPoolFilter) > 0 {
+						bodyMap["poolFilter"] = nestedPoolFilter
+					}
+				}
+				{
+					nestedPoolPages := map[string]any{}
+					{
+						nestedPoolPagesLeadPool := map[string]any{}
+						if cmd.Flags().Changed("pool-pages-lead-pool-after-hours-broadcast") {
+							nestedPoolPagesLeadPool["afterHoursBroadcast"] = bodyPoolPagesLeadPoolAfterHoursBroadcast
+						}
+						if bodyPoolPagesLeadPoolDisplayedCustomFields != "" {
+							parsedPoolPagesLeadPoolDisplayedCustomFields, parseErr := cliutil.ParseStringList(bodyPoolPagesLeadPoolDisplayedCustomFields)
+							if parseErr != nil {
+								return fmt.Errorf("parsing --pool-pages-lead-pool-displayed-custom-fields list: %w", parseErr)
+							}
+							nestedPoolPagesLeadPool["displayedCustomFields"] = parsedPoolPagesLeadPoolDisplayedCustomFields
+						}
+						if bodyPoolPagesLeadPoolDisplayedFields != "" {
+							parsedPoolPagesLeadPoolDisplayedFields, parseErr := cliutil.ParseStringList(bodyPoolPagesLeadPoolDisplayedFields)
+							if parseErr != nil {
+								return fmt.Errorf("parsing --pool-pages-lead-pool-displayed-fields list: %w", parseErr)
+							}
+							nestedPoolPagesLeadPool["displayedFields"] = parsedPoolPagesLeadPoolDisplayedFields
+						}
+						if len(nestedPoolPagesLeadPool) > 0 {
+							nestedPoolPages["lead_pool"] = nestedPoolPagesLeadPool
+						}
+					}
+					{
+						nestedPoolPagesUpForGrabs := map[string]any{}
+						if cmd.Flags().Changed("pool-pages-up-for-grabs-after-hours-broadcast") {
+							nestedPoolPagesUpForGrabs["afterHoursBroadcast"] = bodyPoolPagesUpForGrabsAfterHoursBroadcast
+						}
+						if bodyPoolPagesUpForGrabsDisplayedCustomFields != "" {
+							parsedPoolPagesUpForGrabsDisplayedCustomFields, parseErr := cliutil.ParseStringList(bodyPoolPagesUpForGrabsDisplayedCustomFields)
+							if parseErr != nil {
+								return fmt.Errorf("parsing --pool-pages-up-for-grabs-displayed-custom-fields list: %w", parseErr)
+							}
+							nestedPoolPagesUpForGrabs["displayedCustomFields"] = parsedPoolPagesUpForGrabsDisplayedCustomFields
+						}
+						if bodyPoolPagesUpForGrabsDisplayedFields != "" {
+							parsedPoolPagesUpForGrabsDisplayedFields, parseErr := cliutil.ParseStringList(bodyPoolPagesUpForGrabsDisplayedFields)
+							if parseErr != nil {
+								return fmt.Errorf("parsing --pool-pages-up-for-grabs-displayed-fields list: %w", parseErr)
+							}
+							nestedPoolPagesUpForGrabs["displayedFields"] = parsedPoolPagesUpForGrabsDisplayedFields
+						}
+						if len(nestedPoolPagesUpForGrabs) > 0 {
+							nestedPoolPages["up_for_grabs"] = nestedPoolPagesUpForGrabs
+						}
+					}
+					if len(nestedPoolPages) > 0 {
+						bodyMap["poolPages"] = nestedPoolPages
+					}
+				}
+				{
+					nestedProjectBlueRecording := map[string]any{}
+					if bodyProjectBlueRecordingConsentGreeting != "" {
+						nestedProjectBlueRecording["consentGreeting"] = bodyProjectBlueRecordingConsentGreeting
+					}
+					{
+						nestedProjectBlueRecordingDisclosure := map[string]any{}
+						if bodyProjectBlueRecordingDisclosureEnabled != "" {
+							parsedProjectBlueRecordingDisclosureEnabled, err := strconv.ParseBool(bodyProjectBlueRecordingDisclosureEnabled)
+							if err != nil {
+								return fmt.Errorf("parsing --project-blue-recording-disclosure-enabled as bool: %w", err)
+							}
+							nestedProjectBlueRecordingDisclosure["enabled"] = parsedProjectBlueRecordingDisclosureEnabled
+						}
+						if bodyProjectBlueRecordingDisclosureOn != "" {
+							nestedProjectBlueRecordingDisclosure["on"] = bodyProjectBlueRecordingDisclosureOn
+						}
+						if len(nestedProjectBlueRecordingDisclosure) > 0 {
+							nestedProjectBlueRecording["disclosure"] = nestedProjectBlueRecordingDisclosure
+						}
+					}
+					if cmd.Flags().Changed("project-blue-recording-enabled") {
+						nestedProjectBlueRecording["enabled"] = bodyProjectBlueRecordingEnabled
+					}
+					if cmd.Flags().Changed("project-blue-recording-inbound") {
+						nestedProjectBlueRecording["inbound"] = bodyProjectBlueRecordingInbound
+					}
+					if cmd.Flags().Changed("project-blue-recording-outbound") {
+						nestedProjectBlueRecording["outbound"] = bodyProjectBlueRecordingOutbound
+					}
+					if len(nestedProjectBlueRecording) > 0 {
+						bodyMap["projectBlueRecording"] = nestedProjectBlueRecording
+					}
+				}
+				{
+					nestedRecording := map[string]any{}
+					if bodyRecordingConsentGreeting != "" {
+						nestedRecording["consentGreeting"] = bodyRecordingConsentGreeting
+					}
+					{
+						nestedRecordingDisclosure := map[string]any{}
+						if bodyRecordingDisclosureEnabled != "" {
+							parsedRecordingDisclosureEnabled, err := strconv.ParseBool(bodyRecordingDisclosureEnabled)
+							if err != nil {
+								return fmt.Errorf("parsing --recording-disclosure-enabled as bool: %w", err)
+							}
+							nestedRecordingDisclosure["enabled"] = parsedRecordingDisclosureEnabled
+						}
+						if bodyRecordingDisclosureOn != "" {
+							nestedRecordingDisclosure["on"] = bodyRecordingDisclosureOn
+						}
+						if len(nestedRecordingDisclosure) > 0 {
+							nestedRecording["disclosure"] = nestedRecordingDisclosure
+						}
+					}
+					if cmd.Flags().Changed("recording-enabled") {
+						nestedRecording["enabled"] = bodyRecordingEnabled
+					}
+					if cmd.Flags().Changed("recording-inbound") {
+						nestedRecording["inbound"] = bodyRecordingInbound
+					}
+					if cmd.Flags().Changed("recording-outbound") {
+						nestedRecording["outbound"] = bodyRecordingOutbound
+					}
+					if len(nestedRecording) > 0 {
+						bodyMap["recording"] = nestedRecording
+					}
+				}
+				if bodyRequiredContactFields != "" {
+					parsedRequiredContactFields, parseErr := cliutil.ParseStringList(bodyRequiredContactFields)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --required-contact-fields list: %w", parseErr)
+					}
+					bodyMap["requiredContactFields"] = parsedRequiredContactFields
+				}
+				{
+					nestedSpeedToLead := map[string]any{}
+					if cmd.Flags().Changed("speed-to-lead-enabled") {
+						nestedSpeedToLead["enabled"] = bodySpeedToLeadEnabled
+					}
+					if bodySpeedToLeadNotifyRoles != "" {
+						parsedSpeedToLeadNotifyRoles, parseErr := cliutil.ParseStringList(bodySpeedToLeadNotifyRoles)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --speed-to-lead-notify-roles list: %w", parseErr)
+						}
+						nestedSpeedToLead["notifyRoles"] = parsedSpeedToLeadNotifyRoles
+					}
+					if bodySpeedToLeadThresholdMinutes != 0 {
+						nestedSpeedToLead["thresholdMinutes"] = bodySpeedToLeadThresholdMinutes
+					}
+					if len(nestedSpeedToLead) > 0 {
+						bodyMap["speedToLead"] = nestedSpeedToLead
+					}
+				}
+				{
+					nestedTeamChat := map[string]any{}
+					if bodyTeamChatDigestMinutes != 0 {
+						nestedTeamChat["digestMinutes"] = bodyTeamChatDigestMinutes
+					}
+					if bodyTeamChatQuietHours != "" {
+						if looksLikeJSONComposite(bodyTeamChatQuietHours) {
+							var parsedTeamChatQuietHours any
+							if err := json.Unmarshal([]byte(bodyTeamChatQuietHours), &parsedTeamChatQuietHours); err != nil {
+								return fmt.Errorf("parsing --team-chat-quiet-hours JSON: %w", err)
+							}
+							nestedTeamChat["quietHours"] = parsedTeamChatQuietHours
+						} else {
+							nestedTeamChat["quietHours"] = bodyTeamChatQuietHours
+						}
+					}
+					if cmd.Flags().Changed("team-chat-realtime") {
+						nestedTeamChat["realtime"] = bodyTeamChatRealtime
+					}
+					if cmd.Flags().Changed("team-chat-realtime-presence") {
+						nestedTeamChat["realtimePresence"] = bodyTeamChatRealtimePresence
+					}
+					if len(nestedTeamChat) > 0 {
+						bodyMap["teamChat"] = nestedTeamChat
+					}
+				}
+				if bodyTimezone != "" {
+					bodyMap["timezone"] = bodyTimezone
+				}
+				{
+					nestedVoicemailDrop := map[string]any{}
+					if bodyVoicemailDropDefaultAudioUrl != "" {
+						nestedVoicemailDrop["defaultAudioUrl"] = bodyVoicemailDropDefaultAudioUrl
+					}
+					if bodyVoicemailDropTemplates != "" {
+						var parsedVoicemailDropTemplates any
+						if err := json.Unmarshal([]byte(bodyVoicemailDropTemplates), &parsedVoicemailDropTemplates); err != nil {
+							return fmt.Errorf("parsing --voicemail-drop-templates JSON: %w", err)
+						}
+						nestedVoicemailDrop["templates"] = parsedVoicemailDropTemplates
+					}
+					if len(nestedVoicemailDrop) > 0 {
+						bodyMap["voicemailDrop"] = nestedVoicemailDrop
+					}
 				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
@@ -203,10 +972,109 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyDomain, "domain", "", "Domain")
-	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
-	cmd.Flags().StringVar(&bodySettings, "settings", "", "Settings")
-	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
+	cmd.Flags().StringVar(&bodyAgentStatusesHidden, "agent-statuses-hidden", "", "Hidden")
+	cmd.Flags().StringVar(&bodyAgentStatusesLabels, "agent-statuses-labels", "", "Labels")
+	cmd.Flags().BoolVar(&bodyAiDispositionAutoApply, "ai-disposition-auto-apply", false, "Auto apply")
+	cmd.Flags().BoolVar(&bodyAiDispositionAutoApplyAsync, "ai-disposition-auto-apply-async", false, "Auto apply async")
+	cmd.Flags().BoolVar(&bodyAiDispositionAutoApplyOnTimeout, "ai-disposition-auto-apply-on-timeout", false, "Auto apply on timeout")
+	cmd.Flags().BoolVar(&bodyAiDispositionEnabled, "ai-disposition-enabled", false, "Enabled")
+	cmd.Flags().IntVar(&bodyAiDispositionTimeoutSeconds, "ai-disposition-timeout-seconds", 0, "Timeout seconds")
+	cmd.Flags().StringVar(&bodyAppointmentOutcomeStages, "appointment-outcome-stages", "", "Per pipeline (key = pipeline id): the stage each appointment outcome moves the contact's open deal to.")
+	cmd.Flags().BoolVar(&bodyAutoEnrichmentEnabled, "auto-enrichment-enabled", false, "Enabled")
+	cmd.Flags().BoolVar(&bodyBookingCreatesOwnCard, "booking-creates-own-card", false, "When true, a booking creates a new card in the intake-deals pipeline and stage, owned by the booking's host")
+	cmd.Flags().BoolVar(&bodyBookingMessageGuardAcknowledgeSendAfterAppointment, "booking-message-guard-acknowledge-send-after-appointment", false, "Required true when enabled is false: booking automations keep sending after the appointment has passed or was cancelled")
+	cmd.Flags().StringVar(&bodyBookingMessageGuardEnabled, "booking-message-guard-enabled", "", "true (the default): a run started by appointment.")
+	cmd.Flags().StringVar(&bodyCallDispositionsCustom, "call-dispositions-custom", "", "Custom")
+	cmd.Flags().StringVar(&bodyCallDispositionsDescriptions, "call-dispositions-descriptions", "", "Keys are trimmed before the length check, so a blank key is refused.")
+	cmd.Flags().StringVar(&bodyCallDispositionsHidden, "call-dispositions-hidden", "", "Hidden")
+	cmd.Flags().StringVar(&bodyCallDispositionsHighStakes, "call-dispositions-high-stakes", "", "High stakes")
+	cmd.Flags().StringVar(&bodyCallDispositionsLabels, "call-dispositions-labels", "", "Display-label overrides for BUILT-IN dispositions, keyed by canonical value — e.g. {'interested': 'Interested - RFS'}.")
+	cmd.Flags().StringVar(&bodyCallDispositionsStatusMap, "call-dispositions-status-map", "", "Disposition → lead status: when an outcome is picked (by a rep or by AI)")
+	cmd.Flags().BoolVar(&bodyCallingWindowAcknowledgeAnyHour, "calling-window-acknowledge-any-hour", false, "Required true when enabled is false: the tenant allows calls at any hour and owns the calling-time rules.")
+	cmd.Flags().StringVar(&bodyCallingWindowEnabled, "calling-window-enabled", "", "false switches the calling-hours check off")
+	cmd.Flags().StringVar(&bodyCallingWindowEnd, "calling-window-end", "", "HH:MM, 24 hour; must be after start")
+	cmd.Flags().StringVar(&bodyCallingWindowStart, "calling-window-start", "", "HH:MM, 24 hour")
+	cmd.Flags().StringVar(&bodyCallingWindowTimezone, "calling-window-timezone", "", "IANA zone the hours are judged in. Omit or null: the contact's zone, then the number's area code, then the account's.")
+	cmd.Flags().StringVar(&bodyCompanyName, "company-name", "", "Must not contain a link (http://, https://, ftp:// or www.); otherwise a 422.")
+	cmd.Flags().StringVar(&bodyContactTableDefaultsColumns, "contact-table-defaults-columns", "", "Columns")
+	cmd.Flags().StringVar(&bodyContactTableDefaultsExpectedRevision, "contact-table-defaults-expected-revision", "", "Expected revision")
+	cmd.Flags().StringVar(&bodyCurrency, "currency", "", "Currency")
+	cmd.Flags().StringVar(&bodyDateFormat, "date-format", "", "Date format")
+	cmd.Flags().StringVar(&bodyDealCardFields, "deal-card-fields", "", "Kanban card fields, in order (max 8): built-in names, or custom:<fieldKey> for one of the account's deal custom fields.")
+	cmd.Flags().BoolVar(&bodyDealVelocityEnabled, "deal-velocity-enabled", false, "Enabled")
+	cmd.Flags().StringVar(&bodyDealVelocityNotifyRoles, "deal-velocity-notify-roles", "", "Notify roles")
+	cmd.Flags().IntVar(&bodyDealVelocityStaleDays, "deal-velocity-stale-days", 0, "Stale days")
+	cmd.Flags().StringVar(&bodyDealWorkingMode, "deal-working-mode", "", "Deal working mode")
+	cmd.Flags().StringVar(&bodyDefaultCountry, "default-country", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodyDppIngestConduytDealIdKey, "dpp-ingest-conduyt-deal-id-key", "", "The DPP payload key that carries the Conduyt DEAL id (UUID) your team enters in DPP.")
+	cmd.Flags().StringVar(&bodyDppIngestConduytIdKey, "dpp-ingest-conduyt-id-key", "", "The DPP payload key that carries the Conduyt contact id (UUID) your team enters in DPP.")
+	cmd.Flags().StringVar(&bodyDppIngestPostClosePipelineId, "dpp-ingest-post-close-pipeline-id", "", "The pipeline whose open card a DPP update moves (BDA: Post-Close). null switches the mover off.")
+	cmd.Flags().StringVar(&bodyDppIngestReviewerUserId, "dpp-ingest-reviewer-user-id", "", "Member who receives a DPP update with no matching contact (as a task)")
+	cmd.Flags().StringVar(&bodyDppIngestStatusShortFieldKey, "dpp-ingest-status-short-field-key", "", "Custom field (contact and deal) that stores the short DPP status; default dpp_status_short.")
+	cmd.Flags().StringVar(&bodyDppStatusMap, "dpp-status-map", "", "DPP status → { stageId } (move the contact's open Post-Close card there) or { noop: true } (record only).")
+	cmd.Flags().StringVar(&bodyExpectedSettingsRevision, "expected-settings-revision", "", "REQUIRED for any change to the general settings: the settingsRevision returned by GET /api/v1/settings.")
+	cmd.Flags().StringVar(&bodyFiscalYearStart, "fiscal-year-start", "", "Fiscal year start")
+	cmd.Flags().IntVar(&bodyHighValueIdleDays, "high-value-idle-days", 0, "High value idle days")
+	cmd.Flags().IntVar(&bodyHighValueThreshold, "high-value-threshold", 0, "High value threshold")
+	cmd.Flags().StringVar(&bodyInboundEmailDispatchPolicy, "inbound-email-dispatch-policy", "", "Inbound email dispatch policy")
+	cmd.Flags().StringVar(&bodyIntakeDealsEnabled, "intake-deals-enabled", "", "Enabled")
+	cmd.Flags().StringVar(&bodyIntakeDealsPipelineId, "intake-deals-pipeline-id", "", "Pipeline id")
+	cmd.Flags().StringVar(&bodyIntakeDealsReInbound, "intake-deals-re-inbound", "", "Re inbound")
+	cmd.Flags().StringVar(&bodyIntakeDealsStageId, "intake-deals-stage-id", "", "Stage id")
+	cmd.Flags().StringVar(&bodyInternalEmailDomains, "internal-email-domains", "", "Approved internal email domains (lowercase, exact match, up to 20).")
+	cmd.Flags().BoolVar(&bodyLocalPresenceAutoSync, "local-presence-auto-sync", false, "Auto sync")
+	cmd.Flags().BoolVar(&bodyLocalPresenceEnabled, "local-presence-enabled", false, "Enabled")
+	cmd.Flags().StringVar(&bodyLocalPresenceNumberPool, "local-presence-number-pool", "", "Number pool")
+	cmd.Flags().StringVar(&bodyLostPropagationEnabled, "lost-propagation-enabled", "", "Enabled")
+	cmd.Flags().StringVar(&bodyMasterStatuses, "master-statuses", "", "Master statuses")
+	cmd.Flags().StringVar(&bodyMessageCheckMinimumGradeAdminOverride, "message-check-minimum-grade-admin-override", "", "Whether an owner or admin may send below the minimum. Default true.")
+	cmd.Flags().StringVar(&bodyMessageCheckMinimumGradeEnabled, "message-check-minimum-grade-enabled", "", "Master switch. Default false. Not enforced yet: true is refused with 400 minimum_grade_not_available_yet.")
+	cmd.Flags().IntVar(&bodyMissedCallTextBackDelaySeconds, "missed-call-text-back-delay-seconds", 0, "Delay seconds")
+	cmd.Flags().BoolVar(&bodyMissedCallTextBackEnabled, "missed-call-text-back-enabled", false, "Enabled")
+	cmd.Flags().StringVar(&bodyMissedCallTextBackMessage, "missed-call-text-back-message", "", "Message")
+	cmd.Flags().StringVar(&bodyNotifications, "notifications", "", "Notifications")
+	cmd.Flags().BoolVar(&bodyOnboardingComplete, "onboarding-complete", false, "Onboarding complete")
+	cmd.Flags().BoolVar(&bodyOnboardingWizardCompleted, "onboarding-wizard-completed", false, "Onboarding wizard completed")
+	cmd.Flags().StringVar(&bodyOpId, "op-id", "", "Operation id minted by POST /api/v1/settings/operations (a server-issued reservation).")
+	cmd.Flags().StringVar(&bodyPipelineRotDays, "pipeline-rot-days", "", "Per pipeline id: days without activity (1-90) before a deal in it reads Stale in stage. Only the pipelines sent change.")
+	cmd.Flags().StringVar(&bodyPipelineStageRules, "pipeline-stage-rules", "", "Pipeline stage rules")
+	cmd.Flags().IntVar(&bodyPoolClaimDailyLimit, "pool-claim-daily-limit", 0, "Pool claim daily limit")
+	cmd.Flags().StringVar(&bodyPoolFilterCreatedWithinDays, "pool-filter-created-within-days", "", "Created within days")
+	cmd.Flags().StringVar(&bodyPoolFilterEnabled, "pool-filter-enabled", "", "Enabled")
+	cmd.Flags().StringVar(&bodyPoolFilterMaxScore, "pool-filter-max-score", "", "Max score")
+	cmd.Flags().StringVar(&bodyPoolFilterMinScore, "pool-filter-min-score", "", "Min score")
+	cmd.Flags().StringVar(&bodyPoolFilterSources, "pool-filter-sources", "", "Sources")
+	cmd.Flags().StringVar(&bodyPoolFilterTagIds, "pool-filter-tag-ids", "", "Tag ids")
+	cmd.Flags().BoolVar(&bodyPoolPagesLeadPoolAfterHoursBroadcast, "pool-pages-lead-pool-after-hours-broadcast", false, "After hours broadcast")
+	cmd.Flags().StringVar(&bodyPoolPagesLeadPoolDisplayedCustomFields, "pool-pages-lead-pool-displayed-custom-fields", "", "Displayed custom fields")
+	cmd.Flags().StringVar(&bodyPoolPagesLeadPoolDisplayedFields, "pool-pages-lead-pool-displayed-fields", "", "Displayed fields")
+	cmd.Flags().BoolVar(&bodyPoolPagesUpForGrabsAfterHoursBroadcast, "pool-pages-up-for-grabs-after-hours-broadcast", false, "After hours broadcast")
+	cmd.Flags().StringVar(&bodyPoolPagesUpForGrabsDisplayedCustomFields, "pool-pages-up-for-grabs-displayed-custom-fields", "", "Displayed custom fields")
+	cmd.Flags().StringVar(&bodyPoolPagesUpForGrabsDisplayedFields, "pool-pages-up-for-grabs-displayed-fields", "", "Displayed fields")
+	cmd.Flags().StringVar(&bodyProjectBlueRecordingConsentGreeting, "project-blue-recording-consent-greeting", "", "Consent greeting")
+	cmd.Flags().StringVar(&bodyProjectBlueRecordingDisclosureEnabled, "project-blue-recording-disclosure-enabled", "", "Enabled")
+	cmd.Flags().StringVar(&bodyProjectBlueRecordingDisclosureOn, "project-blue-recording-disclosure-on", "", "On")
+	cmd.Flags().BoolVar(&bodyProjectBlueRecordingEnabled, "project-blue-recording-enabled", false, "Enabled")
+	cmd.Flags().BoolVar(&bodyProjectBlueRecordingInbound, "project-blue-recording-inbound", false, "Inbound")
+	cmd.Flags().BoolVar(&bodyProjectBlueRecordingOutbound, "project-blue-recording-outbound", false, "Outbound")
+	cmd.Flags().StringVar(&bodyRecordingConsentGreeting, "recording-consent-greeting", "", "Consent greeting")
+	cmd.Flags().StringVar(&bodyRecordingDisclosureEnabled, "recording-disclosure-enabled", "", "Enabled")
+	cmd.Flags().StringVar(&bodyRecordingDisclosureOn, "recording-disclosure-on", "", "On")
+	cmd.Flags().BoolVar(&bodyRecordingEnabled, "recording-enabled", false, "Enabled")
+	cmd.Flags().BoolVar(&bodyRecordingInbound, "recording-inbound", false, "Inbound")
+	cmd.Flags().BoolVar(&bodyRecordingOutbound, "recording-outbound", false, "Outbound")
+	cmd.Flags().StringVar(&bodyRequiredContactFields, "required-contact-fields", "", "Required contact fields")
+	cmd.Flags().BoolVar(&bodySpeedToLeadEnabled, "speed-to-lead-enabled", false, "Enabled")
+	cmd.Flags().StringVar(&bodySpeedToLeadNotifyRoles, "speed-to-lead-notify-roles", "", "Notify roles")
+	cmd.Flags().IntVar(&bodySpeedToLeadThresholdMinutes, "speed-to-lead-threshold-minutes", 0, "Threshold minutes")
+	cmd.Flags().IntVar(&bodyTeamChatDigestMinutes, "team-chat-digest-minutes", 0, "Team Chat missed-message email digest window in minutes (needs realtime on): 0 = off, 15..240, default 30.")
+	cmd.Flags().StringVar(&bodyTeamChatQuietHours, "team-chat-quiet-hours", "", "Team Chat quiet hours (needs realtime on): no chat pushes and no missed-message digests inside the window. null = none.")
+	cmd.Flags().BoolVar(&bodyTeamChatRealtime, "team-chat-realtime", false, "Team Chat realtime delivery (instant messages, edits, reactions, pins, typing")
+	cmd.Flags().BoolVar(&bodyTeamChatRealtimePresence, "team-chat-realtime-presence", false, "Online / away presence over the realtime pipe (needs realtime on).")
+	cmd.Flags().StringVar(&bodyTimezone, "timezone", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodyVoicemailDropDefaultAudioUrl, "voicemail-drop-default-audio-url", "", "The server parses the value with the WHATWG URL parser (Zod's .")
+	cmd.Flags().StringVar(&bodyVoicemailDropTemplates, "voicemail-drop-templates", "", "Templates")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin (use this for deeply nested fields not exposed as flags)")
 
 	return cmd
 }

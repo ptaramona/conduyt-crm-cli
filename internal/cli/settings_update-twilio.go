@@ -13,12 +13,15 @@ import (
 )
 
 func newSettingsUpdateTwilioCmd(flags *rootFlags) *cobra.Command {
-	var bodyTwilioAccountSid string
-	var bodyTwilioApiKey string
-	var bodyTwilioApiSecret string
-	var bodyTwilioAuthToken string
-	var bodyTwilioPhoneNumber string
-	var bodyTwilioTwimlAppSid string
+	var bodyAccountSid string
+	var bodyApiKey string
+	var bodyApiSecret string
+	var bodyAuthToken string
+	var bodyLineTypeVerificationEnabled bool
+	var bodyPhoneNumber string
+	var bodySkipLandlinesOnSms bool
+	var bodyTwimlAppSid string
+	var bodyVoicemailGreeting string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -49,23 +52,32 @@ func newSettingsUpdateTwilioCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyTwilioAccountSid != "" {
-					bodyMap["twilioAccountSid"] = bodyTwilioAccountSid
+				if bodyAccountSid != "" {
+					bodyMap["accountSid"] = bodyAccountSid
 				}
-				if bodyTwilioApiKey != "" {
-					bodyMap["twilioApiKey"] = bodyTwilioApiKey
+				if bodyApiKey != "" {
+					bodyMap["apiKey"] = bodyApiKey
 				}
-				if bodyTwilioApiSecret != "" {
-					bodyMap["twilioApiSecret"] = bodyTwilioApiSecret
+				if bodyApiSecret != "" {
+					bodyMap["apiSecret"] = bodyApiSecret
 				}
-				if bodyTwilioAuthToken != "" {
-					bodyMap["twilioAuthToken"] = bodyTwilioAuthToken
+				if bodyAuthToken != "" {
+					bodyMap["authToken"] = bodyAuthToken
 				}
-				if bodyTwilioPhoneNumber != "" {
-					bodyMap["twilioPhoneNumber"] = bodyTwilioPhoneNumber
+				if cmd.Flags().Changed("line-type-verification-enabled") {
+					bodyMap["lineTypeVerificationEnabled"] = bodyLineTypeVerificationEnabled
 				}
-				if bodyTwilioTwimlAppSid != "" {
-					bodyMap["twilioTwimlAppSid"] = bodyTwilioTwimlAppSid
+				if bodyPhoneNumber != "" {
+					bodyMap["phoneNumber"] = bodyPhoneNumber
+				}
+				if cmd.Flags().Changed("skip-landlines-on-sms") {
+					bodyMap["skipLandlinesOnSms"] = bodySkipLandlinesOnSms
+				}
+				if bodyTwimlAppSid != "" {
+					bodyMap["twimlAppSid"] = bodyTwimlAppSid
+				}
+				if bodyVoicemailGreeting != "" {
+					bodyMap["voicemailGreeting"] = bodyVoicemailGreeting
 				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
@@ -211,12 +223,15 @@ func newSettingsUpdateTwilioCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyTwilioAccountSid, "twilio-account-sid", "", "Twilio account sid")
-	cmd.Flags().StringVar(&bodyTwilioApiKey, "twilio-api-key", "", "Twilio api key")
-	cmd.Flags().StringVar(&bodyTwilioApiSecret, "twilio-api-secret", "", "Twilio api secret")
-	cmd.Flags().StringVar(&bodyTwilioAuthToken, "twilio-auth-token", "", "Twilio auth token")
-	cmd.Flags().StringVar(&bodyTwilioPhoneNumber, "twilio-phone-number", "", "Twilio phone number")
-	cmd.Flags().StringVar(&bodyTwilioTwimlAppSid, "twilio-twiml-app-sid", "", "Twilio twiml app sid")
+	cmd.Flags().StringVar(&bodyAccountSid, "account-sid", "", "Account sid")
+	cmd.Flags().StringVar(&bodyApiKey, "api-key", "", "Api key")
+	cmd.Flags().StringVar(&bodyApiSecret, "api-secret", "", "Api secret")
+	cmd.Flags().StringVar(&bodyAuthToken, "auth-token", "", "Auth token")
+	cmd.Flags().BoolVar(&bodyLineTypeVerificationEnabled, "line-type-verification-enabled", false, "Line type verification enabled")
+	cmd.Flags().StringVar(&bodyPhoneNumber, "phone-number", "", "Phone number")
+	cmd.Flags().BoolVar(&bodySkipLandlinesOnSms, "skip-landlines-on-sms", false, "Skip landlines on sms")
+	cmd.Flags().StringVar(&bodyTwimlAppSid, "twiml-app-sid", "", "Twiml app sid")
+	cmd.Flags().StringVar(&bodyVoicemailGreeting, "voicemail-greeting", "", "Voicemail greeting")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

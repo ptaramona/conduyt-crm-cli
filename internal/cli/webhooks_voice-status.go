@@ -6,14 +6,28 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newWebhooksVoiceStatusCmd(flags *rootFlags) *cobra.Command {
-	var stdinBody bool
+	var bodyAccountSid string
+	var bodyCallDuration string
+	var bodyCallSid string
+	var bodyCallStatus string
+	var bodyCalled string
+	var bodyCaller string
+	var bodyDirection string
+	var bodyFrom string
+	var bodyParentCallSid string
+	var bodyParticipantCallStatus string
+	var bodyReasonParticipantLeft string
+	var bodyRecordingSid string
+	var bodyRecordingUrl string
+	var bodyStatusCallbackEvent string
+	var bodyTimestamp string
+	var bodyTo string
 
 	cmd := &cobra.Command{
 		Use:         "voice-status",
@@ -21,30 +35,64 @@ func newWebhooksVoiceStatusCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli webhooks voice-status",
 		Annotations: map[string]string{"pp:endpoint": "webhooks.voice-status", "pp:method": "POST", "pp:path": "/webhooks/voice/status"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !stdinBody {
-			}
 			path := "/webhooks/voice/status"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			var body any
-			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return fmt.Errorf("reading stdin: %w", err)
-				}
-				var jsonBody map[string]any
-				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
-					return fmt.Errorf("parsing stdin JSON: %w", err)
-				}
-				body = jsonBody
-			} else {
-				bodyMap := map[string]any{}
-				body = bodyMap
+			fields := map[string]string{}
+			fileFields := map[string]string{}
+			if bodyAccountSid != "" {
+				fields["AccountSid"] = bodyAccountSid
 			}
-			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
+			if bodyCallDuration != "" {
+				fields["CallDuration"] = bodyCallDuration
+			}
+			if bodyCallSid != "" {
+				fields["CallSid"] = bodyCallSid
+			}
+			if bodyCallStatus != "" {
+				fields["CallStatus"] = bodyCallStatus
+			}
+			if bodyCalled != "" {
+				fields["Called"] = bodyCalled
+			}
+			if bodyCaller != "" {
+				fields["Caller"] = bodyCaller
+			}
+			if bodyDirection != "" {
+				fields["Direction"] = bodyDirection
+			}
+			if bodyFrom != "" {
+				fields["From"] = bodyFrom
+			}
+			if bodyParentCallSid != "" {
+				fields["ParentCallSid"] = bodyParentCallSid
+			}
+			if bodyParticipantCallStatus != "" {
+				fields["ParticipantCallStatus"] = bodyParticipantCallStatus
+			}
+			if bodyReasonParticipantLeft != "" {
+				fields["ReasonParticipantLeft"] = bodyReasonParticipantLeft
+			}
+			if bodyRecordingSid != "" {
+				fields["RecordingSid"] = bodyRecordingSid
+			}
+			if bodyRecordingUrl != "" {
+				fields["RecordingUrl"] = bodyRecordingUrl
+			}
+			if bodyStatusCallbackEvent != "" {
+				fields["StatusCallbackEvent"] = bodyStatusCallbackEvent
+			}
+			if bodyTimestamp != "" {
+				fields["Timestamp"] = bodyTimestamp
+			}
+			if bodyTo != "" {
+				fields["To"] = bodyTo
+			}
+
+			data, statusCode, err := c.PostMultipartWithParams(cmd.Context(), path, params, fields, fileFields)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -187,7 +235,22 @@ func newWebhooksVoiceStatusCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
+	cmd.Flags().StringVar(&bodyAccountSid, "account-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCallDuration, "call-duration", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCallSid, "call-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCallStatus, "call-status", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCalled, "called", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCaller, "caller", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyDirection, "direction", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyFrom, "from", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyParentCallSid, "parent-call-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyParticipantCallStatus, "participant-call-status", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyReasonParticipantLeft, "reason-participant-left", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyRecordingSid, "recording-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyRecordingUrl, "recording-url", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyStatusCallbackEvent, "status-callback-event", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyTimestamp, "timestamp", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "A form field the handler reads")
 
 	return cmd
 }

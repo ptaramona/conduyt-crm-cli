@@ -12,27 +12,27 @@ import (
 )
 
 func newFilesListCmd(flags *rootFlags) *cobra.Command {
-	var flagEntityType string
 	var flagEntityId string
+	var flagEntityType string
 
 	cmd := &cobra.Command{
-		Use:         "list",
-		Short:       "List file attachments",
-		Example:     "  conduyt-crm-pp-cli files list",
+		Use:   "list",
+		Short: "List file attachments",
+		// TODO: replace placeholder example values before relying on this for live dogfood.
+		Example:     "  conduyt-crm-pp-cli files list --entity-id 550e8400-e29b-41d4-a716-446655440000 --entity-type example-value",
 		Annotations: map[string]string{"pp:endpoint": "files.list", "pp:method": "GET", "pp:path": "/files", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Changed("entity-type") {
-				allowedEntityType := []string{"contact", "deal", "company"}
-				validEntityType := false
-				for _, v := range allowedEntityType {
-					if flagEntityType == v {
-						validEntityType = true
-						break
-					}
-				}
-				if !validEntityType {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagEntityType, "entity-type", allowedEntityType)
-				}
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("entity-id") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "entity-id")
+			}
+			if !cmd.Flags().Changed("entity-type") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "entity-type")
 			}
 			path := "/files"
 			c, err := flags.newClient()
@@ -40,11 +40,11 @@ func newFilesListCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
-			if flagEntityType != "" {
-				params["entity_type"] = formatCLIParamValue(flagEntityType)
-			}
 			if flagEntityId != "" {
-				params["entity_id"] = formatCLIParamValue(flagEntityId)
+				params["entityId"] = formatCLIParamValue(flagEntityId)
+			}
+			if flagEntityType != "" {
+				params["entityType"] = formatCLIParamValue(flagEntityType)
 			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "files", true, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
@@ -94,8 +94,8 @@ func newFilesListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagEntityType, "entity-type", "", "Entity type (one of: contact, deal, company)")
-	cmd.Flags().StringVar(&flagEntityId, "entity-id", "", "Entity id")
+	cmd.Flags().StringVar(&flagEntityId, "entity-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagEntityType, "entity-type", "", "Query parameter read by this route.")
 
 	return cmd
 }

@@ -12,6 +12,12 @@ import (
 )
 
 func newTagsListCmd(flags *rootFlags) *cobra.Command {
+	var flagCounts bool
+	var flagName string
+	var flagPage string
+	var flagPerPage string
+	var flagSearch string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -24,8 +30,13 @@ func newTagsListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "tags", true, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "tags", path, map[string]string{
+				"counts":   formatCLIParamValue(flagCounts),
+				"name":     formatCLIParamValue(flagName),
+				"page":     formatCLIParamValue(flagPage),
+				"per_page": formatCLIParamValue(flagPerPage),
+				"search":   formatCLIParamValue(flagSearch),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +84,12 @@ func newTagsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagCounts, "counts", false, "false: no member counts (rows carry no _count; the list skips the per-tag contact count).")
+	cmd.Flags().StringVar(&flagName, "name", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 200, default 25), or the word all: every tag (merged aliases are never listed)")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

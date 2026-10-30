@@ -13,12 +13,14 @@ import (
 )
 
 func newCalendarsAppointmentsCreateCalendarCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyAssignedTo string
-	var bodyCalendarId string
 	var bodyContactId string
 	var bodyDescription string
 	var bodyEndTime string
 	var bodyLocation string
+	var bodyMetadata string
 	var bodyStartTime string
 	var bodyStatus string
 	var bodyTitle string
@@ -61,6 +63,12 @@ func newCalendarsAppointmentsCreateCalendarCmd(flags *rootFlags) *cobra.Command 
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -78,9 +86,6 @@ func newCalendarsAppointmentsCreateCalendarCmd(flags *rootFlags) *cobra.Command 
 				if bodyAssignedTo != "" {
 					bodyMap["assignedTo"] = bodyAssignedTo
 				}
-				if bodyCalendarId != "" {
-					bodyMap["calendarId"] = bodyCalendarId
-				}
 				if bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
 				}
@@ -92,6 +97,9 @@ func newCalendarsAppointmentsCreateCalendarCmd(flags *rootFlags) *cobra.Command 
 				}
 				if bodyLocation != "" {
 					bodyMap["location"] = bodyLocation
+				}
+				if bodyMetadata != "" {
+					bodyMap["metadata"] = bodyMetadata
 				}
 				if bodyStartTime != "" {
 					bodyMap["startTime"] = bodyStartTime
@@ -246,12 +254,14 @@ func newCalendarsAppointmentsCreateCalendarCmd(flags *rootFlags) *cobra.Command 
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
-	cmd.Flags().StringVar(&bodyCalendarId, "calendar-id", "", "Calendar id")
-	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "A contact of your account; when no contact has this id it is looked up as a deal (card) of your account")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
 	cmd.Flags().StringVar(&bodyEndTime, "end-time", "", "End time")
 	cmd.Flags().StringVar(&bodyLocation, "location", "", "Location")
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyStartTime, "start-time", "", "Start time")
 	cmd.Flags().StringVar(&bodyStatus, "status", "scheduled", "Status")
 	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")

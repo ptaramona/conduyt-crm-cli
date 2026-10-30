@@ -12,6 +12,7 @@ import (
 )
 
 func newConversationsComplianceGetConversationsContactIdCmd(flags *rootFlags) *cobra.Command {
+	var flagPhone string
 
 	cmd := &cobra.Command{
 		Use:         "get-conversations-contact-id <contactId>",
@@ -33,6 +34,9 @@ func newConversationsComplianceGetConversationsContactIdCmd(flags *rootFlags) *c
 				return err
 			}
 			params := map[string]string{}
+			if flagPhone != "" {
+				params["phone"] = formatCLIParamValue(flagPhone)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "compliance", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -81,6 +85,7 @@ func newConversationsComplianceGetConversationsContactIdCmd(flags *rootFlags) *c
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagPhone, "phone", "", "Query parameter read by this route.")
 
 	return cmd
 }

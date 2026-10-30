@@ -12,6 +12,10 @@ import (
 )
 
 func newSmartViewsListCmd(flags *rootFlags) *cobra.Command {
+	var flagAll2 bool
+	var flagCounts bool
+	var flagPage string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -24,8 +28,11 @@ func newSmartViewsListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "smart-views", true, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "smart-views", path, map[string]string{
+				"all":    formatCLIParamValue(flagAll2),
+				"counts": formatCLIParamValue(flagCounts),
+				"page":   formatCLIParamValue(flagPage),
+			}, nil, flagAll, "page", "page", "", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +80,10 @@ func newSmartViewsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagAll2, "all-2", false, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagCounts, "counts", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

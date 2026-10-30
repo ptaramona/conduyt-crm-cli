@@ -13,6 +13,8 @@ import (
 )
 
 func newBulkPostContactsUntagCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactIds string
+	var bodyTagId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +45,12 @@ func newBulkPostContactsUntagCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContactIds != "" {
+					bodyMap["contactIds"] = bodyContactIds
+				}
+				if bodyTagId != "" {
+					bodyMap["tagId"] = bodyTagId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +195,8 @@ func newBulkPostContactsUntagCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactIds, "contact-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTagId, "tag-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

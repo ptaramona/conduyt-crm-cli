@@ -213,6 +213,25 @@ func setNestedBodyArg(body map[string]any, path []string, value any) {
 	}
 	current[path[len(path)-1]] = value
 }
+func coerceMCPBodyValue(binding mcpParamBinding, value any) (any, error) {
+	if binding.Format != "json_or_scalar" {
+		return value, nil
+	}
+	s, ok := value.(string)
+	if !ok || !looksLikeMCPJSONComposite(s) {
+		return value, nil
+	}
+	var parsed any
+	if err := json.Unmarshal([]byte(s), &parsed); err != nil {
+		return nil, fmt.Errorf("parsing %s JSON: %w", binding.PublicName, err)
+	}
+	return parsed, nil
+}
+
+func looksLikeMCPJSONComposite(input string) bool {
+	input = strings.TrimSpace(input)
+	return strings.HasPrefix(input, "{") || strings.HasPrefix(input, "[")
+}
 
 // makeAPIHandler creates a generic MCP tool handler for an API endpoint.
 func makeAPIHandler(method, pathTemplate string, readOnly bool, binaryResponse bool, headerOverrides map[string]string, pageConfig mcpPageConfig, bindings []mcpParamBinding, positionalParams []string) server.ToolHandlerFunc {
@@ -292,10 +311,14 @@ func makeAPIHandler(method, pathTemplate string, readOnly bool, binaryResponse b
 				pathParams[binding.PublicName] = true
 				path = strings.Replace(path, placeholder, mcpPathSegment(v), 1) // PATCH(redirect-and-redaction-policy)
 			case "body":
+				bodyValue, err := coerceMCPBodyValue(binding, v)
+				if err != nil {
+					return mcplib.NewToolResultError(err.Error()), nil
+				}
 				if len(binding.BodyPath) > 0 {
-					setNestedBodyArg(bodyArgs, binding.BodyPath, v)
+					setNestedBodyArg(bodyArgs, binding.BodyPath, bodyValue)
 				} else {
-					bodyArgs[binding.WireName] = v
+					bodyArgs[binding.WireName] = bodyValue
 				}
 				if multipart {
 					if strings.EqualFold(binding.Format, "binary") {
@@ -914,7 +937,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 		"api":         "conduyt-crm",
 		"description": "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has.",
 		"archetype":   "crm",
-		"tool_count":  731,
+		"tool_count":  948,
 		"paths":       paths,
 		// tool_surface tells agents which surface a capability lives on.
 		"tool_surface": "MCP exposes typed endpoint tools plus a runtime mirror of user-facing CLI commands. Endpoint tools keep typed schemas; command-mirror tools shell out to the companion conduyt-crm-pp-cli binary.",
@@ -940,12 +963,27 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "account",
 				"description": "Manage account",
-				"endpoints":   []string{"get-readiness"},
+				"endpoints":   []string{"get-readiness", "post-company-name"},
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "account-exports",
+				"description": "Manage account exports",
+				"endpoints":   []string{"get"},
+				"syncable":    true,
+				"searchable":  true,
+			},
+			{
+				"name":        "account-exports.files",
+				"description": "File uploads and attachments",
+				"endpoints":   []string{"get-account-exports-id-entity-download"},
 			},
 			{
 				"name":        "accounts",
 				"description": "Manage accounts",
 				"endpoints":   []string{"get", "post"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
@@ -955,6 +993,13 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
+			},
+			{
+				"name":        "activity",
+				"description": "Manage activity",
+				"endpoints":   []string{"get-export-csv"},
+				"syncable":    true,
+				"searchable":  true,
 			},
 			{
 				"name":        "admin",
@@ -967,14 +1012,15 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "ai",
 				"description": "AI-powered features (chat, email compose, contact enrichment)",
-				"endpoints":   []string{"chat", "compose-email", "deal-insights", "enrich-contact", "get-daily-brief", "get-feed", "get-insights", "get-next-actions", "get-usage", "improve-email", "post-conversation-intelligence", "post-insights", "post-tasks", "summarize-contact"},
+				"endpoints":   []string{"chat", "compose-email", "deal-insights", "enrich-contact", "get-actions-runs-id", "get-agenda", "get-daily-brief", "get-feed", "get-insights", "get-next-actions", "get-usage", "improve-email", "post-actions", "post-actions-execute", "post-conversation-intelligence", "post-insights", "post-tasks", "summarize-contact"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "api-keys",
 				"description": "API key management",
-				"endpoints":   []string{"check", "create", "list", "revoke", "update"},
+				"endpoints":   []string{"check", "create", "get-id", "list", "revoke", "update"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -995,6 +1041,12 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"writable":    true,
 			},
 			{
+				"name":        "appointments.outcome",
+				"description": "Manage outcome",
+				"endpoints":   []string{"post-appointments-id", "post-appointments-id-undo"},
+				"writable":    true,
+			},
+			{
 				"name":        "automation-executions",
 				"description": "Automation execution logs and step details",
 				"endpoints":   []string{"get", "list"},
@@ -1005,6 +1057,13 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "automation-executions.recover",
 				"description": "Manage recover",
 				"endpoints":   []string{"post-automation-executions-id"},
+				"writable":    true,
+			},
+			{
+				"name":        "automation-folders",
+				"description": "Manage automation folders",
+				"endpoints":   []string{"delete-id", "get", "patch-id", "post"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
@@ -1081,6 +1140,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "batch-operations",
 				"description": "Manage batch operations",
 				"endpoints":   []string{"get", "get-id", "post"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1121,6 +1181,12 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"endpoints":   []string{"get-booking-pages-id"},
 			},
 			{
+				"name":        "booking-pages.ical-feed",
+				"description": "Manage ical feed",
+				"endpoints":   []string{"post-booking-pages-id-reveal"},
+				"writable":    true,
+			},
+			{
 				"name":        "booking-pages.overrides",
 				"description": "Manage overrides",
 				"endpoints":   []string{"delete-booking-pages-id", "get-booking-pages-id", "post-booking-pages-id"},
@@ -1141,24 +1207,28 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "booking-routing-forms",
 				"description": "Manage booking routing forms",
 				"endpoints":   []string{"delete-id", "get", "get-id", "patch-id", "post"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "bulk",
 				"description": "Manage bulk",
-				"endpoints":   []string{"delete-contacts", "edit-contacts", "edit-deals", "get-status", "post-contacts-dnc", "post-contacts-untag", "tag-contacts", "update-contacts", "update-deals"},
+				"endpoints":   []string{"delete-contacts", "edit-contacts", "edit-deals", "get-status", "post-contacts-delete-matching", "post-contacts-dnc", "post-contacts-untag", "tag-contacts", "update-contacts", "update-deals"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "bulk-operations",
 				"description": "Bulk update, delete, and tag contacts and deals",
 				"endpoints":   []string{"get-unified"},
+				"syncable":    true,
+				"searchable":  true,
 			},
 			{
 				"name":        "calendar",
 				"description": "Internal calendar and appointment management",
-				"endpoints":   []string{"connect-google", "connect-microsoft", "create-event", "delete-connection", "delete-event", "get-connection", "get-event", "get-health", "google-callback", "list-connections", "list-events", "microsoft-callback", "sync", "update-event", "webhook-google", "webhook-microsoft"},
+				"endpoints":   []string{"connect-google", "connect-microsoft", "create-event", "delete-connection", "delete-event", "get-connection", "get-event", "get-health", "list-connections", "list-events", "sync", "update-event", "webhook-google", "webhook-microsoft"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1178,9 +1248,45 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"writable":    true,
 			},
 			{
+				"name":        "call-flows",
+				"description": "Manage call flows",
+				"endpoints":   []string{"delete-functions-id", "delete-id", "get", "get-functions", "get-functions-id", "get-id", "get-numbers", "get-roster", "patch-functions-id", "patch-id", "post", "post-audio", "post-functions", "post-functions-id-test", "post-tombstones-release"},
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "call-flows.publish",
+				"description": "Manage publish",
+				"endpoints":   []string{"post-call-flows-id"},
+				"writable":    true,
+			},
+			{
+				"name":        "call-flows.simulate",
+				"description": "Manage simulate",
+				"endpoints":   []string{"post-call-flows-id"},
+				"writable":    true,
+			},
+			{
+				"name":        "call-flows.unpublish",
+				"description": "Manage unpublish",
+				"endpoints":   []string{"post-call-flows-id"},
+				"writable":    true,
+			},
+			{
+				"name":        "call-flows.validate",
+				"description": "Manage validate",
+				"endpoints":   []string{"get-call-flows-id"},
+			},
+			{
+				"name":        "call-flows.wiring",
+				"description": "Manage wiring",
+				"endpoints":   []string{"get-call-flows-id", "post-call-flows-id"},
+				"writable":    true,
+			},
+			{
 				"name":        "calls",
 				"description": "Call log management",
-				"endpoints":   []string{"count-unknown-callers", "create-record", "get", "list", "update"},
+				"endpoints":   []string{"count-unknown-callers", "create-record", "get", "list", "post-voice-drop", "update"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1194,7 +1300,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "chat",
 				"description": "Internal team chat channels and messages",
-				"endpoints":   []string{"add-member", "add-reaction", "create-channel", "delete-message", "edit-message", "get-channels-id-upload", "get-message", "get-typing-status", "list-channels", "list-messages", "remove-member", "remove-reaction", "send-message", "send-typing-indicator", "upload-file"},
+				"endpoints":   []string{"add-member", "add-reaction", "create-channel", "delete-agents-id", "delete-message", "edit-message", "get-agents", "get-agents-me-inbox", "get-channels-id-notifications", "get-channels-id-pins", "get-channels-id-upload", "get-floor", "get-message", "get-messages-message-id-location", "get-presence", "get-search", "get-typing-status", "get-unread", "list-channels", "list-messages", "patch-agents-id", "patch-channels-id-agents", "patch-channels-id-notifications", "post-agents", "post-agents-id-pair-code", "post-agents-me-heartbeat", "post-agents-me-inbox-ack", "post-agents-me-inbox-claim", "post-agents-pair", "post-ask", "post-celebrate", "post-channels-id-messages-message-id-claim", "post-channels-id-messages-message-id-handoff", "post-channels-id-messages-message-id-pin", "post-channels-id-upload-finalize", "post-channels-id-upload-intent", "post-handoff", "remove-member", "remove-reaction", "send-message", "send-typing-indicator", "upload-file"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1213,6 +1319,11 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"endpoints":   []string{"get-companies-id"},
 			},
 			{
+				"name":        "companies.related",
+				"description": "Manage related",
+				"endpoints":   []string{"get-companies-id"},
+			},
+			{
 				"name":        "companies.tags",
 				"description": "Tag management and merging",
 				"endpoints":   []string{"delete-companies-id", "delete-companies-id-id", "get-companies-id", "post-companies-id"},
@@ -1226,8 +1337,15 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "conduyt-auth",
 				"description": "Manage conduyt auth",
-				"endpoints":   []string{"accept-invite", "change-password", "delete-sessions", "forgot-password", "get-google", "get-google-callback", "get-login-history", "get-me", "get-mfa-setup", "get-microsoft", "get-microsoft-callback", "get-saml-account-slug", "get-saml-account-slug-metadata", "get-sandbox-key", "get-security-center", "get-sessions", "login", "logout", "patch-security-center", "post-mfa-challenge", "post-mfa-disable", "post-mfa-setup", "post-mfa-verify", "post-saml-account-slug-acs", "post-sandbox-key", "register", "reset-password", "switch-account"},
+				"endpoints":   []string{"accept-invite", "change-password", "confirm-sso-signup", "delete-sessions", "forgot-password", "get-login-history", "get-me", "get-mfa-setup", "get-saml-account-slug-metadata", "get-sandbox-key", "get-security-center", "get-sessions", "login", "logout", "patch-security-center", "post-mfa-challenge", "post-mfa-disable", "post-mfa-setup", "post-mfa-verify", "post-sandbox-key", "post-signup-events", "read-sso-signup-consent", "register", "reset-password", "start-google-signup", "start-microsoft-signup", "switch-account"},
 				"syncable":    true,
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "conduyt-help",
+				"description": "Manage conduyt help",
+				"endpoints":   []string{"get-guides", "get-guides-slug", "get-guides-slug-feedback", "post-guides-slug-feedback", "post-guides-slug-open", "post-suggestions"},
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1235,6 +1353,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "confirm",
 				"description": "Manage confirm",
 				"endpoints":   []string{"post", "put"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
@@ -1247,7 +1366,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "contacts",
 				"description": "Contact management, tagging, scoring, import/export, merge, duplicates",
-				"endpoints":   []string{"create", "delete", "export", "find-duplicate", "get", "get-dnc-status", "get-geo", "get-import-template", "get-sources", "import", "list", "merge", "post-ai-import", "post-dry-run", "post-verify-line-type", "update"},
+				"endpoints":   []string{"create", "delete", "export", "find-duplicate", "get", "get-count", "get-dnc-status", "get-geo", "get-import-template", "get-sources", "import", "list", "merge", "post-ai-import", "post-dry-run", "post-verify-line-type", "score-batch", "update"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1288,7 +1407,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "contacts.gdpr-export",
 				"description": "Manage gdpr export",
-				"endpoints":   []string{"get-contacts-id"},
+				"endpoints":   []string{"get-contacts-id", "get-contacts-id-files-file-id-download"},
 			},
 			{
 				"name":        "contacts.gdpr-forget",
@@ -1323,12 +1442,19 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "conversations.compliance",
 				"description": "Manage compliance",
-				"endpoints":   []string{"get-conversations-contact-id"},
+				"endpoints":   []string{"get-conversations-contact-id", "post-conversations-contact-id"},
+				"writable":    true,
 			},
 			{
 				"name":        "conversations.state",
 				"description": "Manage state",
 				"endpoints":   []string{"get-conversations-contact-id", "patch-conversations-contact-id"},
+				"writable":    true,
+			},
+			{
+				"name":        "conversations.suggestion",
+				"description": "Manage suggestion",
+				"endpoints":   []string{"get-conversations-contact-id", "post-conversations-contact-id"},
 				"writable":    true,
 			},
 			{
@@ -1353,6 +1479,26 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "dashboard",
 				"description": "Dashboard summary metrics",
 				"endpoints":   []string{"get"},
+				"searchable":  true,
+			},
+			{
+				"name":        "dashboards",
+				"description": "Dashboard summary metrics",
+				"endpoints":   []string{"delete-id", "get", "get-id", "patch-id", "post"},
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "dashboards.run",
+				"description": "Manage run",
+				"endpoints":   []string{"post-dashboards-id"},
+				"writable":    true,
+			},
+			{
+				"name":        "dashboards.tiles",
+				"description": "Manage tiles",
+				"endpoints":   []string{"delete-dashboards-id-id", "patch-dashboards-id-id", "post-dashboards-id"},
+				"writable":    true,
 			},
 			{
 				"name":        "data-model",
@@ -1362,7 +1508,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "deals",
 				"description": "Deal/opportunity management within pipelines",
-				"endpoints":   []string{"create", "delete", "delete-views-id", "get", "get-export", "get-forecast", "get-inspection", "get-views", "get-views-id", "list", "patch-views-id", "post-probabilities", "post-views", "update"},
+				"endpoints":   []string{"create", "delete", "delete-views-id", "get", "get-export", "get-forecast", "get-inspection", "get-lead-id", "get-views", "get-views-id", "list", "patch-views-id", "post-probabilities", "post-views", "update"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1377,6 +1523,11 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"description": "Contact management, tagging, scoring, import/export, merge, duplicates",
 				"endpoints":   []string{"delete-deals-id-id", "get-deals-id", "patch-deals-id-id", "post-deals-id"},
 				"writable":    true,
+			},
+			{
+				"name":        "deals.handoff-files",
+				"description": "Manage handoff files",
+				"endpoints":   []string{"get-deals-id-file-id-download"},
 			},
 			{
 				"name":        "deals.history",
@@ -1398,7 +1549,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "dialer",
 				"description": "Click-to-call dialer via Twilio",
-				"endpoints":   []string{"delete-call-id-supervise", "get-agents-status", "get-call-id-media", "get-calls", "get-calls-hourly", "get-capabilities", "get-dispositions", "get-health", "get-history", "get-inbound-lookup", "get-intelligence", "get-leaderboard", "get-live-monitor", "get-queue", "get-recordings", "get-settings", "get-setup", "get-stats", "get-status-log", "get-status-log-team", "get-token", "initiate-call", "patch-call-id", "patch-settings", "post-call-eligibility", "post-call-id-ai-disposition", "post-call-id-hangup", "post-call-id-hold", "post-call-id-mute", "post-call-id-record", "post-call-id-supervise", "post-call-id-transfer", "post-call-id-vm-drop", "post-conference-events", "post-heartbeat", "post-mirror-token", "post-queue-next", "post-queue-skip", "post-setup-wire-inbound", "post-status-log", "post-status-log-rollup"},
+				"endpoints":   []string{"delete-call-id-participants-participant-sid", "delete-call-id-supervise", "get-agent-statuses", "get-agents-status", "get-call-id", "get-call-id-media", "get-call-id-participants", "get-call-id-post-call", "get-calls", "get-calls-hourly", "get-capabilities", "get-dispositions", "get-health", "get-history", "get-inbound-lookup", "get-intelligence", "get-leaderboard", "get-live-monitor", "get-local-presence-resolve", "get-queue", "get-queue-open", "get-recordings", "get-settings", "get-setup", "get-stats", "get-status-log", "get-status-log-team", "get-token", "initiate-call", "patch-call-id", "patch-call-id-participants-participant-sid", "patch-settings", "post-call-eligibility", "post-call-id-ai-disposition", "post-call-id-facetime-status", "post-call-id-hangup", "post-call-id-hold", "post-call-id-mute", "post-call-id-participants", "post-call-id-record", "post-call-id-supervise", "post-call-id-transfer", "post-call-id-vm-drop", "post-heartbeat", "post-local-presence-sync", "post-mirror-token", "post-queue-next", "post-queue-release", "post-queue-skip", "post-queue-worked", "post-setup-wire-inbound", "post-status-log", "post-status-log-rollup"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1407,6 +1558,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "dnc",
 				"description": "Manage dnc",
 				"endpoints":   []string{"delete-id", "get", "post", "post-import"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1431,6 +1583,13 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"description": "Manage drip enrollments",
 				"endpoints":   []string{"list", "post-batch-pause", "post-batch-resume", "post-batch-stop"},
 				"syncable":    true,
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "drip-enrollments.cancel-barrier",
+				"description": "Manage cancel barrier",
+				"endpoints":   []string{"post-drip-enrollments-id"},
 				"writable":    true,
 			},
 			{
@@ -1448,21 +1607,28 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "email",
 				"description": "Send individual and bulk emails",
-				"endpoints":   []string{"send", "send-bulk"},
+				"endpoints":   []string{"get-opt-out-list", "post-opt-out-list", "post-opt-out-list-resubscribe", "send", "send-bulk"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "email-domains",
 				"description": "Custom email domain verification (Resend)",
-				"endpoints":   []string{"add", "get", "get-status", "remove", "update", "verify"},
+				"endpoints":   []string{"add", "delete-reply-capture", "get", "get-reply-capture", "get-status", "post-reply-capture", "post-reply-capture-verify", "remove", "update", "verify"},
 				"searchable":  true,
 				"writable":    true,
 			},
 			{
+				"name":        "email-signature",
+				"description": "Manage email signature",
+				"endpoints":   []string{"list-designs"},
+				"syncable":    true,
+			},
+			{
 				"name":        "emails",
 				"description": "Send individual and bulk emails",
-				"endpoints":   []string{"create-sequence", "create-template", "delete-template", "enroll-in-sequence", "get-health", "get-sequence", "get-sequence-stats", "get-template", "get-templates-id-usage", "list", "list-sequence-enrollments", "list-sequences", "list-templates", "post-sequences-id-preflight", "test-send-template", "unenroll-from-sequence", "update-sequence", "update-template"},
+				"endpoints":   []string{"create-sequence", "create-template", "delete-template", "enroll-in-sequence", "get-health", "get-sequence", "get-sequence-stats", "get-sequences-senders", "get-template", "get-templates-id-usage", "list", "list-sequence-enrollments", "list-sequences", "list-templates", "post-sequences-id-pick-from-list", "post-sequences-id-preflight", "test-send-template", "unenroll-from-sequence", "update-sequence", "update-template"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1471,12 +1637,20 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "errors",
 				"description": "Manage errors",
 				"endpoints":   []string{"post-log"},
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "feature-interest",
+				"description": "Manage feature interest",
+				"endpoints":   []string{"post"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "files",
 				"description": "File uploads and attachments",
-				"endpoints":   []string{"create-record", "delete", "list", "upload"},
+				"endpoints":   []string{"create-record", "delete", "list", "post-upload-finalize", "post-upload-intent", "upload"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1517,9 +1691,15 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"writable":    true,
 			},
 			{
+				"name":        "forms.uploads",
+				"description": "Manage uploads",
+				"endpoints":   []string{"get-forms-id"},
+			},
+			{
 				"name":        "generated-documents",
 				"description": "Manage generated documents",
 				"endpoints":   []string{"delete-id", "get", "get-id", "patch-id", "post"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1538,6 +1718,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "groups",
 				"description": "Manage groups",
 				"endpoints":   []string{"delete-id", "get", "patch-id", "post"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
@@ -1548,7 +1729,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "imports",
 				"description": "CSV import jobs with mapping and deduplication",
-				"endpoints":   []string{"create", "get", "get-users", "list", "post-preflight", "upload-file"},
+				"endpoints":   []string{"create", "get", "get-users", "list", "post-preflight", "post-upload-url", "upload-file"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1622,7 +1803,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "integrations",
 				"description": "Third-party integrations (Zapier, etc.)",
-				"endpoints":   []string{"connect", "create-zapier-subscription", "delete-zapier-subscription", "disconnect", "get-health", "get-slack-channels", "get-slack-oauth-callback", "get-slack-oauth-install", "get-zapier-sample-data", "list", "list-zapier-subscriptions", "post-slack-settings", "post-slack-test"},
+				"endpoints":   []string{"connect", "create-form-intake", "create-zapier-subscription", "delete-zapier-subscription", "disconnect", "get-calendly-event-types", "get-calendly-status", "get-form-intake-status", "get-health", "get-mailchimp-audiences", "get-mailchimp-settings", "get-slack-channels", "get-zapier-sample-data", "list", "list-form-intakes", "list-zapier-subscriptions", "patch-calendly-event-types", "post-calendly-disconnect", "post-dpp-ingest", "post-mailchimp-confirm-reconciliation", "post-mailchimp-push", "post-mailchimp-reconcile-statuses", "post-mailchimp-unsubscribes-retry", "post-posthog-intent", "post-slack-settings", "post-slack-test", "put-mailchimp-settings", "revoke-form-intake"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1633,6 +1814,12 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"endpoints":   []string{"create", "delete", "get", "get-next-number", "list", "update"},
 				"syncable":    true,
 				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "invoices.overpayments",
+				"description": "Manage overpayments",
+				"endpoints":   []string{"post-invoices-id-id-manual-refund", "post-invoices-id-id-refund"},
 				"writable":    true,
 			},
 			{
@@ -1668,6 +1855,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "knowledge",
 				"description": "Manage knowledge",
 				"endpoints":   []string{"delete-sources-id", "get-sources", "post-sources", "post-sources-id-reindex"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
@@ -1692,17 +1880,28 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "mailbox",
 				"description": "Manage mailbox",
-				"endpoints":   []string{"delete-connections-id", "get-callback-microsoft", "get-connections", "post-connect-microsoft", "post-webhooks-microsoft"},
-				"syncable":    true,
+				"endpoints":   []string{"delete-connections-id", "get-connections", "post-connect-google", "post-connect-microsoft"},
+				"writable":    true,
+			},
+			{
+				"name":        "me",
+				"description": "Manage me",
+				"endpoints":   []string{"get-my-email-signature", "put-my-email-signature"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "messages",
 				"description": "SMS and email message history",
-				"endpoints":   []string{"create", "get-sms", "list", "send-sms"},
+				"endpoints":   []string{"check", "check-links", "create", "get-sms", "list", "send-sms"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
+			},
+			{
+				"name":        "messages.media",
+				"description": "Manage media",
+				"endpoints":   []string{"get-messages-id-index"},
 			},
 			{
 				"name":        "notes",
@@ -1728,21 +1927,34 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "pipelines",
 				"description": "Sales pipeline and stage management",
-				"endpoints":   []string{"create", "delete", "get", "list", "update"},
+				"endpoints":   []string{"create", "delete", "get", "list", "reorder", "update"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
 			{
+				"name":        "pipelines.archive",
+				"description": "Manage archive",
+				"endpoints":   []string{"pipeline"},
+				"writable":    true,
+			},
+			{
+				"name":        "pipelines.restore",
+				"description": "Manage restore",
+				"endpoints":   []string{"pipeline"},
+				"writable":    true,
+			},
+			{
 				"name":        "pipelines.stages",
 				"description": "Manage stages",
-				"endpoints":   []string{"create-pipeline", "delete-pipeline", "get-pipelines-id-id", "list-pipeline", "update-pipeline"},
+				"endpoints":   []string{"create-pipeline", "delete-pipeline", "get-pipelines-id-id", "list-pipeline", "reorder-pipeline", "update-pipeline"},
 				"writable":    true,
 			},
 			{
 				"name":        "playbook-enrollments",
 				"description": "Manage playbook enrollments",
 				"endpoints":   []string{"get", "get-id", "post", "post-id"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1750,6 +1962,14 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "playbooks",
 				"description": "Manage playbooks",
 				"endpoints":   []string{"delete-id", "get", "get-id", "patch-id", "post"},
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "pool-filter-sets",
+				"description": "Manage pool filter sets",
+				"endpoints":   []string{"delete-id", "get", "patch-id", "post"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1764,7 +1984,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "public",
 				"description": "Unauthenticated public endpoints (booking, form submit)",
-				"endpoints":   []string{"book-appointment", "get-booking-page", "get-booking-routing-slug", "get-booking-slots", "get-booking-slug-embed", "get-booking-slug-embed-badge", "get-booking-slug-embed-popup", "get-booking-slug-frame-policy", "get-booking-slug-ical", "get-branding-account-id-icon", "get-screen-share-code", "options-booking-slug", "options-booking-slug-slots", "post-booking-routing-slug", "post-booking-slug-waitlist", "post-contact", "post-screen-share-code", "post-subscribe"},
+				"endpoints":   []string{"bind-booking-documents", "book-appointment", "get-booking-page", "get-booking-routing-slug", "get-booking-slots", "get-booking-slug-embed", "get-booking-slug-embed-badge", "get-booking-slug-embed-popup", "get-booking-slug-frame-policy", "get-booking-slug-ical", "get-branding-account-id-icon", "get-screen-share-code", "mint-booking-document-upload", "options-booking-document-upload", "options-booking-documents", "options-booking-slug", "options-booking-slug-slots", "post-booking-routing-slug", "post-booking-slug-waitlist", "post-contact", "post-screen-share-code", "post-screen-share-code-state", "post-subscribe"},
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1779,13 +1999,21 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "quick-connects",
 				"description": "Manage quick connects",
 				"endpoints":   []string{"delete-id", "get", "patch-id", "post"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "quick-notes",
 				"description": "Manage quick notes",
 				"endpoints":   []string{"delete-id", "get", "patch-id", "post"},
+				"searchable":  true,
 				"writable":    true,
+			},
+			{
+				"name":        "realtime",
+				"description": "Manage realtime",
+				"endpoints":   []string{"get-token"},
+				"searchable":  true,
 			},
 			{
 				"name":        "remote-assist",
@@ -1797,18 +2025,27 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "rep-shifts",
 				"description": "Manage rep shifts",
 				"endpoints":   []string{"delete-id", "get", "patch-id", "post"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "reporting",
 				"description": "Manage reporting",
 				"endpoints":   []string{"get-email", "get-pipeline", "get-sms"},
+				"searchable":  true,
 			},
 			{
 				"name":        "reports",
 				"description": "Pipeline, revenue, activity, team, and custom reports",
-				"endpoints":   []string{"create-custom", "delete-custom", "get-activity", "get-bda", "get-calls", "get-custom", "get-dialer-agent-hourly", "get-dialer-awards", "get-dialer-dispositions", "get-dialer-list-performance", "get-email-providers", "get-email-templates", "get-pipeline", "get-revenue", "get-sms-delivery", "get-sms-templates", "get-team", "list-custom", "post-custom-id-export", "post-custom-preview", "run-custom", "update-custom"},
+				"endpoints":   []string{"create-custom", "delete-custom", "delete-subscriptions-sid", "get-activity", "get-agent-performance", "get-appointments", "get-attribution", "get-call-performance", "get-calls", "get-custom", "get-custom-fields", "get-custom-id-subscriptions", "get-deliveries-did-files-index", "get-dialer-agent-hourly", "get-dialer-awards", "get-dialer-dispositions", "get-dialer-list-performance", "get-email-providers", "get-email-templates", "get-funnel", "get-pipeline", "get-revenue", "get-sms-delivery", "get-sms-drip-conversion", "get-sms-templates", "get-speed-to-lead", "get-subscriptions-sid", "get-subscriptions-sid-deliveries", "get-targets", "get-team", "list-custom", "patch-subscriptions-sid", "post-custom-id-export", "post-custom-id-subscriptions", "post-custom-preview", "post-subscriptions-sid-run", "put-targets", "run-custom", "update-custom"},
 				"syncable":    true,
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "ring-groups",
+				"description": "Manage ring groups",
+				"endpoints":   []string{"delete-id", "get", "get-id", "patch-id", "post", "post-release-number"},
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1816,12 +2053,14 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "saved-filters",
 				"description": "Manage saved filters",
 				"endpoints":   []string{"delete-id", "get", "patch-id", "post"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "schema",
 				"description": "Manage schema",
 				"endpoints":   []string{"get-api-catalog", "get-public"},
+				"searchable":  true,
 			},
 			{
 				"name":        "scim",
@@ -1841,13 +2080,21 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "screen-share",
 				"description": "Manage screen share",
-				"endpoints":   []string{"delete-session-code", "get-seats", "post-seats", "post-session"},
+				"endpoints":   []string{"delete-session-code", "get-seats", "get-session-code", "post-seats", "post-session"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "settings",
 				"description": "Account settings, branding, SMS/Twilio configuration",
-				"endpoints":   []string{"delete-ai-byo", "delete-warmy", "get", "get-ai", "get-branding", "get-delivery-guard", "get-dormancy", "get-lead-visibility", "get-sms", "get-twilio", "get-warmy", "get-warmy-engine", "patch-ai", "patch-delivery-guard", "patch-dormancy", "patch-lead-visibility", "patch-warmy-engine", "put-ai-byo", "put-warmy", "test-integration", "test-sms", "test-twilio", "update", "update-branding", "update-sms", "update-twilio"},
+				"endpoints":   []string{"delete-ai-byo", "delete-fromk", "delete-fromk-webhook", "delete-project-blue", "delete-project-blue-voice", "delete-warmy", "delete-whatsapp", "delete-zoom", "get", "get-ai", "get-ai-teammates", "get-branding", "get-delivery-guard", "get-dormancy", "get-fromk", "get-fromk-lines", "get-lead-visibility", "get-operations", "get-project-blue", "get-project-blue-lines", "get-project-blue-voice", "get-scheduled-export", "get-sms", "get-twilio", "get-warmy", "get-warmy-engine", "get-whatsapp", "get-whatsapp-senders", "get-zoom", "patch-ai", "patch-ai-teammates", "patch-delivery-guard", "patch-dormancy", "patch-lead-visibility", "patch-scheduled-export", "patch-warmy-engine", "post-operations", "post-zoom-test", "put-ai-byo", "put-fromk", "put-fromk-webhook", "put-project-blue", "put-project-blue-lines-line-id", "put-project-blue-voice", "put-warmy", "put-whatsapp", "put-zoom", "test-integration", "test-sms", "test-twilio", "update", "update-branding", "update-sms", "update-twilio"},
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "short-links",
+				"description": "Manage short links",
+				"endpoints":   []string{"post"},
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1868,20 +2115,24 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "smart-views",
 				"description": "Manage smart views",
-				"endpoints":   []string{"delete-id", "list", "patch-id", "patch-reorder", "post"},
+				"endpoints":   []string{"delete-id", "get-dial-order", "get-id", "get-version", "list", "patch-dial-order", "patch-id", "patch-reorder", "post"},
 				"syncable":    true,
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "sms",
 				"description": "Manage sms",
-				"endpoints":   []string{"get-send-logs", "post-send-logs"},
+				"endpoints":   []string{"get-send-logs", "get-transports", "get-whatsapp-templates", "post-send-logs"},
+				"syncable":    true,
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "sms-providers",
 				"description": "Manage sms providers",
-				"endpoints":   []string{"delete-id", "get", "get-health", "get-id", "patch-id", "post"},
+				"endpoints":   []string{"delete-id", "get", "get-health", "get-id", "get-options", "get-template-options", "patch-id", "post"},
+				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1895,12 +2146,21 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "sso",
 				"description": "Manage sso",
 				"endpoints":   []string{"delete-scim-tokens-id", "get-connection", "get-scim-tokens", "post-scim-tokens", "put-connection"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
 				"name":        "status-metadata",
 				"description": "Manage status metadata",
 				"endpoints":   []string{"delete-id", "get", "get-buckets", "get-by-stage-stage-id", "get-decisions", "get-id", "patch-id", "post", "post-dry-run", "post-import"},
+				"syncable":    true,
+				"searchable":  true,
+				"writable":    true,
+			},
+			{
+				"name":        "support",
+				"description": "Manage support",
+				"endpoints":   []string{"post-requests", "post-upload-url"},
 				"searchable":  true,
 				"writable":    true,
 			},
@@ -1924,6 +2184,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "team",
 				"description": "Manage team",
 				"endpoints":   []string{"get-members"},
+				"syncable":    true,
 			},
 			{
 				"name":        "up-for-grabs",
@@ -1939,7 +2200,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "users",
 				"description": "Team member management and invitations",
-				"endpoints":   []string{"get", "get-me", "invite", "list", "patch-me", "post", "remove", "update"},
+				"endpoints":   []string{"get", "get-me", "get-me-tour", "invite", "list", "patch-me", "post", "post-me-tour", "remove", "update"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1989,6 +2250,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "warmy-engine",
 				"description": "Manage warmy engine",
 				"endpoints":   []string{"get-health", "post-sync", "post-templates"},
+				"searchable":  true,
 				"writable":    true,
 			},
 			{
@@ -1996,11 +2258,18 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"description": "Manage webhook logs",
 				"endpoints":   []string{"list"},
 				"syncable":    true,
+				"searchable":  true,
+			},
+			{
+				"name":        "webhook-logs.cancel",
+				"description": "Manage cancel",
+				"endpoints":   []string{"post-webhook-logs-id"},
+				"writable":    true,
 			},
 			{
 				"name":        "webhooks",
 				"description": "Outbound webhook management and logs",
-				"endpoints":   []string{"create", "create-legacy", "delete", "get", "inbound-contact", "inbound-deal", "list", "list-deliveries", "list-endpoints", "list-replay-deliveries", "messages", "replay", "sms-inbound", "sms-status", "stripe-invoice", "test", "update", "voice-inbound", "voice-recording", "voice-status", "voice-voicemail"},
+				"endpoints":   []string{"create", "create-legacy", "delete", "get", "inbound-contact", "inbound-deal", "inbound-form-submission", "list", "list-deliveries", "list-endpoints", "list-replay-deliveries", "messages", "replay", "sms-inbound", "sms-status", "stripe-invoice", "test", "update", "voice-inbound", "voice-recording", "voice-status", "voice-voicemail"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -2040,6 +2309,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 		"query_tips": []string{
 			"Pagination uses cursor-based paging. Pass page parameter for subsequent pages.",
 			"Control page size with the per_page parameter (default 100).",
+			"Use since for incremental fetches (filter by modification time).",
 			"Use the sql tool for ad-hoc analysis on synced data. Run sync first to populate the local database.",
 			"Use the search tool for full-text search across all synced resources. Faster than iterating list endpoints.",
 			"Prefer sql/search over repeated API calls when the data is already synced.",

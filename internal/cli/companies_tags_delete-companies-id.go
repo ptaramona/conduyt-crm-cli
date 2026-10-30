@@ -6,12 +6,17 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newCompaniesTagsDeleteCompaniesIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyTagIds string
+	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "delete-companies-id <id>",
@@ -23,6 +28,8 @@ func newCompaniesTagsDeleteCompaniesIdCmd(flags *rootFlags) *cobra.Command {
 			if len(args) == 0 {
 				return cmd.Help()
 			}
+			if !stdinBody {
+			}
 			path := "/companies/{id}/tags"
 			if len(args) < 1 || args[0] == "" {
 				return usageErr(fmt.Errorf("id is required\nUsage: %s <%s>", cmd.CommandPath(), "id"))
@@ -33,7 +40,31 @@ func newCompaniesTagsDeleteCompaniesIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
-			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
+			var body any
+			if stdinBody {
+				stdinData, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				var jsonBody map[string]any
+				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
+					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				body = jsonBody
+			} else {
+				bodyMap := map[string]any{}
+				body = bodyMap
+				if bodyTagIds != "" {
+					bodyMap["tagIds"] = bodyTagIds
+				}
+			}
+			data, statusCode, err := c.DeleteWithParamsAndBody(cmd.Context(), path, params, body)
 			if err != nil {
 				return classifyDeleteError(err, flags)
 			}
@@ -173,6 +204,10 @@ func newCompaniesTagsDeleteCompaniesIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyTagIds, "tag-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
 }

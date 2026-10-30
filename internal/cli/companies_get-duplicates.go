@@ -12,6 +12,8 @@ import (
 )
 
 func newCompaniesGetDuplicatesCmd(flags *rootFlags) *cobra.Command {
+	var flagCursor string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-duplicates",
@@ -24,8 +26,9 @@ func newCompaniesGetDuplicatesCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "companies", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "companies", path, map[string]string{
+				"cursor": formatCLIParamValue(flagCursor),
+			}, nil, flagAll, "cursor", "cursor", "", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +76,8 @@ func newCompaniesGetDuplicatesCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

@@ -14,8 +14,28 @@ import (
 )
 
 func newBulkEditContactsCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyIds string
-	var bodyUpdates string
+	var bodyUpdatesAddressLine1 string
+	var bodyUpdatesAddressLine2 string
+	var bodyUpdatesAssignedTo string
+	var bodyUpdatesCity string
+	var bodyUpdatesCompany string
+	var bodyUpdatesCountry string
+	var bodyUpdatesCustomFields string
+	var bodyUpdatesDoNotContact string
+	var bodyUpdatesDoNotContactReason string
+	var bodyUpdatesEmail string
+	var bodyUpdatesFirstName string
+	var bodyUpdatesJobTitle string
+	var bodyUpdatesLastName string
+	var bodyUpdatesOptedOutEmail string
+	var bodyUpdatesOptedOutSms string
+	var bodyUpdatesPhone string
+	var bodyUpdatesSource string
+	var bodyUpdatesState string
+	var bodyUpdatesZip string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -34,9 +54,6 @@ func newBulkEditContactsCmd(flags *rootFlags) *cobra.Command {
 				if !cmd.Flags().Changed("ids") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "ids")
 				}
-				if !cmd.Flags().Changed("updates") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "updates")
-				}
 			}
 			path := "/bulk/contacts/edit"
 			c, err := flags.newClient()
@@ -44,6 +61,12 @@ func newBulkEditContactsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -65,12 +88,68 @@ func newBulkEditContactsCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["ids"] = parsedIds
 				}
-				if bodyUpdates != "" {
-					var parsedUpdates any
-					if err := json.Unmarshal([]byte(bodyUpdates), &parsedUpdates); err != nil {
-						return fmt.Errorf("parsing --updates JSON: %w", err)
+				{
+					nestedUpdates := map[string]any{}
+					if bodyUpdatesAddressLine1 != "" {
+						nestedUpdates["addressLine1"] = bodyUpdatesAddressLine1
 					}
-					bodyMap["updates"] = parsedUpdates
+					if bodyUpdatesAddressLine2 != "" {
+						nestedUpdates["addressLine2"] = bodyUpdatesAddressLine2
+					}
+					if bodyUpdatesAssignedTo != "" {
+						nestedUpdates["assignedTo"] = bodyUpdatesAssignedTo
+					}
+					if bodyUpdatesCity != "" {
+						nestedUpdates["city"] = bodyUpdatesCity
+					}
+					if bodyUpdatesCompany != "" {
+						nestedUpdates["company"] = bodyUpdatesCompany
+					}
+					if bodyUpdatesCountry != "" {
+						nestedUpdates["country"] = bodyUpdatesCountry
+					}
+					if bodyUpdatesCustomFields != "" {
+						nestedUpdates["customFields"] = bodyUpdatesCustomFields
+					}
+					if bodyUpdatesDoNotContact != "" {
+						nestedUpdates["doNotContact"] = bodyUpdatesDoNotContact
+					}
+					if bodyUpdatesDoNotContactReason != "" {
+						nestedUpdates["doNotContactReason"] = bodyUpdatesDoNotContactReason
+					}
+					if bodyUpdatesEmail != "" {
+						nestedUpdates["email"] = bodyUpdatesEmail
+					}
+					if bodyUpdatesFirstName != "" {
+						nestedUpdates["firstName"] = bodyUpdatesFirstName
+					}
+					if bodyUpdatesJobTitle != "" {
+						nestedUpdates["jobTitle"] = bodyUpdatesJobTitle
+					}
+					if bodyUpdatesLastName != "" {
+						nestedUpdates["lastName"] = bodyUpdatesLastName
+					}
+					if bodyUpdatesOptedOutEmail != "" {
+						nestedUpdates["optedOutEmail"] = bodyUpdatesOptedOutEmail
+					}
+					if bodyUpdatesOptedOutSms != "" {
+						nestedUpdates["optedOutSms"] = bodyUpdatesOptedOutSms
+					}
+					if bodyUpdatesPhone != "" {
+						nestedUpdates["phone"] = bodyUpdatesPhone
+					}
+					if bodyUpdatesSource != "" {
+						nestedUpdates["source"] = bodyUpdatesSource
+					}
+					if bodyUpdatesState != "" {
+						nestedUpdates["state"] = bodyUpdatesState
+					}
+					if bodyUpdatesZip != "" {
+						nestedUpdates["zip"] = bodyUpdatesZip
+					}
+					if len(nestedUpdates) > 0 {
+						bodyMap["updates"] = nestedUpdates
+					}
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -216,8 +295,28 @@ func newBulkEditContactsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyIds, "ids", "", "Ids")
-	cmd.Flags().StringVar(&bodyUpdates, "updates", "", "Updates")
+	cmd.Flags().StringVar(&bodyUpdatesAddressLine1, "updates-address-line1", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesAddressLine2, "updates-address-line2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesAssignedTo, "updates-assigned-to", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesCity, "updates-city", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesCompany, "updates-company", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesCountry, "updates-country", "", "A non-empty country. Clearing it is refused with `country_invalid`.")
+	cmd.Flags().StringVar(&bodyUpdatesCustomFields, "updates-custom-fields", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesDoNotContact, "updates-do-not-contact", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesDoNotContactReason, "updates-do-not-contact-reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesEmail, "updates-email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesFirstName, "updates-first-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesJobTitle, "updates-job-title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesLastName, "updates-last-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesOptedOutEmail, "updates-opted-out-email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesOptedOutSms, "updates-opted-out-sms", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesPhone, "updates-phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesSource, "updates-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesState, "updates-state", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesZip, "updates-zip", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

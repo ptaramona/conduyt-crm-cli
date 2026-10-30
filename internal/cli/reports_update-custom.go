@@ -13,11 +13,30 @@ import (
 )
 
 func newReportsUpdateCustomCmd(flags *rootFlags) *cobra.Command {
+	var bodyAggregate string
+	var bodyChartType string
+	var bodyColumns string
+	var bodyDescription string
+	var bodyEntity string
+	var bodyFilters string
+	var bodyGroupBy string
+	var bodyGroupBy2 string
+	var bodyIsPinned string
+	var bodyIsPrivate string
+	var bodyIsShared string
+	var bodyMeasureField string
+	var bodyName string
+	var bodyPivotColumns string
+	var bodyPivotMeasures string
+	var bodyPivotRows string
+	var bodyPopulationSmartViewId string
+	var bodySortBy string
+	var bodySortDir string
+	var bodyTimeGrain string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "update-custom <id>",
-		Aliases:     []string{"update"},
 		Short:       "Update a custom report",
 		Example:     "  conduyt-crm-pp-cli reports update-custom 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "reports.update-custom", "pp:method": "PATCH", "pp:path": "/reports/custom/{id}"},
@@ -51,6 +70,82 @@ func newReportsUpdateCustomCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAggregate != "" {
+					bodyMap["aggregate"] = bodyAggregate
+				}
+				if bodyChartType != "" {
+					bodyMap["chartType"] = bodyChartType
+				}
+				if bodyColumns != "" {
+					bodyMap["columns"] = bodyColumns
+				}
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyEntity != "" {
+					bodyMap["entity"] = bodyEntity
+				}
+				if bodyFilters != "" {
+					bodyMap["filters"] = bodyFilters
+				}
+				if bodyGroupBy != "" {
+					bodyMap["groupBy"] = bodyGroupBy
+				}
+				if bodyGroupBy2 != "" {
+					bodyMap["groupBy2"] = bodyGroupBy2
+				}
+				if bodyIsPinned != "" {
+					bodyMap["isPinned"] = bodyIsPinned
+				}
+				if bodyIsPrivate != "" {
+					bodyMap["isPrivate"] = bodyIsPrivate
+				}
+				if bodyIsShared != "" {
+					bodyMap["isShared"] = bodyIsShared
+				}
+				if bodyMeasureField != "" {
+					bodyMap["measureField"] = bodyMeasureField
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				{
+					nestedPivot := map[string]any{}
+					if bodyPivotColumns != "" {
+						nestedPivot["columns"] = bodyPivotColumns
+					}
+					if bodyPivotMeasures != "" {
+						var parsedPivotMeasures any
+						if err := json.Unmarshal([]byte(bodyPivotMeasures), &parsedPivotMeasures); err != nil {
+							return fmt.Errorf("parsing --pivot-measures JSON: %w", err)
+						}
+						nestedPivot["measures"] = parsedPivotMeasures
+					}
+					if bodyPivotRows != "" {
+						nestedPivot["rows"] = bodyPivotRows
+					}
+					if len(nestedPivot) > 0 {
+						bodyMap["pivot"] = nestedPivot
+					}
+				}
+				{
+					nestedPopulation := map[string]any{}
+					if bodyPopulationSmartViewId != "" {
+						nestedPopulation["smartViewId"] = bodyPopulationSmartViewId
+					}
+					if len(nestedPopulation) > 0 {
+						bodyMap["population"] = nestedPopulation
+					}
+				}
+				if bodySortBy != "" {
+					bodyMap["sortBy"] = bodySortBy
+				}
+				if bodySortDir != "" {
+					bodyMap["sortDir"] = bodySortDir
+				}
+				if bodyTimeGrain != "" {
+					bodyMap["timeGrain"] = bodyTimeGrain
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +290,26 @@ func newReportsUpdateCustomCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAggregate, "aggregate", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyChartType, "chart-type", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyColumns, "columns", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEntity, "entity", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFilters, "filters", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGroupBy, "group-by", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGroupBy2, "group-by2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsPinned, "is-pinned", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsPrivate, "is-private", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsShared, "is-shared", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMeasureField, "measure-field", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPivotColumns, "pivot-columns", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPivotMeasures, "pivot-measures", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPivotRows, "pivot-rows", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPopulationSmartViewId, "population-smart-view-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySortBy, "sort-by", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySortDir, "sort-dir", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTimeGrain, "time-grain", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

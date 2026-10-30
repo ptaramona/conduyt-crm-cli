@@ -13,6 +13,10 @@ import (
 )
 
 func newAiPostActionsExecuteCmd(flags *rootFlags) *cobra.Command {
+	var bodyActions string
+	var bodyConfirmationToken string
+	var bodyResumeIds string
+	var bodySelectedIds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +47,22 @@ func newAiPostActionsExecuteCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyActions != "" {
+					var parsedActions any
+					if err := json.Unmarshal([]byte(bodyActions), &parsedActions); err != nil {
+						return fmt.Errorf("parsing --actions JSON: %w", err)
+					}
+					bodyMap["actions"] = parsedActions
+				}
+				if bodyConfirmationToken != "" {
+					bodyMap["confirmationToken"] = bodyConfirmationToken
+				}
+				if bodyResumeIds != "" {
+					bodyMap["resumeIds"] = bodyResumeIds
+				}
+				if bodySelectedIds != "" {
+					bodyMap["selectedIds"] = bodySelectedIds
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +207,10 @@ func newAiPostActionsExecuteCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyActions, "actions", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyConfirmationToken, "confirmation-token", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyResumeIds, "resume-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySelectedIds, "selected-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

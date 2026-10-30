@@ -16,6 +16,8 @@ func newMessagesCmd(flags *rootFlags) *cobra.Command {
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
+	cmd.AddCommand(newMessagesCheckCmd(flags))
+	cmd.AddCommand(newMessagesCheckLinksCmd(flags))
 	cmd.AddCommand(newMessagesCreateCmd(flags))
 	cmd.AddCommand(newMessagesGetSmsCmd(flags))
 	cmd.AddCommand(newMessagesListCmd(flags))

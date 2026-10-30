@@ -13,25 +13,24 @@ import (
 )
 
 func newInvoicesCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyCompanyId string
 	var bodyContactId string
 	var bodyCurrency string
 	var bodyDealId string
 	var bodyDueDate string
 	var bodyInvoiceNumber string
-	var bodyIssueDate string
 	var bodyItems string
 	var bodyNotes string
-	var bodyStatus string
 	var bodyTaxRate float64
 	var bodyTerms string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create an invoice",
-		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli invoices create --invoice-number example-value",
+		Use:         "create",
+		Short:       "Create an invoice",
+		Example:     "  conduyt-crm-pp-cli invoices create",
 		Annotations: map[string]string{"pp:endpoint": "invoices.create", "pp:method": "POST", "pp:path": "/invoices"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -41,8 +40,8 @@ func newInvoicesCreateCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("invoice-number") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "invoice-number")
+				if !cmd.Flags().Changed("items") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "items")
 				}
 			}
 			path := "/invoices"
@@ -51,6 +50,12 @@ func newInvoicesCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -83,9 +88,6 @@ func newInvoicesCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyInvoiceNumber != "" {
 					bodyMap["invoiceNumber"] = bodyInvoiceNumber
 				}
-				if bodyIssueDate != "" {
-					bodyMap["issueDate"] = bodyIssueDate
-				}
 				if bodyItems != "" {
 					var parsedItems any
 					if err := json.Unmarshal([]byte(bodyItems), &parsedItems); err != nil {
@@ -95,9 +97,6 @@ func newInvoicesCreateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyNotes != "" {
 					bodyMap["notes"] = bodyNotes
-				}
-				if bodyStatus != "" {
-					bodyMap["status"] = bodyStatus
 				}
 				if bodyTaxRate != 0.0 {
 					bodyMap["taxRate"] = bodyTaxRate
@@ -249,16 +248,16 @@ func newInvoicesCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Company id")
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
 	cmd.Flags().StringVar(&bodyCurrency, "currency", "USD", "Currency")
 	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "Deal id")
 	cmd.Flags().StringVar(&bodyDueDate, "due-date", "", "Due date")
-	cmd.Flags().StringVar(&bodyInvoiceNumber, "invoice-number", "", "Invoice number")
-	cmd.Flags().StringVar(&bodyIssueDate, "issue-date", "", "Issue date")
+	cmd.Flags().StringVar(&bodyInvoiceNumber, "invoice-number", "", "Optional; generated when omitted. 1 to 200 characters.")
 	cmd.Flags().StringVar(&bodyItems, "items", "", "Items")
 	cmd.Flags().StringVar(&bodyNotes, "notes", "", "Notes")
-	cmd.Flags().StringVar(&bodyStatus, "status", "draft", "Status")
 	cmd.Flags().Float64Var(&bodyTaxRate, "tax-rate", 0.0, "Tax rate")
 	cmd.Flags().StringVar(&bodyTerms, "terms", "", "Terms")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")

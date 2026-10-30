@@ -13,6 +13,10 @@ import (
 )
 
 func newSettingsUpdateSmsCmd(flags *rootFlags) *cobra.Command {
+	var bodyAccountSid string
+	var bodyAuthToken string
+	var bodyPhoneNumber string
+	var bodySmsIntentClassification bool
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +47,18 @@ func newSettingsUpdateSmsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAccountSid != "" {
+					bodyMap["accountSid"] = bodyAccountSid
+				}
+				if bodyAuthToken != "" {
+					bodyMap["authToken"] = bodyAuthToken
+				}
+				if bodyPhoneNumber != "" {
+					bodyMap["phoneNumber"] = bodyPhoneNumber
+				}
+				if cmd.Flags().Changed("sms-intent-classification") {
+					bodyMap["smsIntentClassification"] = bodySmsIntentClassification
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +203,10 @@ func newSettingsUpdateSmsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAccountSid, "account-sid", "", "Account sid")
+	cmd.Flags().StringVar(&bodyAuthToken, "auth-token", "", "Auth token")
+	cmd.Flags().StringVar(&bodyPhoneNumber, "phone-number", "", "Phone number")
+	cmd.Flags().BoolVar(&bodySmsIntentClassification, "sms-intent-classification", false, "Sms intent classification")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

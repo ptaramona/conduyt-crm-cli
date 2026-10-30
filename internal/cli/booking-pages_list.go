@@ -12,6 +12,12 @@ import (
 )
 
 func newBookingPagesListCmd(flags *rootFlags) *cobra.Command {
+	var flagIsActive string
+	var flagPage string
+	var flagPerPage string
+	var flagSearch string
+	var flagUserId string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -24,8 +30,13 @@ func newBookingPagesListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "booking-pages", true, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "booking-pages", path, map[string]string{
+				"is_active": formatCLIParamValue(flagIsActive),
+				"page":      formatCLIParamValue(flagPage),
+				"per_page":  formatCLIParamValue(flagPerPage),
+				"search":    formatCLIParamValue(flagSearch),
+				"user_id":   formatCLIParamValue(flagUserId),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +84,12 @@ func newBookingPagesListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagIsActive, "is-active", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 200, default 50), or the word all")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

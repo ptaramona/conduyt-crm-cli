@@ -12,13 +12,17 @@ import (
 )
 
 func newCompaniesListCmd(flags *rootFlags) *cobra.Command {
+	var flagCountMode string
+	var flagHasOpenDeals string
+	var flagIndustry string
+	var flagLifecycleStage string
+	var flagOrder string
+	var flagOwnerId string
 	var flagPage string
 	var flagPerPage int
 	var flagSearch string
-	var flagIndustry string
 	var flagSize string
 	var flagSort string
-	var flagOrder string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -27,43 +31,17 @@ func newCompaniesListCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli companies list",
 		Annotations: map[string]string{"pp:endpoint": "companies.list", "pp:method": "GET", "pp:path": "/companies", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Changed("size") {
-				allowedSize := []string{"1-10", "11-50", "51-200", "201-500", "501-1000", "1001+"}
-				validSize := false
-				for _, v := range allowedSize {
-					if flagSize == v {
-						validSize = true
+			if cmd.Flags().Changed("count-mode") {
+				allowedCountMode := []string{"exact", "none"}
+				validCountMode := false
+				for _, v := range allowedCountMode {
+					if flagCountMode == v {
+						validCountMode = true
 						break
 					}
 				}
-				if !validSize {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagSize, "size", allowedSize)
-				}
-			}
-			if cmd.Flags().Changed("sort") {
-				allowedSort := []string{"createdAt", "updatedAt", "name"}
-				validSort := false
-				for _, v := range allowedSort {
-					if flagSort == v {
-						validSort = true
-						break
-					}
-				}
-				if !validSort {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagSort, "sort", allowedSort)
-				}
-			}
-			if cmd.Flags().Changed("order") {
-				allowedOrder := []string{"asc", "desc"}
-				validOrder := false
-				for _, v := range allowedOrder {
-					if flagOrder == v {
-						validOrder = true
-						break
-					}
-				}
-				if !validOrder {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagOrder, "order", allowedOrder)
+				if !validCountMode {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagCountMode, "count-mode", allowedCountMode)
 				}
 			}
 			path := "/companies"
@@ -72,13 +50,17 @@ func newCompaniesListCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "companies", path, map[string]string{
-				"page":     formatCLIParamValue(flagPage),
-				"per_page": formatCLIParamValue(flagPerPage),
-				"search":   formatCLIParamValue(flagSearch),
-				"industry": formatCLIParamValue(flagIndustry),
-				"size":     formatCLIParamValue(flagSize),
-				"sort":     formatCLIParamValue(flagSort),
-				"order":    formatCLIParamValue(flagOrder),
+				"count_mode":     formatCLIParamValue(flagCountMode),
+				"hasOpenDeals":   formatCLIParamValue(flagHasOpenDeals),
+				"industry":       formatCLIParamValue(flagIndustry),
+				"lifecycleStage": formatCLIParamValue(flagLifecycleStage),
+				"order":          formatCLIParamValue(flagOrder),
+				"ownerId":        formatCLIParamValue(flagOwnerId),
+				"page":           formatCLIParamValue(flagPage),
+				"per_page":       formatCLIParamValue(flagPerPage),
+				"search":         formatCLIParamValue(flagSearch),
+				"size":           formatCLIParamValue(flagSize),
+				"sort":           formatCLIParamValue(flagSort),
 			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -127,13 +109,17 @@ func newCompaniesListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCountMode, "count-mode", "", "exact (default) counts every matching company into meta.total. (one of: exact, none)")
+	cmd.Flags().StringVar(&flagHasOpenDeals, "has-open-deals", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagIndustry, "industry", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagLifecycleStage, "lifecycle-stage", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOrder, "order", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOwnerId, "owner-id", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
 	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
-	cmd.Flags().StringVar(&flagIndustry, "industry", "", "Industry")
-	cmd.Flags().StringVar(&flagSize, "size", "", "Size (one of: 1-10, 11-50, 51-200, 201-500, 501-1000, 1001+)")
-	cmd.Flags().StringVar(&flagSort, "sort", "createdAt", "Sort (one of: createdAt, updatedAt, name)")
-	cmd.Flags().StringVar(&flagOrder, "order", "desc", "Order (one of: asc, desc)")
+	cmd.Flags().StringVar(&flagSize, "size", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSort, "sort", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

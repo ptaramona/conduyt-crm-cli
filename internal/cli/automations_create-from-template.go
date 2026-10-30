@@ -13,13 +13,13 @@ import (
 )
 
 func newAutomationsCreateFromTemplateCmd(flags *rootFlags) *cobra.Command {
-	var bodyTemplateId string
+	var flagId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "create-from-template",
 		Short:       "Create automation from a template",
-		Example:     "  conduyt-crm-pp-cli automations create-from-template --template-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli automations create-from-template --id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "automations.create-from-template", "pp:method": "POST", "pp:path": "/automations/templates"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -28,10 +28,10 @@ func newAutomationsCreateFromTemplateCmd(flags *rootFlags) *cobra.Command {
 			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
 				return cmd.Help()
 			}
+			if !cmd.Flags().Changed("id") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "id")
+			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("template-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "template-id")
-				}
 			}
 			path := "/automations/templates"
 			c, err := flags.newClient()
@@ -39,6 +39,9 @@ func newAutomationsCreateFromTemplateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagId != "" {
+				params["id"] = formatCLIParamValue(flagId)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -53,9 +56,6 @@ func newAutomationsCreateFromTemplateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyTemplateId != "" {
-					bodyMap["templateId"] = bodyTemplateId
-				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -200,7 +200,7 @@ func newAutomationsCreateFromTemplateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyTemplateId, "template-id", "", "Template id")
+	cmd.Flags().StringVar(&flagId, "id", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

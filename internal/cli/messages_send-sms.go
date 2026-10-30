@@ -13,15 +13,25 @@ import (
 )
 
 func newMessagesSendSmsCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyBody string
 	var bodyContactId string
+	var bodyFromNumber string
+	var bodyFromkPhoneNumberId string
+	var bodyIdempotencyKey string
+	var bodyMetadata string
+	var bodySmsProviderId string
+	var bodyToNumber string
+	var bodyTransport string
+	var bodyWhatsappContentSid string
+	var bodyWhatsappContentVariables string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:   "send-sms",
-		Short: "Send an SMS message",
-		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli messages send-sms --body example-value",
+		Use:         "send-sms",
+		Short:       "Send an SMS message",
+		Example:     "  conduyt-crm-pp-cli messages send-sms --contact-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "messages.send-sms", "pp:method": "POST", "pp:path": "/messages/sms/send"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -31,9 +41,6 @@ func newMessagesSendSmsCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("body") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "body")
-				}
 				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
 				}
@@ -44,6 +51,12 @@ func newMessagesSendSmsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -63,6 +76,45 @@ func newMessagesSendSmsCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
+				}
+				if bodyFromNumber != "" {
+					bodyMap["fromNumber"] = bodyFromNumber
+				}
+				if bodyFromkPhoneNumberId != "" {
+					bodyMap["fromkPhoneNumberId"] = bodyFromkPhoneNumberId
+				}
+				if bodyIdempotencyKey != "" {
+					bodyMap["idempotencyKey"] = bodyIdempotencyKey
+				}
+				if bodyMetadata != "" {
+					if looksLikeJSONComposite(bodyMetadata) {
+						var parsedMetadata any
+						if err := json.Unmarshal([]byte(bodyMetadata), &parsedMetadata); err != nil {
+							return fmt.Errorf("parsing --metadata JSON: %w", err)
+						}
+						bodyMap["metadata"] = parsedMetadata
+					} else {
+						bodyMap["metadata"] = bodyMetadata
+					}
+				}
+				if bodySmsProviderId != "" {
+					bodyMap["smsProviderId"] = bodySmsProviderId
+				}
+				if bodyToNumber != "" {
+					bodyMap["toNumber"] = bodyToNumber
+				}
+				if bodyTransport != "" {
+					bodyMap["transport"] = bodyTransport
+				}
+				if bodyWhatsappContentSid != "" {
+					bodyMap["whatsappContentSid"] = bodyWhatsappContentSid
+				}
+				if bodyWhatsappContentVariables != "" {
+					var parsedWhatsappContentVariables any
+					if err := json.Unmarshal([]byte(bodyWhatsappContentVariables), &parsedWhatsappContentVariables); err != nil {
+						return fmt.Errorf("parsing --whatsapp-content-variables JSON: %w", err)
+					}
+					bodyMap["whatsappContentVariables"] = parsedWhatsappContentVariables
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -208,8 +260,19 @@ func newMessagesSendSmsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyBody, "body", "", "Body")
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodyFromNumber, "from-number", "", "From number")
+	cmd.Flags().StringVar(&bodyFromkPhoneNumberId, "fromk-phone-number-id", "", "Fromk phone number id")
+	cmd.Flags().StringVar(&bodyIdempotencyKey, "idempotency-key", "", "Idempotency key")
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "A JSON object, null or absent; any other kind is refused.")
+	cmd.Flags().StringVar(&bodySmsProviderId, "sms-provider-id", "", "Sms provider id")
+	cmd.Flags().StringVar(&bodyToNumber, "to-number", "", "To number")
+	cmd.Flags().StringVar(&bodyTransport, "transport", "", "Transport")
+	cmd.Flags().StringVar(&bodyWhatsappContentSid, "whatsapp-content-sid", "", "Whatsapp content sid")
+	cmd.Flags().StringVar(&bodyWhatsappContentVariables, "whatsapp-content-variables", "", "Whatsapp content variables")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

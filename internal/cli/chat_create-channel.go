@@ -17,6 +17,8 @@ func newChatCreateChannelCmd(flags *rootFlags) *cobra.Command {
 	var bodyDealId string
 	var bodyKind string
 	var bodyName string
+	var bodyTopic string
+	var bodyUserId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -67,6 +69,12 @@ func newChatCreateChannelCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
+				}
+				if bodyTopic != "" {
+					bodyMap["topic"] = bodyTopic
+				}
+				if bodyUserId != "" {
+					bodyMap["userId"] = bodyUserId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -216,6 +224,8 @@ func newChatCreateChannelCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "Deal id")
 	cmd.Flags().StringVar(&bodyKind, "kind", "general", "Kind")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().StringVar(&bodyTopic, "topic", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -12,6 +12,7 @@ import (
 )
 
 func newChatGetMessageCmd(flags *rootFlags) *cobra.Command {
+	var flagReplies bool
 
 	cmd := &cobra.Command{
 		Use:         "get-message <id> <messageId>",
@@ -36,6 +37,9 @@ func newChatGetMessageCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagReplies != false {
+				params["replies"] = formatCLIParamValue(flagReplies)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "chat", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -84,6 +88,7 @@ func newChatGetMessageCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagReplies, "replies", false, "Query parameter read by this route.")
 
 	return cmd
 }

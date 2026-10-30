@@ -12,6 +12,15 @@ import (
 )
 
 func newReportsGetCallPerformanceCmd(flags *rootFlags) *cobra.Command {
+	var flagDateRange string
+	var flagDirection string
+	var flagEnd string
+	var flagFrom string
+	var flagRange string
+	var flagStart string
+	var flagTo string
+	var flagTransport string
+	var flagUserId string
 
 	cmd := &cobra.Command{
 		Use:         "get-call-performance",
@@ -25,6 +34,33 @@ func newReportsGetCallPerformanceCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDateRange != "" {
+				params["dateRange"] = formatCLIParamValue(flagDateRange)
+			}
+			if flagDirection != "" {
+				params["direction"] = formatCLIParamValue(flagDirection)
+			}
+			if flagEnd != "" {
+				params["end"] = formatCLIParamValue(flagEnd)
+			}
+			if flagFrom != "" {
+				params["from"] = formatCLIParamValue(flagFrom)
+			}
+			if flagRange != "" {
+				params["range"] = formatCLIParamValue(flagRange)
+			}
+			if flagStart != "" {
+				params["start"] = formatCLIParamValue(flagStart)
+			}
+			if flagTo != "" {
+				params["to"] = formatCLIParamValue(flagTo)
+			}
+			if flagTransport != "" {
+				params["transport"] = formatCLIParamValue(flagTransport)
+			}
+			if flagUserId != "" {
+				params["userId"] = formatCLIParamValue(flagUserId)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +109,15 @@ func newReportsGetCallPerformanceCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagDateRange, "date-range", "", "string — today | yesterday | week | last_week | month | last_30_days | all | custom")
+	cmd.Flags().StringVar(&flagDirection, "direction", "", "string — inbound | outbound")
+	cmd.Flags().StringVar(&flagEnd, "end", "", "string — with dateRange=custom: the last day, included (YYYY-MM-DD, the account's day) or an ISO datetime")
+	cmd.Flags().StringVar(&flagFrom, "from", "", "ISO datetime — window start (spans over 366 days clamp to the last 366 before `to`)")
+	cmd.Flags().StringVar(&flagRange, "range", "", "string — alias of dateRange")
+	cmd.Flags().StringVar(&flagStart, "start", "", "string — with dateRange=custom: the first day (YYYY-MM-DD, the account's day) or an ISO datetime")
+	cmd.Flags().StringVar(&flagTo, "to", "", "ISO datetime — window end (default now)")
+	cmd.Flags().StringVar(&flagTransport, "transport", "", "string — exact call transport (twilio = the in-app dialer and click-to-call; project_blue, project_blue_twilio")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "uuid — only calls placed or taken by this user")
 
 	return cmd
 }

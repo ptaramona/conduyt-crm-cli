@@ -13,6 +13,8 @@ import (
 )
 
 func newQuickConnectsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyName string
+	var bodyPhone string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +53,12 @@ func newQuickConnectsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyPhone != "" {
+					bodyMap["phone"] = bodyPhone
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +203,8 @@ func newQuickConnectsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

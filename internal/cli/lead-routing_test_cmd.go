@@ -206,7 +206,7 @@ func newLeadRoutingTestCmd(flags *rootFlags) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
 	cmd.Flags().StringVar(&bodySource, "source", "", "Source")
-	cmd.Flags().StringVar(&bodyTags, "tags", "", "Tags")
+	cmd.Flags().StringVar(&bodyTags, "tags", "[]", "Tags")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -6,27 +6,53 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newEmailDomainsRemoveCmd(flags *rootFlags) *cobra.Command {
+	var flagDomainId string
+	var bodyDomainId2 string
+	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "remove",
-		Aliases:     []string{"delete"},
 		Short:       "Remove email domain",
 		Example:     "  conduyt-crm-pp-cli email-domains remove",
 		Annotations: map[string]string{"pp:endpoint": "email-domains.remove", "pp:method": "DELETE", "pp:path": "/email-domains"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !stdinBody {
+			}
 			path := "/email-domains"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
+			if flagDomainId != "" {
+				params["domainId"] = formatCLIParamValue(flagDomainId)
+			}
+			var body any
+			if stdinBody {
+				stdinData, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				var jsonBody map[string]any
+				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
+					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				body = jsonBody
+			} else {
+				bodyMap := map[string]any{}
+				body = bodyMap
+				if bodyDomainId2 != "" {
+					bodyMap["domainId"] = bodyDomainId2
+				}
+			}
+			data, statusCode, err := c.DeleteWithParamsAndBody(cmd.Context(), path, params, body)
 			if err != nil {
 				return classifyDeleteError(err, flags)
 			}
@@ -166,6 +192,9 @@ func newEmailDomainsRemoveCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagDomainId, "domain-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&bodyDomainId2, "domain-id-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
 }

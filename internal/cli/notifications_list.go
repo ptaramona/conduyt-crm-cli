@@ -12,10 +12,10 @@ import (
 )
 
 func newNotificationsListCmd(flags *rootFlags) *cobra.Command {
+	var flagIsRead string
 	var flagPage string
 	var flagPerPage int
 	var flagType string
-	var flagIsRead bool
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -30,10 +30,10 @@ func newNotificationsListCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "notifications", path, map[string]string{
+				"isRead":   formatCLIParamValue(flagIsRead),
 				"page":     formatCLIParamValue(flagPage),
 				"per_page": formatCLIParamValue(flagPerPage),
 				"type":     formatCLIParamValue(flagType),
-				"isRead":   formatCLIParamValue(flagIsRead),
 			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -82,10 +82,10 @@ func newNotificationsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagIsRead, "is-read", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
-	cmd.Flags().StringVar(&flagType, "type", "", "Comma-separated notification types")
-	cmd.Flags().BoolVar(&flagIsRead, "is-read", false, "Filter by read state")
+	cmd.Flags().StringVar(&flagType, "type", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

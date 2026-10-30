@@ -13,8 +13,14 @@ import (
 )
 
 func newPipelinesUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAutomationOnly bool
+	var bodyColor string
 	var bodyDescription string
+	var bodyIsDefault string
 	var bodyName string
+	var bodySortOrder int
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -38,6 +44,12 @@ func newPipelinesUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -52,11 +64,23 @@ func newPipelinesUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("automation-only") {
+					bodyMap["automationOnly"] = bodyAutomationOnly
+				}
+				if bodyColor != "" {
+					bodyMap["color"] = bodyColor
+				}
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
+				if bodyIsDefault != "" {
+					bodyMap["isDefault"] = bodyIsDefault
+				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
+				}
+				if bodySortOrder != 0 {
+					bodyMap["sortOrder"] = bodySortOrder
 				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
@@ -202,8 +226,14 @@ func newPipelinesUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().BoolVar(&bodyAutomationOnly, "automation-only", false, "Automation-only pipeline: cards in it are moved and edited only by automations, API keys and owners / admins")
+	cmd.Flags().StringVar(&bodyColor, "color", "", "The pipeline's colour, the dot next to its name in the board's pipeline menu (any case accepted")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
+	cmd.Flags().StringVar(&bodyIsDefault, "is-default", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().IntVar(&bodySortOrder, "sort-order", 0, "The pipeline's position in the board's pipeline menu (ascending).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

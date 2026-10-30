@@ -13,8 +13,11 @@ import (
 )
 
 func newPipelinesStagesUpdatePipelineCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyColor string
 	var bodyIsLost bool
+	var bodyIsSystem string
 	var bodyIsWon bool
 	var bodyName string
 	var bodySortOrder int
@@ -55,6 +58,12 @@ func newPipelinesStagesUpdatePipelineCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -74,6 +83,9 @@ func newPipelinesStagesUpdatePipelineCmd(flags *rootFlags) *cobra.Command {
 				}
 				if cmd.Flags().Changed("is-lost") {
 					bodyMap["isLost"] = bodyIsLost
+				}
+				if bodyIsSystem != "" {
+					bodyMap["isSystem"] = bodyIsSystem
 				}
 				if cmd.Flags().Changed("is-won") {
 					bodyMap["isWon"] = bodyIsWon
@@ -228,8 +240,11 @@ func newPipelinesStagesUpdatePipelineCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyColor, "color", "", "Color")
 	cmd.Flags().BoolVar(&bodyIsLost, "is-lost", false, "Is lost")
+	cmd.Flags().StringVar(&bodyIsSystem, "is-system", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&bodyIsWon, "is-won", false, "Is won")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().IntVar(&bodySortOrder, "sort-order", 0, "Sort order")

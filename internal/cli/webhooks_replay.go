@@ -14,16 +14,22 @@ import (
 )
 
 func newWebhooksReplayCmd(flags *rootFlags) *cobra.Command {
+	var bodyConfirmAmbiguousSmsReplay string
+	var bodyConfirmDispatchedReplay string
 	var bodyConfirmSucceededReplay string
 	var bodyDeliveryIds string
 	var bodyEventType string
+	var bodyForceAmbiguousSmsReplay bool
+	var bodyForceDispatchedReplay bool
 	var bodyForceSucceededReplay bool
+	var bodyFromDate string
 	var bodyStatus string
+	var bodyToDate string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "replay",
-		Short:       "Re-enqueues up to 100 matching deliveries. Replaying succeeded deliveries requires explicit confirmation.",
+		Short:       "Re-enqueues up to 100 matching deliveries (oldest first). At least one of deliveryIds, eventType or status is required.",
 		Example:     "  conduyt-crm-pp-cli webhooks replay",
 		Annotations: map[string]string{"pp:endpoint": "webhooks.replay", "pp:method": "POST", "pp:path": "/webhooks/replay"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -49,6 +55,12 @@ func newWebhooksReplayCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyConfirmAmbiguousSmsReplay != "" {
+					bodyMap["confirmAmbiguousSmsReplay"] = bodyConfirmAmbiguousSmsReplay
+				}
+				if bodyConfirmDispatchedReplay != "" {
+					bodyMap["confirmDispatchedReplay"] = bodyConfirmDispatchedReplay
+				}
 				if bodyConfirmSucceededReplay != "" {
 					bodyMap["confirmSucceededReplay"] = bodyConfirmSucceededReplay
 				}
@@ -62,11 +74,23 @@ func newWebhooksReplayCmd(flags *rootFlags) *cobra.Command {
 				if bodyEventType != "" {
 					bodyMap["eventType"] = bodyEventType
 				}
+				if cmd.Flags().Changed("force-ambiguous-sms-replay") {
+					bodyMap["forceAmbiguousSmsReplay"] = bodyForceAmbiguousSmsReplay
+				}
+				if cmd.Flags().Changed("force-dispatched-replay") {
+					bodyMap["forceDispatchedReplay"] = bodyForceDispatchedReplay
+				}
 				if cmd.Flags().Changed("force-succeeded-replay") {
 					bodyMap["forceSucceededReplay"] = bodyForceSucceededReplay
 				}
+				if bodyFromDate != "" {
+					bodyMap["fromDate"] = bodyFromDate
+				}
 				if bodyStatus != "" {
 					bodyMap["status"] = bodyStatus
+				}
+				if bodyToDate != "" {
+					bodyMap["toDate"] = bodyToDate
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -212,11 +236,17 @@ func newWebhooksReplayCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyConfirmSucceededReplay, "confirm-succeeded-replay", "", "Confirm succeeded replay")
+	cmd.Flags().StringVar(&bodyConfirmAmbiguousSmsReplay, "confirm-ambiguous-sms-replay", "", "Must be REPLAY_AMBIGUOUS_SMS when forceAmbiguousSmsReplay is true.")
+	cmd.Flags().StringVar(&bodyConfirmDispatchedReplay, "confirm-dispatched-replay", "", "Must be REPLAY_DISPATCHED when forceDispatchedReplay is true, confirming the receiver was checked and did not get them.")
+	cmd.Flags().StringVar(&bodyConfirmSucceededReplay, "confirm-succeeded-replay", "", "Must be REPLAY_SUCCEEDED when forceSucceededReplay is true.")
 	cmd.Flags().StringVar(&bodyDeliveryIds, "delivery-ids", "", "Delivery ids")
 	cmd.Flags().StringVar(&bodyEventType, "event-type", "", "Event type")
-	cmd.Flags().BoolVar(&bodyForceSucceededReplay, "force-succeeded-replay", false, "Force succeeded replay")
-	cmd.Flags().StringVar(&bodyStatus, "status", "", "Status")
+	cmd.Flags().BoolVar(&bodyForceAmbiguousSmsReplay, "force-ambiguous-sms-replay", false, "Legacy webhook log ids only; re-fires parked ambiguous drip SMS rows.")
+	cmd.Flags().BoolVar(&bodyForceDispatchedReplay, "force-dispatched-replay", false, "Also selects settlement-unconfirmed (dispatched, unconfirmed) deliveries.")
+	cmd.Flags().BoolVar(&bodyForceSucceededReplay, "force-succeeded-replay", false, "Requires confirmSucceededReplay: 'REPLAY_SUCCEEDED'; otherwise a 400.")
+	cmd.Flags().StringVar(&bodyFromDate, "from-date", "", "The pattern above is the server's rule (Zod's ISO date-time check).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "dispatched and unconfirmed require forceDispatchedReplay with confirmDispatchedReplay.")
+	cmd.Flags().StringVar(&bodyToDate, "to-date", "", "The pattern above is the server's rule (Zod's ISO date-time check).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

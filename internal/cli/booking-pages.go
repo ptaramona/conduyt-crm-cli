@@ -24,6 +24,7 @@ func newBookingPagesCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newBookingPagesAnalyticsCmd(flags))
 	cmd.AddCommand(newBookingPagesAvailabilityCmd(flags))
 	cmd.AddCommand(newBookingPagesEmbedCodeCmd(flags))
+	cmd.AddCommand(newBookingPagesIcalFeedCmd(flags))
 	cmd.AddCommand(newBookingPagesOverridesCmd(flags))
 	cmd.AddCommand(newBookingPagesReadinessCmd(flags))
 	cmd.AddCommand(newBookingPagesWaitlistCmd(flags))

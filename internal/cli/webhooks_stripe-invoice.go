@@ -13,15 +13,33 @@ import (
 )
 
 func newWebhooksStripeInvoiceCmd(flags *rootFlags) *cobra.Command {
+	var bodyData string
+	var bodyId string
+	var bodyType string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "stripe-invoice",
 		Short:       "Stripe invoice webhook",
-		Example:     "  conduyt-crm-pp-cli webhooks stripe-invoice",
+		Example:     "  conduyt-crm-pp-cli webhooks stripe-invoice --id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "webhooks.stripe-invoice", "pp:method": "POST", "pp:path": "/webhooks/stripe-invoice"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("data") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "data")
+				}
+				if !cmd.Flags().Changed("id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "id")
+				}
+				if !cmd.Flags().Changed("type") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "type")
+				}
 			}
 			path := "/webhooks/stripe-invoice"
 			c, err := flags.newClient()
@@ -43,6 +61,19 @@ func newWebhooksStripeInvoiceCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyData != "" {
+					var parsedData any
+					if err := json.Unmarshal([]byte(bodyData), &parsedData); err != nil {
+						return fmt.Errorf("parsing --data JSON: %w", err)
+					}
+					bodyMap["data"] = parsedData
+				}
+				if bodyId != "" {
+					bodyMap["id"] = bodyId
+				}
+				if bodyType != "" {
+					bodyMap["type"] = bodyType
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +218,9 @@ func newWebhooksStripeInvoiceCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyData, "data", "", "The event payload: data.object is the Stripe object the type names")
+	cmd.Flags().StringVar(&bodyId, "id", "", "The Stripe event id, used to claim the delivery once")
+	cmd.Flags().StringVar(&bodyType, "type", "", "The event type; the handler acts on the types it knows and acknowledges the rest")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

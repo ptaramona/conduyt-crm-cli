@@ -12,6 +12,8 @@ import (
 )
 
 func newDialerGetHealthCmd(flags *rootFlags) *cobra.Command {
+	var flagProbe string
+	var flagView string
 
 	cmd := &cobra.Command{
 		Use:         "get-health",
@@ -25,6 +27,12 @@ func newDialerGetHealthCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagProbe != "" {
+				params["probe"] = formatCLIParamValue(flagProbe)
+			}
+			if flagView != "" {
+				params["view"] = formatCLIParamValue(flagView)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +81,8 @@ func newDialerGetHealthCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagProbe, "probe", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagView, "view", "", "Query parameter read by this route.")
 
 	return cmd
 }

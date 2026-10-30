@@ -13,29 +13,22 @@ import (
 )
 
 func newContactsTagsAddContactCmd(flags *rootFlags) *cobra.Command {
-	var bodyTagId string
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyTagIds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "add-contact <id>",
 		Aliases:     []string{"create"},
 		Short:       "Add a tag to a contact",
-		Example:     "  conduyt-crm-pp-cli contacts tags add-contact 550e8400-e29b-41d4-a716-446655440000 --tag-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli contacts tags add-contact 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "tags.add-contact", "pp:method": "POST", "pp:path": "/contacts/{id}/tags"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("tag-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "tag-id")
-				}
 			}
 			path := "/contacts/{id}/tags"
 			if len(args) < 1 || args[0] == "" {
@@ -47,6 +40,12 @@ func newContactsTagsAddContactCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -61,8 +60,8 @@ func newContactsTagsAddContactCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyTagId != "" {
-					bodyMap["tagId"] = bodyTagId
+				if bodyTagIds != "" {
+					bodyMap["tagIds"] = bodyTagIds
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -208,7 +207,9 @@ func newContactsTagsAddContactCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyTagId, "tag-id", "", "Tag id")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyTagIds, "tag-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

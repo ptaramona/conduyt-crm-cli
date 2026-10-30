@@ -13,13 +13,21 @@ import (
 )
 
 func newDealsCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAppointmentAt string
 	var bodyAssignedTo string
+	var bodyCompanyId string
 	var bodyContactId string
 	var bodyCurrency string
 	var bodyCustomFields string
 	var bodyExpectedCloseDate string
+	var bodyLostReason string
 	var bodyPipelineId string
 	var bodyPriority string
+	var bodyProbability string
+	var bodyProducts string
+	var bodySource string
 	var bodyStageId string
 	var bodyStatus string
 	var bodyTitle string
@@ -55,6 +63,12 @@ func newDealsCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -69,8 +83,14 @@ func newDealsCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAppointmentAt != "" {
+					bodyMap["appointmentAt"] = bodyAppointmentAt
+				}
 				if bodyAssignedTo != "" {
 					bodyMap["assignedTo"] = bodyAssignedTo
+				}
+				if bodyCompanyId != "" {
+					bodyMap["companyId"] = bodyCompanyId
 				}
 				if bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
@@ -88,11 +108,27 @@ func newDealsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyExpectedCloseDate != "" {
 					bodyMap["expectedCloseDate"] = bodyExpectedCloseDate
 				}
+				if bodyLostReason != "" {
+					bodyMap["lostReason"] = bodyLostReason
+				}
 				if bodyPipelineId != "" {
 					bodyMap["pipelineId"] = bodyPipelineId
 				}
 				if bodyPriority != "" {
 					bodyMap["priority"] = bodyPriority
+				}
+				if bodyProbability != "" {
+					bodyMap["probability"] = bodyProbability
+				}
+				if bodyProducts != "" {
+					var parsedProducts any
+					if err := json.Unmarshal([]byte(bodyProducts), &parsedProducts); err != nil {
+						return fmt.Errorf("parsing --products JSON: %w", err)
+					}
+					bodyMap["products"] = parsedProducts
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
 				}
 				if bodyStageId != "" {
 					bodyMap["stageId"] = bodyStageId
@@ -250,17 +286,25 @@ func newDealsCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
-	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&bodyCurrency, "currency", "", "Currency")
-	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Custom fields")
-	cmd.Flags().StringVar(&bodyExpectedCloseDate, "expected-close-date", "", "Expected close date")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAppointmentAt, "appointment-at", "", "Appointment date/time for THIS deal (ISO 8601 with offset), pushed by the external booking/AI layer.")
+	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "An empty string is read as null before validation (it clears the field).")
+	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Company id")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "An empty string is read as null before validation (it clears the field).")
+	cmd.Flags().StringVar(&bodyCurrency, "currency", "", "ISO 4217 currency code (e.g. GBP). Backend defaults to USD when omitted.")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "At most 65536 bytes (64 KiB) as UTF-8 JSON (JSON.stringify of the object); a larger object is refused (413).")
+	cmd.Flags().StringVar(&bodyExpectedCloseDate, "expected-close-date", "", "An empty string is read as null before validation (it clears the field).")
+	cmd.Flags().StringVar(&bodyLostReason, "lost-reason", "", "Reason for a lost/disqualified deal.")
 	cmd.Flags().StringVar(&bodyPipelineId, "pipeline-id", "", "Pipeline id")
 	cmd.Flags().StringVar(&bodyPriority, "priority", "", "Priority")
+	cmd.Flags().StringVar(&bodyProbability, "probability", "", "Win probability as a 0–1 fraction (e.g. 0.75 = 75%), not a percentage")
+	cmd.Flags().StringVar(&bodyProducts, "products", "", "Products")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Lead source of THIS opportunity (e.g.")
 	cmd.Flags().StringVar(&bodyStageId, "stage-id", "", "Stage id")
 	cmd.Flags().StringVar(&bodyStatus, "status", "", "Status")
 	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")
-	cmd.Flags().StringVar(&bodyValue, "value", "", "Value")
+	cmd.Flags().StringVar(&bodyValue, "value", "", "After rounding to 2 decimals the absolute value is at most 9999999999.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

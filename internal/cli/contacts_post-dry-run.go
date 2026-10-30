@@ -9,10 +9,28 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newContactsPostDryRunCmd(flags *rootFlags) *cobra.Command {
+	var bodyAddressLine1 string
+	var bodyAddressLine2 string
+	var bodyAssignedTo string
+	var bodyCity string
+	var bodyCompany string
+	var bodyCompanyId string
+	var bodyCountry string
+	var bodyCustomFields string
+	var bodyEmail string
+	var bodyFirstName string
+	var bodyJobTitle string
+	var bodyLastName string
+	var bodyPhone string
+	var bodySource string
+	var bodyState string
+	var bodyTags string
+	var bodyZip string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +61,65 @@ func newContactsPostDryRunCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAddressLine1 != "" {
+					bodyMap["addressLine1"] = bodyAddressLine1
+				}
+				if bodyAddressLine2 != "" {
+					bodyMap["addressLine2"] = bodyAddressLine2
+				}
+				if bodyAssignedTo != "" {
+					bodyMap["assignedTo"] = bodyAssignedTo
+				}
+				if bodyCity != "" {
+					bodyMap["city"] = bodyCity
+				}
+				if bodyCompany != "" {
+					bodyMap["company"] = bodyCompany
+				}
+				if bodyCompanyId != "" {
+					bodyMap["companyId"] = bodyCompanyId
+				}
+				if bodyCountry != "" {
+					bodyMap["country"] = bodyCountry
+				}
+				if bodyCustomFields != "" {
+					var parsedCustomFields any
+					if err := json.Unmarshal([]byte(bodyCustomFields), &parsedCustomFields); err != nil {
+						return fmt.Errorf("parsing --custom-fields JSON: %w", err)
+					}
+					bodyMap["customFields"] = parsedCustomFields
+				}
+				if bodyEmail != "" {
+					bodyMap["email"] = bodyEmail
+				}
+				if bodyFirstName != "" {
+					bodyMap["firstName"] = bodyFirstName
+				}
+				if bodyJobTitle != "" {
+					bodyMap["jobTitle"] = bodyJobTitle
+				}
+				if bodyLastName != "" {
+					bodyMap["lastName"] = bodyLastName
+				}
+				if bodyPhone != "" {
+					bodyMap["phone"] = bodyPhone
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
+				}
+				if bodyState != "" {
+					bodyMap["state"] = bodyState
+				}
+				if bodyTags != "" {
+					parsedTags, parseErr := cliutil.ParseStringList(bodyTags)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --tags list: %w", parseErr)
+					}
+					bodyMap["tags"] = parsedTags
+				}
+				if bodyZip != "" {
+					bodyMap["zip"] = bodyZip
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +264,23 @@ func newContactsPostDryRunCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAddressLine1, "address-line1", "", "Address line1")
+	cmd.Flags().StringVar(&bodyAddressLine2, "address-line2", "", "Address line2")
+	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
+	cmd.Flags().StringVar(&bodyCity, "city", "", "City")
+	cmd.Flags().StringVar(&bodyCompany, "company", "", "Company")
+	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Company id")
+	cmd.Flags().StringVar(&bodyCountry, "country", "", "Country")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Custom fields")
+	cmd.Flags().StringVar(&bodyEmail, "email", "", "The pattern above is the server's rule (Zod's email check). It accepts a domain label that ends in a hyphen (a@b-.")
+	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name")
+	cmd.Flags().StringVar(&bodyJobTitle, "job-title", "", "Job title")
+	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
+	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Source")
+	cmd.Flags().StringVar(&bodyState, "state", "", "State")
+	cmd.Flags().StringVar(&bodyTags, "tags", "", "Tags")
+	cmd.Flags().StringVar(&bodyZip, "zip", "", "Zip")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

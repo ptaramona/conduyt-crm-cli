@@ -13,6 +13,10 @@ import (
 )
 
 func newAutomationsTestWebhookCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyHeaders string
+	var bodyMethod string
 	var bodyPayload string
 	var bodyUrl string
 	var stdinBody bool
@@ -40,6 +44,12 @@ func newAutomationsTestWebhookCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -54,6 +64,12 @@ func newAutomationsTestWebhookCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyHeaders != "" {
+					bodyMap["headers"] = bodyHeaders
+				}
+				if bodyMethod != "" {
+					bodyMap["method"] = bodyMethod
+				}
 				if bodyPayload != "" {
 					var parsedPayload any
 					if err := json.Unmarshal([]byte(bodyPayload), &parsedPayload); err != nil {
@@ -208,6 +224,10 @@ func newAutomationsTestWebhookCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyHeaders, "headers", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMethod, "method", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyPayload, "payload", "", "Payload")
 	cmd.Flags().StringVar(&bodyUrl, "url", "", "Url")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")

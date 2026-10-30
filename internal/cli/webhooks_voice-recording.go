@@ -6,14 +6,21 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newWebhooksVoiceRecordingCmd(flags *rootFlags) *cobra.Command {
-	var stdinBody bool
+	var flagCallId string
+	var bodyAccountSid string
+	var bodyCallSid string
+	var bodyConferenceSid string
+	var bodyRecordingDuration string
+	var bodyRecordingSid string
+	var bodyRecordingStartTime string
+	var bodyRecordingStatus string
+	var bodyRecordingUrl string
 
 	cmd := &cobra.Command{
 		Use:         "voice-recording",
@@ -21,30 +28,43 @@ func newWebhooksVoiceRecordingCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli webhooks voice-recording",
 		Annotations: map[string]string{"pp:endpoint": "webhooks.voice-recording", "pp:method": "POST", "pp:path": "/webhooks/voice/recording"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !stdinBody {
-			}
 			path := "/webhooks/voice/recording"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			var body any
-			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return fmt.Errorf("reading stdin: %w", err)
-				}
-				var jsonBody map[string]any
-				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
-					return fmt.Errorf("parsing stdin JSON: %w", err)
-				}
-				body = jsonBody
-			} else {
-				bodyMap := map[string]any{}
-				body = bodyMap
+			if flagCallId != "" {
+				params["callId"] = formatCLIParamValue(flagCallId)
 			}
-			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
+			fields := map[string]string{}
+			fileFields := map[string]string{}
+			if bodyAccountSid != "" {
+				fields["AccountSid"] = bodyAccountSid
+			}
+			if bodyCallSid != "" {
+				fields["CallSid"] = bodyCallSid
+			}
+			if bodyConferenceSid != "" {
+				fields["ConferenceSid"] = bodyConferenceSid
+			}
+			if bodyRecordingDuration != "" {
+				fields["RecordingDuration"] = bodyRecordingDuration
+			}
+			if bodyRecordingSid != "" {
+				fields["RecordingSid"] = bodyRecordingSid
+			}
+			if bodyRecordingStartTime != "" {
+				fields["RecordingStartTime"] = bodyRecordingStartTime
+			}
+			if bodyRecordingStatus != "" {
+				fields["RecordingStatus"] = bodyRecordingStatus
+			}
+			if bodyRecordingUrl != "" {
+				fields["RecordingUrl"] = bodyRecordingUrl
+			}
+
+			data, statusCode, err := c.PostMultipartWithParams(cmd.Context(), path, params, fields, fileFields)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -187,7 +207,15 @@ func newWebhooksVoiceRecordingCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
+	cmd.Flags().StringVar(&flagCallId, "call-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&bodyAccountSid, "account-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyCallSid, "call-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyConferenceSid, "conference-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyRecordingDuration, "recording-duration", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyRecordingSid, "recording-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyRecordingStartTime, "recording-start-time", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyRecordingStatus, "recording-status", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyRecordingUrl, "recording-url", "", "A form field the handler reads")
 
 	return cmd
 }

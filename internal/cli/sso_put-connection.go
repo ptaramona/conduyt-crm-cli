@@ -13,6 +13,16 @@ import (
 )
 
 func newSsoPutConnectionCmd(flags *rootFlags) *cobra.Command {
+	var bodyAllowJit bool
+	var bodyDefaultRole string
+	var bodyEnabled bool
+	var bodyIdpCertPem string
+	var bodyIdpEntityId string
+	var bodyIdpSsoUrl string
+	var bodyOidcClientId string
+	var bodyOidcClientSecret string
+	var bodyOidcIssuer string
+	var bodyProtocol string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -44,6 +54,36 @@ func newSsoPutConnectionCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("allow-jit") {
+					bodyMap["allowJit"] = bodyAllowJit
+				}
+				if bodyDefaultRole != "" {
+					bodyMap["defaultRole"] = bodyDefaultRole
+				}
+				if cmd.Flags().Changed("enabled") {
+					bodyMap["enabled"] = bodyEnabled
+				}
+				if bodyIdpCertPem != "" {
+					bodyMap["idpCertPem"] = bodyIdpCertPem
+				}
+				if bodyIdpEntityId != "" {
+					bodyMap["idpEntityId"] = bodyIdpEntityId
+				}
+				if bodyIdpSsoUrl != "" {
+					bodyMap["idpSsoUrl"] = bodyIdpSsoUrl
+				}
+				if bodyOidcClientId != "" {
+					bodyMap["oidcClientId"] = bodyOidcClientId
+				}
+				if bodyOidcClientSecret != "" {
+					bodyMap["oidcClientSecret"] = bodyOidcClientSecret
+				}
+				if bodyOidcIssuer != "" {
+					bodyMap["oidcIssuer"] = bodyOidcIssuer
+				}
+				if bodyProtocol != "" {
+					bodyMap["protocol"] = bodyProtocol
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +228,16 @@ func newSsoPutConnectionCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&bodyAllowJit, "allow-jit", true, "Allow jit")
+	cmd.Flags().StringVar(&bodyDefaultRole, "default-role", "member", "Default role")
+	cmd.Flags().BoolVar(&bodyEnabled, "enabled", false, "Enabled")
+	cmd.Flags().StringVar(&bodyIdpCertPem, "idp-cert-pem", "", "Idp cert pem")
+	cmd.Flags().StringVar(&bodyIdpEntityId, "idp-entity-id", "", "Idp entity id")
+	cmd.Flags().StringVar(&bodyIdpSsoUrl, "idp-sso-url", "", "Idp sso url")
+	cmd.Flags().StringVar(&bodyOidcClientId, "oidc-client-id", "", "Oidc client id")
+	cmd.Flags().StringVar(&bodyOidcClientSecret, "oidc-client-secret", "", "Oidc client secret")
+	cmd.Flags().StringVar(&bodyOidcIssuer, "oidc-issuer", "", "Oidc issuer")
+	cmd.Flags().StringVar(&bodyProtocol, "protocol", "saml", "Protocol")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

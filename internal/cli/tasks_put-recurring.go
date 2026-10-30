@@ -13,6 +13,10 @@ import (
 )
 
 func newTasksPutRecurringCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyRecurringTasks string
+	var bodyUpdatedAt string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -21,7 +25,16 @@ func newTasksPutRecurringCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli tasks put-recurring",
 		Annotations: map[string]string{"pp:endpoint": "tasks.put-recurring", "pp:method": "PUT", "pp:path": "/tasks/recurring"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("recurring-tasks") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "recurring-tasks")
+				}
 			}
 			path := "/tasks/recurring"
 			c, err := flags.newClient()
@@ -29,6 +42,12 @@ func newTasksPutRecurringCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +62,16 @@ func newTasksPutRecurringCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyRecurringTasks != "" {
+					var parsedRecurringTasks any
+					if err := json.Unmarshal([]byte(bodyRecurringTasks), &parsedRecurringTasks); err != nil {
+						return fmt.Errorf("parsing --recurring-tasks JSON: %w", err)
+					}
+					bodyMap["recurringTasks"] = parsedRecurringTasks
+				}
+				if bodyUpdatedAt != "" {
+					bodyMap["updatedAt"] = bodyUpdatedAt
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +216,10 @@ func newTasksPutRecurringCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyRecurringTasks, "recurring-tasks", "", "Recurring tasks")
+	cmd.Flags().StringVar(&bodyUpdatedAt, "updated-at", "", "The pattern above is the server's rule (Zod's ISO date-time check).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

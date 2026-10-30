@@ -13,6 +13,8 @@ import (
 )
 
 func newConversationsCompliancePostConversationsContactIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyOptOut string
+	var bodyPhone string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +53,12 @@ func newConversationsCompliancePostConversationsContactIdCmd(flags *rootFlags) *
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyOptOut != "" {
+					bodyMap["optOut"] = bodyOptOut
+				}
+				if bodyPhone != "" {
+					bodyMap["phone"] = bodyPhone
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +203,8 @@ func newConversationsCompliancePostConversationsContactIdCmd(flags *rootFlags) *
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyOptOut, "opt-out", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

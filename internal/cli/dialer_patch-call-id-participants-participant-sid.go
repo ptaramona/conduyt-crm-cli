@@ -13,6 +13,9 @@ import (
 )
 
 func newDialerPatchCallIdParticipantsParticipantSidCmd(flags *rootFlags) *cobra.Command {
+	var bodyHold string
+	var bodyMerge string
+	var bodyMuted string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -54,6 +57,15 @@ func newDialerPatchCallIdParticipantsParticipantSidCmd(flags *rootFlags) *cobra.
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyHold != "" {
+					bodyMap["hold"] = bodyHold
+				}
+				if bodyMerge != "" {
+					bodyMap["merge"] = bodyMerge
+				}
+				if bodyMuted != "" {
+					bodyMap["muted"] = bodyMuted
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -198,6 +210,9 @@ func newDialerPatchCallIdParticipantsParticipantSidCmd(flags *rootFlags) *cobra.
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyHold, "hold", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMerge, "merge", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMuted, "muted", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

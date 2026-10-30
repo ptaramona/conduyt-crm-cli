@@ -15,7 +15,6 @@ func newDialerDeleteCallIdSuperviseCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "delete-call-id-supervise <id>",
-		Aliases:     []string{"delete"},
 		Short:       "Delete dialer call id supervise",
 		Example:     "  conduyt-crm-pp-cli dialer delete-call-id-supervise 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "dialer.delete-call-id-supervise", "pp:method": "DELETE", "pp:path": "/dialer/call/{id}/supervise"},

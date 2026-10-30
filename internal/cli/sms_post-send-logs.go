@@ -13,6 +13,14 @@ import (
 )
 
 func newSmsPostSendLogsCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactName string
+	var bodyMessage string
+	var bodyMessageId string
+	var bodyProvider string
+	var bodySentAt string
+	var bodySource string
+	var bodyStatus string
+	var bodyTemplateId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -44,6 +52,30 @@ func newSmsPostSendLogsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContactName != "" {
+					bodyMap["contactName"] = bodyContactName
+				}
+				if bodyMessage != "" {
+					bodyMap["message"] = bodyMessage
+				}
+				if bodyMessageId != "" {
+					bodyMap["messageId"] = bodyMessageId
+				}
+				if bodyProvider != "" {
+					bodyMap["provider"] = bodyProvider
+				}
+				if bodySentAt != "" {
+					bodyMap["sentAt"] = bodySentAt
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
+				}
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
+				}
+				if bodyTemplateId != "" {
+					bodyMap["templateId"] = bodyTemplateId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +220,14 @@ func newSmsPostSendLogsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactName, "contact-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMessage, "message", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMessageId, "message-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyProvider, "provider", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySentAt, "sent-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTemplateId, "template-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

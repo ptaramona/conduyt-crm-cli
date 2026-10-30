@@ -55,7 +55,7 @@ and full resync. After archiving, use 'search' for instant full-text search.`,
 			}
 			defer s.Close()
 
-			resources := []string{"admin", "appointments", "automation-executions", "automations", "automations-actions", "automations-condition-fields", "automations-templates", "booking-pages", "calendar", "calendar-callback-google", "calendar-callback-microsoft", "calendars", "calls", "chat", "conversations", "custom-fields", "document-templates", "drip-campaigns", "drip-enrollments", "emails", "emails-sequences", "emails-templates", "files", "forms", "imports", "integrations", "integrations-zapier-subscribe", "invoices", "lead-routing", "lead-routing-assignment-log", "notifications", "notifications-profiles", "products", "reports-custom", "scoring-rules", "smart-lists", "users", "webhook-logs", "webhooks", "webhooks-manage", "webhooks-replay", "workflows"}
+			resources := []string{"activity", "admin", "batch-operations", "custom-fields", "deals", "dialer", "dialer-recordings", "dnc", "document-templates", "email", "emails-templates", "generated-documents", "integrations-wordpress-forms-intakes", "lead-routing-assignment-log", "scoring-rules", "sms", "sms-providers", "sms-providers-template-options"}
 			totalSynced := 0
 			syncEventWriter := cmd.OutOrStdout()
 			if flags.asJSON {
@@ -72,7 +72,7 @@ and full resync. After archiving, use 'search' for instant full-text search.`,
 			}
 
 			for _, resource := range resources {
-				res := syncResource(cmd.Context(), c, s, resource, "", full, 100, false, false, nil, syncEventWriter)
+				res := syncResource(cmd.Context(), c, s, resource, "", full, 100, false, false, "", nil, syncEventWriter)
 				if res.Err != nil {
 					fmt.Fprintf(cmd.ErrOrStderr(), "  %s: error: %v\n", resource, res.Err)
 					continue

@@ -13,15 +13,34 @@ import (
 )
 
 func newWarmyEnginePostTemplatesCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAccountId string
+	var bodyAccountSlug string
+	var bodyTemplates string
+	var bodyWebhookSecret string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:         "post-templates",
-		Short:       "Create / invoke warmy-engine templates",
-		Example:     "  conduyt-crm-pp-cli warmy-engine post-templates",
+		Use:   "post-templates",
+		Short: "Create / invoke warmy-engine templates",
+		// TODO: replace placeholder example values before relying on this for live dogfood.
+		Example:     "  conduyt-crm-pp-cli warmy-engine post-templates --webhook-secret example-value",
 		Annotations: map[string]string{"pp:endpoint": "warmy-engine.post-templates", "pp:method": "POST", "pp:path": "/warmy-engine/templates"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("templates") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "templates")
+				}
+				if !cmd.Flags().Changed("webhook-secret") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "webhook-secret")
+				}
 			}
 			path := "/warmy-engine/templates"
 			c, err := flags.newClient()
@@ -29,6 +48,12 @@ func newWarmyEnginePostTemplatesCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +68,22 @@ func newWarmyEnginePostTemplatesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAccountId != "" {
+					bodyMap["accountId"] = bodyAccountId
+				}
+				if bodyAccountSlug != "" {
+					bodyMap["accountSlug"] = bodyAccountSlug
+				}
+				if bodyTemplates != "" {
+					var parsedTemplates any
+					if err := json.Unmarshal([]byte(bodyTemplates), &parsedTemplates); err != nil {
+						return fmt.Errorf("parsing --templates JSON: %w", err)
+					}
+					bodyMap["templates"] = parsedTemplates
+				}
+				if bodyWebhookSecret != "" {
+					bodyMap["webhookSecret"] = bodyWebhookSecret
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +228,12 @@ func newWarmyEnginePostTemplatesCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAccountId, "account-id", "", "Account id")
+	cmd.Flags().StringVar(&bodyAccountSlug, "account-slug", "", "Account slug")
+	cmd.Flags().StringVar(&bodyTemplates, "templates", "", "Each template the batch attempts (a name, a subject and a body) is { name, subject, body (text), bodyHtml")
+	cmd.Flags().StringVar(&bodyWebhookSecret, "webhook-secret", "", "Webhook secret")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -15,7 +15,7 @@ func newConduytAuthGetMeCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "get-me",
-		Short:       "Get current authenticated user",
+		Short:       "Identical to GET /users/me, byte for byte (that route re-exports this handler) — including `data.account.name`.",
 		Example:     "  conduyt-crm-pp-cli conduyt-auth get-me",
 		Annotations: map[string]string{"pp:endpoint": "conduyt-auth.get-me", "pp:method": "GET", "pp:path": "/auth/me", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {

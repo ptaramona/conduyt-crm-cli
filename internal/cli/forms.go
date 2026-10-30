@@ -25,5 +25,6 @@ func newFormsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newFormsInstallCheckCmd(flags))
 	cmd.AddCommand(newFormsSubmissionsCmd(flags))
 	cmd.AddCommand(newFormsSubmitCmd(flags))
+	cmd.AddCommand(newFormsUploadsCmd(flags))
 	return cmd
 }

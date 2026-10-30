@@ -13,15 +13,25 @@ import (
 )
 
 func newSettingsPutFromkCmd(flags *rootFlags) *cobra.Command {
+	var bodyApiKey string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "put-fromk",
 		Short:       "Update settings fromk",
-		Example:     "  conduyt-crm-pp-cli settings put-fromk",
+		Example:     "  conduyt-crm-pp-cli settings put-fromk --api-key your-token-here",
 		Annotations: map[string]string{"pp:endpoint": "settings.put-fromk", "pp:method": "PUT", "pp:path": "/settings/fromk"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("api-key") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "api-key")
+				}
 			}
 			path := "/settings/fromk"
 			c, err := flags.newClient()
@@ -43,6 +53,9 @@ func newSettingsPutFromkCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyApiKey != "" {
+					bodyMap["apiKey"] = bodyApiKey
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +200,7 @@ func newSettingsPutFromkCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyApiKey, "api-key", "", "A FromK.ai key: fk_, an id, a dot and the secret (24 to 200 characters); otherwise a 400 (invalid_key_format).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

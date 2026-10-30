@@ -12,6 +12,12 @@ import (
 )
 
 func newSmsGetSendLogsCmd(flags *rootFlags) *cobra.Command {
+	var flagPage string
+	var flagPerPage int
+	var flagProvider string
+	var flagStatus string
+	var flagTemplateId string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-send-logs",
@@ -25,8 +31,13 @@ func newSmsGetSendLogsCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "sms", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "sms", path, map[string]string{
+				"page":        formatCLIParamValue(flagPage),
+				"per_page":    formatCLIParamValue(flagPerPage),
+				"provider":    formatCLIParamValue(flagProvider),
+				"status":      formatCLIParamValue(flagStatus),
+				"template_id": formatCLIParamValue(flagTemplateId),
+			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -74,6 +85,12 @@ func newSmsGetSendLogsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagProvider, "provider", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTemplateId, "template-id", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

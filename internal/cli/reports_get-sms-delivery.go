@@ -12,6 +12,10 @@ import (
 )
 
 func newReportsGetSmsDeliveryCmd(flags *rootFlags) *cobra.Command {
+	var flagAutomationId string
+	var flagFrom string
+	var flagSmartListId string
+	var flagTo string
 
 	cmd := &cobra.Command{
 		Use:         "get-sms-delivery",
@@ -25,6 +29,18 @@ func newReportsGetSmsDeliveryCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagAutomationId != "" {
+				params["automationId"] = formatCLIParamValue(flagAutomationId)
+			}
+			if flagFrom != "" {
+				params["from"] = formatCLIParamValue(flagFrom)
+			}
+			if flagSmartListId != "" {
+				params["smartListId"] = formatCLIParamValue(flagSmartListId)
+			}
+			if flagTo != "" {
+				params["to"] = formatCLIParamValue(flagTo)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +89,10 @@ func newReportsGetSmsDeliveryCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagAutomationId, "automation-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagFrom, "from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSmartListId, "smart-list-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTo, "to", "", "Query parameter read by this route.")
 
 	return cmd
 }

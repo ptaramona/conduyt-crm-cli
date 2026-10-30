@@ -12,8 +12,10 @@ import (
 )
 
 func newProductsListCmd(flags *rootFlags) *cobra.Command {
+	var flagIsActive string
 	var flagPage string
-	var flagPerPage int
+	var flagPerPage string
+	var flagSearch string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -28,9 +30,11 @@ func newProductsListCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "products", path, map[string]string{
-				"page":     formatCLIParamValue(flagPage),
-				"per_page": formatCLIParamValue(flagPerPage),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+				"is_active": formatCLIParamValue(flagIsActive),
+				"page":      formatCLIParamValue(flagPage),
+				"per_page":  formatCLIParamValue(flagPerPage),
+				"search":    formatCLIParamValue(flagSearch),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -78,8 +82,10 @@ func newProductsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagIsActive, "is-active", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 200, default 50), or the word all: every product of the filters in one query.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

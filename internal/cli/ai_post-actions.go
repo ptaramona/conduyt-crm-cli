@@ -13,6 +13,10 @@ import (
 )
 
 func newAiPostActionsCmd(flags *rootFlags) *cobra.Command {
+	var bodyHistory string
+	var bodyMessage string
+	var bodySectionId string
+	var bodySectionType string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +47,28 @@ func newAiPostActionsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyHistory != "" {
+					var parsedHistory any
+					if err := json.Unmarshal([]byte(bodyHistory), &parsedHistory); err != nil {
+						return fmt.Errorf("parsing --history JSON: %w", err)
+					}
+					bodyMap["history"] = parsedHistory
+				}
+				if bodyMessage != "" {
+					bodyMap["message"] = bodyMessage
+				}
+				{
+					nestedSection := map[string]any{}
+					if bodySectionId != "" {
+						nestedSection["id"] = bodySectionId
+					}
+					if bodySectionType != "" {
+						nestedSection["type"] = bodySectionType
+					}
+					if len(nestedSection) > 0 {
+						bodyMap["section"] = nestedSection
+					}
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +213,10 @@ func newAiPostActionsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyHistory, "history", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMessage, "message", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySectionId, "section-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySectionType, "section-type", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

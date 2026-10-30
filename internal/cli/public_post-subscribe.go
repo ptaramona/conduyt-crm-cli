@@ -13,6 +13,9 @@ import (
 )
 
 func newPublicPostSubscribeCmd(flags *rootFlags) *cobra.Command {
+	var bodyEmail string
+	var bodyName string
+	var bodySource string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +46,15 @@ func newPublicPostSubscribeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyEmail != "" {
+					bodyMap["email"] = bodyEmail
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +199,9 @@ func newPublicPostSubscribeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyEmail, "email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

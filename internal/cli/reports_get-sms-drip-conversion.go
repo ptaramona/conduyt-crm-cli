@@ -12,6 +12,15 @@ import (
 )
 
 func newReportsGetSmsDripConversionCmd(flags *rootFlags) *cobra.Command {
+	var flagAttributionDays string
+	var flagAutomationId string
+	var flagFrom string
+	var flagSmartListId string
+	var flagTo string
+	var flagDateRange string
+	var flagRange string
+	var flagStart string
+	var flagEnd string
 
 	cmd := &cobra.Command{
 		Use:         "get-sms-drip-conversion",
@@ -25,6 +34,33 @@ func newReportsGetSmsDripConversionCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagAttributionDays != "" {
+				params["attributionDays"] = formatCLIParamValue(flagAttributionDays)
+			}
+			if flagAutomationId != "" {
+				params["automationId"] = formatCLIParamValue(flagAutomationId)
+			}
+			if flagFrom != "" {
+				params["from"] = formatCLIParamValue(flagFrom)
+			}
+			if flagSmartListId != "" {
+				params["smartListId"] = formatCLIParamValue(flagSmartListId)
+			}
+			if flagTo != "" {
+				params["to"] = formatCLIParamValue(flagTo)
+			}
+			if flagDateRange != "" {
+				params["dateRange"] = formatCLIParamValue(flagDateRange)
+			}
+			if flagRange != "" {
+				params["range"] = formatCLIParamValue(flagRange)
+			}
+			if flagStart != "" {
+				params["start"] = formatCLIParamValue(flagStart)
+			}
+			if flagEnd != "" {
+				params["end"] = formatCLIParamValue(flagEnd)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +109,15 @@ func newReportsGetSmsDripConversionCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagAttributionDays, "attribution-days", "", "integer 1-14 (default 3) — credit an outcome only within this many days of the text and before the next text")
+	cmd.Flags().StringVar(&flagAutomationId, "automation-id", "", "uuid — report one SMS-drip automation (windows are still built over every drip's texts)")
+	cmd.Flags().StringVar(&flagFrom, "from", "", "ISO datetime — window start (spans over 90 days clamp to the last 90 before `to`)")
+	cmd.Flags().StringVar(&flagSmartListId, "smart-list-id", "", "uuid — only contacts in this smart list")
+	cmd.Flags().StringVar(&flagTo, "to", "", "ISO datetime — window end (default now)")
+	cmd.Flags().StringVar(&flagDateRange, "date-range", "", "string — shared dashboard range key (today, week, month, last_month, quarter, custom, ...")
+	cmd.Flags().StringVar(&flagRange, "range", "", "string — alias of dateRange")
+	cmd.Flags().StringVar(&flagStart, "start", "", "ISO datetime — with dateRange=custom: the custom window start")
+	cmd.Flags().StringVar(&flagEnd, "end", "", "ISO datetime — with dateRange=custom: the custom window end (start must be on or before end")
 
 	return cmd
 }

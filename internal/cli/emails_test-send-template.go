@@ -13,6 +13,10 @@ import (
 )
 
 func newEmailsTestSendTemplateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyHtml string
+	var bodySubject string
 	var bodyTemplateId string
 	var bodyToEmail string
 	var stdinBody bool
@@ -20,22 +24,10 @@ func newEmailsTestSendTemplateCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "test-send-template",
 		Short:       "Send a test email from a template",
-		Example:     "  conduyt-crm-pp-cli emails test-send-template --template-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli emails test-send-template",
 		Annotations: map[string]string{"pp:endpoint": "emails.test-send-template", "pp:method": "POST", "pp:path": "/emails/templates/test-send"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("template-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "template-id")
-				}
-				if !cmd.Flags().Changed("to-email") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "to-email")
-				}
 			}
 			path := "/emails/templates/test-send"
 			c, err := flags.newClient()
@@ -43,6 +35,12 @@ func newEmailsTestSendTemplateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -57,6 +55,12 @@ func newEmailsTestSendTemplateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyHtml != "" {
+					bodyMap["html"] = bodyHtml
+				}
+				if bodySubject != "" {
+					bodyMap["subject"] = bodySubject
+				}
 				if bodyTemplateId != "" {
 					bodyMap["templateId"] = bodyTemplateId
 				}
@@ -207,7 +211,11 @@ func newEmailsTestSendTemplateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyTemplateId, "template-id", "", "Template id")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyHtml, "html", "", "With subject, the stored base HTML of an unsaved template (used when templateId is absent, null or empty).")
+	cmd.Flags().StringVar(&bodySubject, "subject", "", "With html, the subject of an unsaved template (used when templateId is absent, null or empty).")
+	cmd.Flags().StringVar(&bodyTemplateId, "template-id", "", "A saved email template of this account.")
 	cmd.Flags().StringVar(&bodyToEmail, "to-email", "", "To email")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

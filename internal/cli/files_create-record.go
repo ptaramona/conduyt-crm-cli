@@ -13,20 +13,16 @@ import (
 )
 
 func newFilesCreateRecordCmd(flags *rootFlags) *cobra.Command {
-	var bodyContentType string
 	var bodyEntityId string
 	var bodyEntityType string
-	var bodyFileName string
-	var bodyFileSize int
-	var bodyFileUrl string
+	var bodyUploadId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:     "create-record",
-		Aliases: []string{"create"},
-		Short:   "Create a file attachment record",
-		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli files create-record --content-type example-value",
+		Use:         "create-record",
+		Aliases:     []string{"create"},
+		Short:       "Create a file attachment record",
+		Example:     "  conduyt-crm-pp-cli files create-record --entity-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "files.create-record", "pp:method": "POST", "pp:path": "/files"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -36,23 +32,11 @@ func newFilesCreateRecordCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("content-type") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "content-type")
-				}
 				if !cmd.Flags().Changed("entity-id") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "entity-id")
 				}
 				if !cmd.Flags().Changed("entity-type") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "entity-type")
-				}
-				if !cmd.Flags().Changed("file-name") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "file-name")
-				}
-				if !cmd.Flags().Changed("file-size") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "file-size")
-				}
-				if !cmd.Flags().Changed("file-url") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "file-url")
 				}
 			}
 			path := "/files"
@@ -75,23 +59,14 @@ func newFilesCreateRecordCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContentType != "" {
-					bodyMap["contentType"] = bodyContentType
-				}
 				if bodyEntityId != "" {
 					bodyMap["entityId"] = bodyEntityId
 				}
 				if bodyEntityType != "" {
 					bodyMap["entityType"] = bodyEntityType
 				}
-				if bodyFileName != "" {
-					bodyMap["fileName"] = bodyFileName
-				}
-				if bodyFileSize != 0 {
-					bodyMap["fileSize"] = bodyFileSize
-				}
-				if bodyFileUrl != "" {
-					bodyMap["fileUrl"] = bodyFileUrl
+				if bodyUploadId != "" {
+					bodyMap["uploadId"] = bodyUploadId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -237,12 +212,9 @@ func newFilesCreateRecordCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyContentType, "content-type", "", "Content type")
 	cmd.Flags().StringVar(&bodyEntityId, "entity-id", "", "Entity id")
 	cmd.Flags().StringVar(&bodyEntityType, "entity-type", "", "Entity type")
-	cmd.Flags().StringVar(&bodyFileName, "file-name", "", "File name")
-	cmd.Flags().IntVar(&bodyFileSize, "file-size", 0, "File size")
-	cmd.Flags().StringVar(&bodyFileUrl, "file-url", "", "File url")
+	cmd.Flags().StringVar(&bodyUploadId, "upload-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

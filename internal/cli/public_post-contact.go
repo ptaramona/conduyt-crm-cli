@@ -13,6 +13,48 @@ import (
 )
 
 func newPublicPostContactCmd(flags *rootFlags) *cobra.Command {
+	var bodyAppointmentId string
+	var bodyAttributionFtFirstSeenAt string
+	var bodyAttributionFtGclid string
+	var bodyAttributionFtLandingUrl string
+	var bodyAttributionFtMsclkid string
+	var bodyAttributionFtReferrer string
+	var bodyAttributionFtUtmCampaign string
+	var bodyAttributionFtUtmContent string
+	var bodyAttributionFtUtmMedium string
+	var bodyAttributionFtUtmSource string
+	var bodyBusiness string
+	var bodyCompany string
+	var bodyConsentCapturedAt string
+	var bodyConsentPageUrl string
+	var bodyConsentVersion string
+	var bodyCurrentCrm string
+	var bodyElapsedMs float64
+	var bodyEmail string
+	var bodyFirstName string
+	var bodyFtFirstSeenAt string
+	var bodyFtGclid string
+	var bodyFtLandingUrl string
+	var bodyFtMsclkid string
+	var bodyFtReferrer string
+	var bodyFtUtmCampaign string
+	var bodyFtUtmContent string
+	var bodyFtUtmMedium string
+	var bodyFtUtmSource string
+	var bodyIndustry string
+	var bodyLastName string
+	var bodyMessage string
+	var bodyName string
+	var bodyPhone string
+	var bodySmsConsent bool
+	var bodySmsMarketingConsent bool
+	var bodySmsTransactionalConsent bool
+	var bodySource string
+	var bodySubmissionId string
+	var bodyTeamSize string
+	var bodyTermsAccepted bool
+	var bodyTopic string
+	var bodyWebsite string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +85,138 @@ func newPublicPostContactCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAppointmentId != "" {
+					bodyMap["appointmentId"] = bodyAppointmentId
+				}
+				{
+					nestedAttribution := map[string]any{}
+					if bodyAttributionFtFirstSeenAt != "" {
+						nestedAttribution["ft_first_seen_at"] = bodyAttributionFtFirstSeenAt
+					}
+					if bodyAttributionFtGclid != "" {
+						nestedAttribution["ft_gclid"] = bodyAttributionFtGclid
+					}
+					if bodyAttributionFtLandingUrl != "" {
+						nestedAttribution["ft_landing_url"] = bodyAttributionFtLandingUrl
+					}
+					if bodyAttributionFtMsclkid != "" {
+						nestedAttribution["ft_msclkid"] = bodyAttributionFtMsclkid
+					}
+					if bodyAttributionFtReferrer != "" {
+						nestedAttribution["ft_referrer"] = bodyAttributionFtReferrer
+					}
+					if bodyAttributionFtUtmCampaign != "" {
+						nestedAttribution["ft_utm_campaign"] = bodyAttributionFtUtmCampaign
+					}
+					if bodyAttributionFtUtmContent != "" {
+						nestedAttribution["ft_utm_content"] = bodyAttributionFtUtmContent
+					}
+					if bodyAttributionFtUtmMedium != "" {
+						nestedAttribution["ft_utm_medium"] = bodyAttributionFtUtmMedium
+					}
+					if bodyAttributionFtUtmSource != "" {
+						nestedAttribution["ft_utm_source"] = bodyAttributionFtUtmSource
+					}
+					if len(nestedAttribution) > 0 {
+						bodyMap["attribution"] = nestedAttribution
+					}
+				}
+				if bodyBusiness != "" {
+					bodyMap["business"] = bodyBusiness
+				}
+				if bodyCompany != "" {
+					bodyMap["company"] = bodyCompany
+				}
+				if bodyConsentCapturedAt != "" {
+					bodyMap["consentCapturedAt"] = bodyConsentCapturedAt
+				}
+				if bodyConsentPageUrl != "" {
+					bodyMap["consentPageUrl"] = bodyConsentPageUrl
+				}
+				if bodyConsentVersion != "" {
+					bodyMap["consentVersion"] = bodyConsentVersion
+				}
+				if bodyCurrentCrm != "" {
+					bodyMap["currentCrm"] = bodyCurrentCrm
+				}
+				if bodyElapsedMs != 0.0 {
+					bodyMap["elapsedMs"] = bodyElapsedMs
+				}
+				if bodyEmail != "" {
+					bodyMap["email"] = bodyEmail
+				}
+				if bodyFirstName != "" {
+					bodyMap["firstName"] = bodyFirstName
+				}
+				if bodyFtFirstSeenAt != "" {
+					bodyMap["ft_first_seen_at"] = bodyFtFirstSeenAt
+				}
+				if bodyFtGclid != "" {
+					bodyMap["ft_gclid"] = bodyFtGclid
+				}
+				if bodyFtLandingUrl != "" {
+					bodyMap["ft_landing_url"] = bodyFtLandingUrl
+				}
+				if bodyFtMsclkid != "" {
+					bodyMap["ft_msclkid"] = bodyFtMsclkid
+				}
+				if bodyFtReferrer != "" {
+					bodyMap["ft_referrer"] = bodyFtReferrer
+				}
+				if bodyFtUtmCampaign != "" {
+					bodyMap["ft_utm_campaign"] = bodyFtUtmCampaign
+				}
+				if bodyFtUtmContent != "" {
+					bodyMap["ft_utm_content"] = bodyFtUtmContent
+				}
+				if bodyFtUtmMedium != "" {
+					bodyMap["ft_utm_medium"] = bodyFtUtmMedium
+				}
+				if bodyFtUtmSource != "" {
+					bodyMap["ft_utm_source"] = bodyFtUtmSource
+				}
+				if bodyIndustry != "" {
+					bodyMap["industry"] = bodyIndustry
+				}
+				if bodyLastName != "" {
+					bodyMap["lastName"] = bodyLastName
+				}
+				if bodyMessage != "" {
+					bodyMap["message"] = bodyMessage
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyPhone != "" {
+					bodyMap["phone"] = bodyPhone
+				}
+				if cmd.Flags().Changed("sms-consent") {
+					bodyMap["smsConsent"] = bodySmsConsent
+				}
+				if cmd.Flags().Changed("sms-marketing-consent") {
+					bodyMap["smsMarketingConsent"] = bodySmsMarketingConsent
+				}
+				if cmd.Flags().Changed("sms-transactional-consent") {
+					bodyMap["smsTransactionalConsent"] = bodySmsTransactionalConsent
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
+				}
+				if bodySubmissionId != "" {
+					bodyMap["submissionId"] = bodySubmissionId
+				}
+				if bodyTeamSize != "" {
+					bodyMap["teamSize"] = bodyTeamSize
+				}
+				if cmd.Flags().Changed("terms-accepted") {
+					bodyMap["termsAccepted"] = bodyTermsAccepted
+				}
+				if bodyTopic != "" {
+					bodyMap["topic"] = bodyTopic
+				}
+				if bodyWebsite != "" {
+					bodyMap["website"] = bodyWebsite
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +361,48 @@ func newPublicPostContactCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAppointmentId, "appointment-id", "", "The demo booked in the same visit.")
+	cmd.Flags().StringVar(&bodyAttributionFtFirstSeenAt, "attribution-ft-first-seen-at", "", "Same as the flat ft_first_seen_at.")
+	cmd.Flags().StringVar(&bodyAttributionFtGclid, "attribution-ft-gclid", "", "Same as the flat ft_gclid.")
+	cmd.Flags().StringVar(&bodyAttributionFtLandingUrl, "attribution-ft-landing-url", "", "Same as the flat ft_landing_url.")
+	cmd.Flags().StringVar(&bodyAttributionFtMsclkid, "attribution-ft-msclkid", "", "Same as the flat ft_msclkid.")
+	cmd.Flags().StringVar(&bodyAttributionFtReferrer, "attribution-ft-referrer", "", "Same as the flat ft_referrer.")
+	cmd.Flags().StringVar(&bodyAttributionFtUtmCampaign, "attribution-ft-utm-campaign", "", "Same as the flat ft_utm_campaign.")
+	cmd.Flags().StringVar(&bodyAttributionFtUtmContent, "attribution-ft-utm-content", "", "Same as the flat ft_utm_content.")
+	cmd.Flags().StringVar(&bodyAttributionFtUtmMedium, "attribution-ft-utm-medium", "", "Same as the flat ft_utm_medium.")
+	cmd.Flags().StringVar(&bodyAttributionFtUtmSource, "attribution-ft-utm-source", "", "Same as the flat ft_utm_source.")
+	cmd.Flags().StringVar(&bodyBusiness, "business", "", "Company name (alias of company).")
+	cmd.Flags().StringVar(&bodyCompany, "company", "", "Company name.")
+	cmd.Flags().StringVar(&bodyConsentCapturedAt, "consent-captured-at", "", "When the page captured the consent (browser clock).")
+	cmd.Flags().StringVar(&bodyConsentPageUrl, "consent-page-url", "", "The page the consent was captured on.")
+	cmd.Flags().StringVar(&bodyConsentVersion, "consent-version", "", "The consent disclosure version the page showed.")
+	cmd.Flags().StringVar(&bodyCurrentCrm, "current-crm", "", "The CRM the visitor uses today.")
+	cmd.Flags().Float64Var(&bodyElapsedMs, "elapsed-ms", 0.0, "Anti-bot fill time: milliseconds between rendering the form and submitting it.")
+	cmd.Flags().StringVar(&bodyEmail, "email", "", "The visitor's email address (required by the handler; a missing or malformed one is answered 400).")
+	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name.")
+	cmd.Flags().StringVar(&bodyFtFirstSeenAt, "ft-first-seen-at", "", "First-touch attribution, first write wins: when the visitor was first seen, an ISO 8601 instant (YYYY-MM-DDTHH:MM")
+	cmd.Flags().StringVar(&bodyFtGclid, "ft-gclid", "", "First-touch attribution, first write wins: the first Google click id (max 256).")
+	cmd.Flags().StringVar(&bodyFtLandingUrl, "ft-landing-url", "", "First-touch attribution, first write wins: the first landing page URL the visitor saw (max 2048).")
+	cmd.Flags().StringVar(&bodyFtMsclkid, "ft-msclkid", "", "First-touch attribution, first write wins: the first Microsoft click id (max 256).")
+	cmd.Flags().StringVar(&bodyFtReferrer, "ft-referrer", "", "First-touch attribution, first write wins: the first referrer URL (max 2048).")
+	cmd.Flags().StringVar(&bodyFtUtmCampaign, "ft-utm-campaign", "", "First-touch attribution, first write wins: the first utm_campaign (max 256).")
+	cmd.Flags().StringVar(&bodyFtUtmContent, "ft-utm-content", "", "First-touch attribution, first write wins: the first utm_content (max 256).")
+	cmd.Flags().StringVar(&bodyFtUtmMedium, "ft-utm-medium", "", "First-touch attribution, first write wins: the first utm_medium (max 256).")
+	cmd.Flags().StringVar(&bodyFtUtmSource, "ft-utm-source", "", "First-touch attribution, first write wins: the first utm_source (max 256).")
+	cmd.Flags().StringVar(&bodyIndustry, "industry", "", "Industry.")
+	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name.")
+	cmd.Flags().StringVar(&bodyMessage, "message", "", "Free-text message.")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Full name, for the older form that sends one field.")
+	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone number; stored only when it normalizes to E.164.")
+	cmd.Flags().BoolVar(&bodySmsConsent, "sms-consent", false, "Legacy single SMS consent box.")
+	cmd.Flags().BoolVar(&bodySmsMarketingConsent, "sms-marketing-consent", false, "SMS marketing consent box.")
+	cmd.Flags().BoolVar(&bodySmsTransactionalConsent, "sms-transactional-consent", false, "SMS transactional consent box.")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Where the form lives; defaults to website-contact.")
+	cmd.Flags().StringVar(&bodySubmissionId, "submission-id", "", "Idempotency id of this submission; a retry reuses it.")
+	cmd.Flags().StringVar(&bodyTeamSize, "team-size", "", "Team size.")
+	cmd.Flags().BoolVar(&bodyTermsAccepted, "terms-accepted", false, "Terms box.")
+	cmd.Flags().StringVar(&bodyTopic, "topic", "", "What the inquiry is about.")
+	cmd.Flags().StringVar(&bodyWebsite, "website", "", "Anti-bot honeypot: a visually hidden field that real visitors leave empty.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

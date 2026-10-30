@@ -13,6 +13,10 @@ import (
 )
 
 func newQuickNotesPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyBody string
+	var bodyDone bool
+	var bodyPinned bool
+	var bodyRemindAt string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +55,18 @@ func newQuickNotesPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBody != "" {
+					bodyMap["body"] = bodyBody
+				}
+				if cmd.Flags().Changed("done") {
+					bodyMap["done"] = bodyDone
+				}
+				if cmd.Flags().Changed("pinned") {
+					bodyMap["pinned"] = bodyPinned
+				}
+				if bodyRemindAt != "" {
+					bodyMap["remindAt"] = bodyRemindAt
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +211,10 @@ func newQuickNotesPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyBody, "body", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().BoolVar(&bodyDone, "done", false, "Done")
+	cmd.Flags().BoolVar(&bodyPinned, "pinned", false, "Pinned")
+	cmd.Flags().StringVar(&bodyRemindAt, "remind-at", "", "Must be in the future (compared with the server clock); otherwise a 400.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

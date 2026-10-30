@@ -12,19 +12,33 @@ import (
 )
 
 func newReportsGetCustomFieldsCmd(flags *rootFlags) *cobra.Command {
+	var flagEntity string
 
 	cmd := &cobra.Command{
-		Use:         "get-custom-fields",
-		Short:       "List reports custom fields",
-		Example:     "  conduyt-crm-pp-cli reports get-custom-fields",
+		Use:   "get-custom-fields",
+		Short: "List reports custom fields",
+		// TODO: replace placeholder example values before relying on this for live dogfood.
+		Example:     "  conduyt-crm-pp-cli reports get-custom-fields --entity example-value",
 		Annotations: map[string]string{"pp:endpoint": "reports.get-custom-fields", "pp:method": "GET", "pp:path": "/reports/custom/fields", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("entity") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "entity")
+			}
 			path := "/reports/custom/fields"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
+			if flagEntity != "" {
+				params["entity"] = formatCLIParamValue(flagEntity)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +87,7 @@ func newReportsGetCustomFieldsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagEntity, "entity", "", "Query parameter read by this route.")
 
 	return cmd
 }

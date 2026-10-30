@@ -12,8 +12,15 @@ import (
 )
 
 func newAutomationExecutionsListCmd(flags *rootFlags) *cobra.Command {
-	var flagPage string
-	var flagPerPage int
+	var flagAutomationId string
+	var flagContactId string
+	var flagDateFrom string
+	var flagDateTo string
+	var flagLimit int
+	var flagOffset string
+	var flagSearch string
+	var flagSort string
+	var flagStatus string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -28,9 +35,16 @@ func newAutomationExecutionsListCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "automation-executions", path, map[string]string{
-				"page":     formatCLIParamValue(flagPage),
-				"per_page": formatCLIParamValue(flagPerPage),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+				"automationId": formatCLIParamValue(flagAutomationId),
+				"contactId":    formatCLIParamValue(flagContactId),
+				"dateFrom":     formatCLIParamValue(flagDateFrom),
+				"dateTo":       formatCLIParamValue(flagDateTo),
+				"limit":        formatCLIParamValue(flagLimit),
+				"offset":       formatCLIParamValue(flagOffset),
+				"search":       formatCLIParamValue(flagSearch),
+				"sort":         formatCLIParamValue(flagSort),
+				"status":       formatCLIParamValue(flagStatus),
+			}, nil, flagAll, "offset", "offset", "limit", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -78,8 +92,15 @@ func newAutomationExecutionsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagAutomationId, "automation-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDateFrom, "date-from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDateTo, "date-to", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 50, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOffset, "offset", "0", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
+	cmd.Flags().StringVar(&flagSort, "sort", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

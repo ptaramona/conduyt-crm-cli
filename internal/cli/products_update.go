@@ -13,6 +13,17 @@ import (
 )
 
 func newProductsUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyCurrency string
+	var bodyDescription string
+	var bodyIsActive string
+	var bodyMetadata string
+	var bodyName string
+	var bodyPrice string
+	var bodySku string
+	var bodyTaxable string
+	var bodyUnit string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -36,6 +47,12 @@ func newProductsUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -50,6 +67,33 @@ func newProductsUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCurrency != "" {
+					bodyMap["currency"] = bodyCurrency
+				}
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyMetadata != "" {
+					bodyMap["metadata"] = bodyMetadata
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyPrice != "" {
+					bodyMap["price"] = bodyPrice
+				}
+				if bodySku != "" {
+					bodyMap["sku"] = bodySku
+				}
+				if bodyTaxable != "" {
+					bodyMap["taxable"] = bodyTaxable
+				}
+				if bodyUnit != "" {
+					bodyMap["unit"] = bodyUnit
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +238,17 @@ func newProductsUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyCurrency, "currency", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPrice, "price", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySku, "sku", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTaxable, "taxable", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUnit, "unit", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

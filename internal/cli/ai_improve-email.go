@@ -14,7 +14,8 @@ import (
 
 func newAiImproveEmailCmd(flags *rootFlags) *cobra.Command {
 	var bodyBody string
-	var bodyInstruction string
+	var bodyInstructions string
+	var bodySubject string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -33,6 +34,9 @@ func newAiImproveEmailCmd(flags *rootFlags) *cobra.Command {
 			if !stdinBody {
 				if !cmd.Flags().Changed("body") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "body")
+				}
+				if !cmd.Flags().Changed("subject") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "subject")
 				}
 			}
 			path := "/ai/improve-email"
@@ -58,8 +62,11 @@ func newAiImproveEmailCmd(flags *rootFlags) *cobra.Command {
 				if bodyBody != "" {
 					bodyMap["body"] = bodyBody
 				}
-				if bodyInstruction != "" {
-					bodyMap["instruction"] = bodyInstruction
+				if bodyInstructions != "" {
+					bodyMap["instructions"] = bodyInstructions
+				}
+				if bodySubject != "" {
+					bodyMap["subject"] = bodySubject
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -206,7 +213,8 @@ func newAiImproveEmailCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyBody, "body", "", "Body")
-	cmd.Flags().StringVar(&bodyInstruction, "instruction", "", "Instruction")
+	cmd.Flags().StringVar(&bodyInstructions, "instructions", "", "Instructions")
+	cmd.Flags().StringVar(&bodySubject, "subject", "", "Subject")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

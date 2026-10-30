@@ -13,6 +13,8 @@ import (
 )
 
 func newConduytAuthPostMfaChallengeCmd(flags *rootFlags) *cobra.Command {
+	var bodyCode string
+	var bodyMfaToken string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +45,12 @@ func newConduytAuthPostMfaChallengeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCode != "" {
+					bodyMap["code"] = bodyCode
+				}
+				if bodyMfaToken != "" {
+					bodyMap["mfaToken"] = bodyMfaToken
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +195,8 @@ func newConduytAuthPostMfaChallengeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyCode, "code", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMfaToken, "mfa-token", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

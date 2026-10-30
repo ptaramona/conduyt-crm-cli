@@ -9,18 +9,19 @@ import (
 	"io"
 	"os"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newEmailsUnenrollFromSequenceCmd(flags *rootFlags) *cobra.Command {
-	var bodyContactIds string
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyContactId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "unenroll-from-sequence <id>",
 		Short:       "Unenroll contacts from a sequence",
-		Example:     "  conduyt-crm-pp-cli emails unenroll-from-sequence 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli emails unenroll-from-sequence 550e8400-e29b-41d4-a716-446655440000 --contact-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "emails.unenroll-from-sequence", "pp:method": "POST", "pp:path": "/emails/sequences/{id}/unenroll"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -33,8 +34,8 @@ func newEmailsUnenrollFromSequenceCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("contact-ids") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "contact-ids")
+				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
 				}
 			}
 			path := "/emails/sequences/{id}/unenroll"
@@ -47,6 +48,12 @@ func newEmailsUnenrollFromSequenceCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -61,12 +68,8 @@ func newEmailsUnenrollFromSequenceCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContactIds != "" {
-					parsedContactIds, parseErr := cliutil.ParseStringList(bodyContactIds)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --contact-ids list: %w", parseErr)
-					}
-					bodyMap["contactIds"] = parsedContactIds
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -212,7 +215,9 @@ func newEmailsUnenrollFromSequenceCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyContactIds, "contact-ids", "", "Contact ids")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "The contact to remove from the sequence (one contact per call).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

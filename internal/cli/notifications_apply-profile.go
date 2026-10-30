@@ -13,15 +13,25 @@ import (
 )
 
 func newNotificationsApplyProfileCmd(flags *rootFlags) *cobra.Command {
+	var bodyProfileId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "apply-profile",
 		Short:       "Apply notification profile",
-		Example:     "  conduyt-crm-pp-cli notifications apply-profile",
+		Example:     "  conduyt-crm-pp-cli notifications apply-profile --profile-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "notifications.apply-profile", "pp:method": "POST", "pp:path": "/notifications/profiles"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("profile-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "profile-id")
+				}
 			}
 			path := "/notifications/profiles"
 			c, err := flags.newClient()
@@ -43,6 +53,9 @@ func newNotificationsApplyProfileCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyProfileId != "" {
+					bodyMap["profileId"] = bodyProfileId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +200,7 @@ func newNotificationsApplyProfileCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyProfileId, "profile-id", "", "Profile id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

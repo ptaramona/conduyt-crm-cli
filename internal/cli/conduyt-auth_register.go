@@ -14,10 +14,26 @@ import (
 
 func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 	var bodyAccountName string
+	var bodyAttributionCyFtCmp string
+	var bodyAttributionCyFtLanding string
+	var bodyAttributionCyFtRef string
+	var bodyAttributionCyFtSrc string
+	var bodyAttributionGbraid string
+	var bodyAttributionGclid string
+	var bodyAttributionLandingPage string
+	var bodyAttributionMsclkid string
+	var bodyAttributionReferrer string
+	var bodyAttributionUtmCampaign string
+	var bodyAttributionUtmContent string
+	var bodyAttributionUtmMedium string
+	var bodyAttributionUtmSource string
+	var bodyAttributionUtmTerm string
+	var bodyAttributionWbraid string
 	var bodyEmail string
 	var bodyFirstName string
 	var bodyLastName string
 	var bodyPassword string
+	var bodySignupFunnelId string
 	var bodyTermsAccepted bool
 	var stdinBody bool
 
@@ -80,6 +96,57 @@ func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 				if bodyAccountName != "" {
 					bodyMap["accountName"] = bodyAccountName
 				}
+				{
+					nestedAttribution := map[string]any{}
+					if bodyAttributionCyFtCmp != "" {
+						nestedAttribution["cy_ft_cmp"] = bodyAttributionCyFtCmp
+					}
+					if bodyAttributionCyFtLanding != "" {
+						nestedAttribution["cy_ft_landing"] = bodyAttributionCyFtLanding
+					}
+					if bodyAttributionCyFtRef != "" {
+						nestedAttribution["cy_ft_ref"] = bodyAttributionCyFtRef
+					}
+					if bodyAttributionCyFtSrc != "" {
+						nestedAttribution["cy_ft_src"] = bodyAttributionCyFtSrc
+					}
+					if bodyAttributionGbraid != "" {
+						nestedAttribution["gbraid"] = bodyAttributionGbraid
+					}
+					if bodyAttributionGclid != "" {
+						nestedAttribution["gclid"] = bodyAttributionGclid
+					}
+					if bodyAttributionLandingPage != "" {
+						nestedAttribution["landing_page"] = bodyAttributionLandingPage
+					}
+					if bodyAttributionMsclkid != "" {
+						nestedAttribution["msclkid"] = bodyAttributionMsclkid
+					}
+					if bodyAttributionReferrer != "" {
+						nestedAttribution["referrer"] = bodyAttributionReferrer
+					}
+					if bodyAttributionUtmCampaign != "" {
+						nestedAttribution["utm_campaign"] = bodyAttributionUtmCampaign
+					}
+					if bodyAttributionUtmContent != "" {
+						nestedAttribution["utm_content"] = bodyAttributionUtmContent
+					}
+					if bodyAttributionUtmMedium != "" {
+						nestedAttribution["utm_medium"] = bodyAttributionUtmMedium
+					}
+					if bodyAttributionUtmSource != "" {
+						nestedAttribution["utm_source"] = bodyAttributionUtmSource
+					}
+					if bodyAttributionUtmTerm != "" {
+						nestedAttribution["utm_term"] = bodyAttributionUtmTerm
+					}
+					if bodyAttributionWbraid != "" {
+						nestedAttribution["wbraid"] = bodyAttributionWbraid
+					}
+					if len(nestedAttribution) > 0 {
+						bodyMap["attribution"] = nestedAttribution
+					}
+				}
 				if bodyEmail != "" {
 					bodyMap["email"] = bodyEmail
 				}
@@ -91,6 +158,9 @@ func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyPassword != "" {
 					bodyMap["password"] = bodyPassword
+				}
+				if bodySignupFunnelId != "" {
+					bodyMap["signupFunnelId"] = bodySignupFunnelId
 				}
 				// PATCH(register-terms-accepted-601): the API requires the const true
 				if bodyTermsAccepted {
@@ -241,10 +311,26 @@ func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyAccountName, "account-name", "", "Account name")
+	cmd.Flags().StringVar(&bodyAttributionCyFtCmp, "attribution-cy-ft-cmp", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionCyFtLanding, "attribution-cy-ft-landing", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionCyFtRef, "attribution-cy-ft-ref", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionCyFtSrc, "attribution-cy-ft-src", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionGbraid, "attribution-gbraid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionGclid, "attribution-gclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionLandingPage, "attribution-landing-page", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionMsclkid, "attribution-msclkid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionReferrer, "attribution-referrer", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmCampaign, "attribution-utm-campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmContent, "attribution-utm-content", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmMedium, "attribution-utm-medium", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmSource, "attribution-utm-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmTerm, "attribution-utm-term", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionWbraid, "attribution-wbraid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyEmail, "email", "", "Email")
 	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name")
 	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
 	cmd.Flags().StringVar(&bodyPassword, "password", "", "Password")
+	cmd.Flags().StringVar(&bodySignupFunnelId, "signup-funnel-id", "", "The sign-up page's anonymous funnel id; signup_succeeded is sent under it. Optional; a malformed value is ignored.")
 	// PATCH(register-terms-accepted-601): required consent flag
 	cmd.Flags().BoolVar(&bodyTermsAccepted, "terms-accepted", false, "Required: accept the Terms of Service (https://conduyt.app/terms) and the Privacy Policy (https://conduyt.app/privacy). Sends termsAccepted true")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")

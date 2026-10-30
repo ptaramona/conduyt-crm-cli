@@ -12,8 +12,9 @@ import (
 )
 
 func newAutomationsListCmd(flags *rootFlags) *cobra.Command {
+	var flagFields string
 	var flagPage string
-	var flagPerPage int
+	var flagPerPage string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -22,15 +23,29 @@ func newAutomationsListCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli automations list",
 		Annotations: map[string]string{"pp:endpoint": "automations.list", "pp:method": "GET", "pp:path": "/automations", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("fields") {
+				allowedFields := []string{"picker"}
+				validFields := false
+				for _, v := range allowedFields {
+					if flagFields == v {
+						validFields = true
+						break
+					}
+				}
+				if !validFields {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagFields, "fields", allowedFields)
+				}
+			}
 			path := "/automations"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "automations", path, map[string]string{
+				"fields":   formatCLIParamValue(flagFields),
 				"page":     formatCLIParamValue(flagPage),
 				"per_page": formatCLIParamValue(flagPerPage),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -78,8 +93,9 @@ func newAutomationsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagFields, "fields", "", "picker: each row is only { id, name, triggerEvent, enrollable } (enrollable: the runner admits a bulk enrollment: native (one of: picker)")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Rows per page (default 25): at most 100, or at most 500 with fields=picker.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

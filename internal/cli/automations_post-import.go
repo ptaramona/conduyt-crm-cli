@@ -13,15 +13,53 @@ import (
 )
 
 func newAutomationsPostImportCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDescription string
+	var bodyGraphNodes string
+	var bodyGraphStartNodeId string
+	var bodyKind string
+	var bodyName string
+	var bodyResolveNames bool
+	var bodyTriggerConditionsField string
+	var bodyTriggerConditionsFilters string
+	var bodyTriggerConditionsPipelineId string
+	var bodyTriggerConditionsRequireSignature string
+	var bodyTriggerConditionsStageId string
+	var bodyTriggerConditionsTagId string
+	var bodyTriggerConditionsTagIds string
+	var bodyTriggerConditionsTargetPipelineId string
+	var bodyTriggerConditionsUntouchedDays string
+	var bodyTriggerConditionsValue string
+	var bodyTriggerConditionsWebhookSecret string
+	var bodyTriggerEvent string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-import",
 		Short:       "Create / invoke automations import",
-		Example:     "  conduyt-crm-pp-cli automations post-import",
+		Example:     "  conduyt-crm-pp-cli automations post-import --name example-resource",
 		Annotations: map[string]string{"pp:endpoint": "automations.post-import", "pp:method": "POST", "pp:path": "/automations/import"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("graph-nodes") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "graph-nodes")
+				}
+				if !cmd.Flags().Changed("graph-start-node-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "graph-start-node-id")
+				}
+				if !cmd.Flags().Changed("name") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "name")
+				}
+				if !cmd.Flags().Changed("trigger-event") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "trigger-event")
+				}
 			}
 			path := "/automations/import"
 			c, err := flags.newClient()
@@ -29,6 +67,12 @@ func newAutomationsPostImportCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +87,84 @@ func newAutomationsPostImportCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				{
+					nestedGraph := map[string]any{}
+					if bodyGraphNodes != "" {
+						var parsedGraphNodes any
+						if err := json.Unmarshal([]byte(bodyGraphNodes), &parsedGraphNodes); err != nil {
+							return fmt.Errorf("parsing --graph-nodes JSON: %w", err)
+						}
+						nestedGraph["nodes"] = parsedGraphNodes
+					}
+					if bodyGraphStartNodeId != "" {
+						nestedGraph["startNodeId"] = bodyGraphStartNodeId
+					}
+					if len(nestedGraph) > 0 {
+						bodyMap["graph"] = nestedGraph
+					}
+				}
+				if bodyKind != "" {
+					bodyMap["kind"] = bodyKind
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if cmd.Flags().Changed("resolve-names") {
+					bodyMap["resolveNames"] = bodyResolveNames
+				}
+				{
+					nestedTriggerConditions := map[string]any{}
+					if bodyTriggerConditionsField != "" {
+						nestedTriggerConditions["field"] = bodyTriggerConditionsField
+					}
+					if bodyTriggerConditionsFilters != "" {
+						if looksLikeJSONComposite(bodyTriggerConditionsFilters) {
+							var parsedTriggerConditionsFilters any
+							if err := json.Unmarshal([]byte(bodyTriggerConditionsFilters), &parsedTriggerConditionsFilters); err != nil {
+								return fmt.Errorf("parsing --trigger-conditions-filters JSON: %w", err)
+							}
+							nestedTriggerConditions["filters"] = parsedTriggerConditionsFilters
+						} else {
+							nestedTriggerConditions["filters"] = bodyTriggerConditionsFilters
+						}
+					}
+					if bodyTriggerConditionsPipelineId != "" {
+						nestedTriggerConditions["pipelineId"] = bodyTriggerConditionsPipelineId
+					}
+					if bodyTriggerConditionsRequireSignature != "" {
+						nestedTriggerConditions["requireSignature"] = bodyTriggerConditionsRequireSignature
+					}
+					if bodyTriggerConditionsStageId != "" {
+						nestedTriggerConditions["stageId"] = bodyTriggerConditionsStageId
+					}
+					if bodyTriggerConditionsTagId != "" {
+						nestedTriggerConditions["tagId"] = bodyTriggerConditionsTagId
+					}
+					if bodyTriggerConditionsTagIds != "" {
+						nestedTriggerConditions["tagIds"] = bodyTriggerConditionsTagIds
+					}
+					if bodyTriggerConditionsTargetPipelineId != "" {
+						nestedTriggerConditions["targetPipelineId"] = bodyTriggerConditionsTargetPipelineId
+					}
+					if bodyTriggerConditionsUntouchedDays != "" {
+						nestedTriggerConditions["untouchedDays"] = bodyTriggerConditionsUntouchedDays
+					}
+					if bodyTriggerConditionsValue != "" {
+						nestedTriggerConditions["value"] = bodyTriggerConditionsValue
+					}
+					if bodyTriggerConditionsWebhookSecret != "" {
+						nestedTriggerConditions["webhookSecret"] = bodyTriggerConditionsWebhookSecret
+					}
+					if len(nestedTriggerConditions) > 0 {
+						bodyMap["triggerConditions"] = nestedTriggerConditions
+					}
+				}
+				if bodyTriggerEvent != "" {
+					bodyMap["triggerEvent"] = bodyTriggerEvent
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +309,26 @@ func newAutomationsPostImportCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
+	cmd.Flags().StringVar(&bodyGraphNodes, "graph-nodes", "", "Nodes")
+	cmd.Flags().StringVar(&bodyGraphStartNodeId, "graph-start-node-id", "", "Start node id")
+	cmd.Flags().StringVar(&bodyKind, "kind", "", "Kind")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().BoolVar(&bodyResolveNames, "resolve-names", false, "Resolve names")
+	cmd.Flags().StringVar(&bodyTriggerConditionsField, "trigger-conditions-field", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsFilters, "trigger-conditions-filters", "", "Filters")
+	cmd.Flags().StringVar(&bodyTriggerConditionsPipelineId, "trigger-conditions-pipeline-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsRequireSignature, "trigger-conditions-require-signature", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsStageId, "trigger-conditions-stage-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsTagId, "trigger-conditions-tag-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsTagIds, "trigger-conditions-tag-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsTargetPipelineId, "trigger-conditions-target-pipeline-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsUntouchedDays, "trigger-conditions-untouched-days", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsValue, "trigger-conditions-value", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsWebhookSecret, "trigger-conditions-webhook-secret", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerEvent, "trigger-event", "", "Must equal the event of the graph's trigger node when that node names one; otherwise a 400.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,6 +13,8 @@ import (
 )
 
 func newReportsRunCustomCmd(flags *rootFlags) *cobra.Command {
+	var flagPage string
+	var flagPerPage int
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -36,6 +38,12 @@ func newReportsRunCustomCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagPage != "" {
+				params["page"] = formatCLIParamValue(flagPage)
+			}
+			if flagPerPage != 0 {
+				params["per_page"] = formatCLIParamValue(flagPerPage)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -194,6 +202,8 @@ func newReportsRunCustomCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 100, "Items per page (max 200)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

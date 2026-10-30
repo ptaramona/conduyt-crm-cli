@@ -14,21 +14,20 @@ import (
 
 func newAutomationsCreateCmd(flags *rootFlags) *cobra.Command {
 	var bodyActions string
-	var bodyCooldownDays int
 	var bodyDescription string
-	var bodyExecutionTimezone string
-	var bodyExecutionWindowEnd int
-	var bodyExecutionWindowStart int
+	var bodyFolderId string
+	var bodyGraphNodes string
+	var bodyGraphStartNodeId string
 	var bodyGraphVersion int
-	var bodyIsActive bool
 	var bodyKind string
 	var bodyN8nWebhookUrl string
 	var bodyN8nWorkflowId string
 	var bodyName string
-	var bodyReenrollmentRule string
+	var bodyNodes string
 	var bodySchedule string
 	var bodyScheduleTimezone string
-	var bodyStopOnResponse bool
+	var bodyStartNodeId string
+	var bodyTrigger string
 	var bodyTriggerConditions string
 	var bodyTriggerEvent string
 	var stdinBody bool
@@ -74,28 +73,36 @@ func newAutomationsCreateCmd(flags *rootFlags) *cobra.Command {
 				bodyMap := map[string]any{}
 				body = bodyMap
 				if bodyActions != "" {
-					bodyMap["actions"] = bodyActions
-				}
-				if bodyCooldownDays != 0 {
-					bodyMap["cooldownDays"] = bodyCooldownDays
+					if looksLikeJSONComposite(bodyActions) {
+						var parsedActions any
+						if err := json.Unmarshal([]byte(bodyActions), &parsedActions); err != nil {
+							return fmt.Errorf("parsing --actions JSON: %w", err)
+						}
+						bodyMap["actions"] = parsedActions
+					} else {
+						bodyMap["actions"] = bodyActions
+					}
 				}
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
-				if bodyExecutionTimezone != "" {
-					bodyMap["executionTimezone"] = bodyExecutionTimezone
+				if bodyFolderId != "" {
+					bodyMap["folderId"] = bodyFolderId
 				}
-				if bodyExecutionWindowEnd != 0 {
-					bodyMap["executionWindowEnd"] = bodyExecutionWindowEnd
-				}
-				if bodyExecutionWindowStart != 0 {
-					bodyMap["executionWindowStart"] = bodyExecutionWindowStart
+				{
+					nestedGraph := map[string]any{}
+					if bodyGraphNodes != "" {
+						nestedGraph["nodes"] = bodyGraphNodes
+					}
+					if bodyGraphStartNodeId != "" {
+						nestedGraph["startNodeId"] = bodyGraphStartNodeId
+					}
+					if len(nestedGraph) > 0 {
+						bodyMap["graph"] = nestedGraph
+					}
 				}
 				if bodyGraphVersion != 0 {
 					bodyMap["graphVersion"] = bodyGraphVersion
-				}
-				if cmd.Flags().Changed("is-active") {
-					bodyMap["isActive"] = bodyIsActive
 				}
 				if bodyKind != "" {
 					bodyMap["kind"] = bodyKind
@@ -109,8 +116,12 @@ func newAutomationsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
 				}
-				if bodyReenrollmentRule != "" {
-					bodyMap["reenrollmentRule"] = bodyReenrollmentRule
+				if bodyNodes != "" {
+					var parsedNodes any
+					if err := json.Unmarshal([]byte(bodyNodes), &parsedNodes); err != nil {
+						return fmt.Errorf("parsing --nodes JSON: %w", err)
+					}
+					bodyMap["nodes"] = parsedNodes
 				}
 				if bodySchedule != "" {
 					bodyMap["schedule"] = bodySchedule
@@ -118,8 +129,11 @@ func newAutomationsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyScheduleTimezone != "" {
 					bodyMap["scheduleTimezone"] = bodyScheduleTimezone
 				}
-				if cmd.Flags().Changed("stop-on-response") {
-					bodyMap["stopOnResponse"] = bodyStopOnResponse
+				if bodyStartNodeId != "" {
+					bodyMap["startNodeId"] = bodyStartNodeId
+				}
+				if bodyTrigger != "" {
+					bodyMap["trigger"] = bodyTrigger
 				}
 				if bodyTriggerConditions != "" {
 					var parsedTriggerConditions any
@@ -276,21 +290,20 @@ func newAutomationsCreateCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyActions, "actions", "", "Linear array of actions (v1) or graph object (v2)")
-	cmd.Flags().IntVar(&bodyCooldownDays, "cooldown-days", 0, "Cooldown days")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
-	cmd.Flags().StringVar(&bodyExecutionTimezone, "execution-timezone", "", "Execution timezone")
-	cmd.Flags().IntVar(&bodyExecutionWindowEnd, "execution-window-end", 0, "Hour (0-23) to stop executing")
-	cmd.Flags().IntVar(&bodyExecutionWindowStart, "execution-window-start", 0, "Hour (0-23) to start executing")
+	cmd.Flags().StringVar(&bodyFolderId, "folder-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGraphNodes, "graph-nodes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGraphStartNodeId, "graph-start-node-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().IntVar(&bodyGraphVersion, "graph-version", 1, "Graph version")
-	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
 	cmd.Flags().StringVar(&bodyKind, "kind", "n8n", "Kind")
 	cmd.Flags().StringVar(&bodyN8nWebhookUrl, "n8n-webhook-url", "", "N8n webhook url")
 	cmd.Flags().StringVar(&bodyN8nWorkflowId, "n8n-workflow-id", "", "N8n workflow id")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
-	cmd.Flags().StringVar(&bodyReenrollmentRule, "reenrollment-rule", "every_time", "Reenrollment rule")
+	cmd.Flags().StringVar(&bodyNodes, "nodes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodySchedule, "schedule", "", "Cron expression (5-field, UTC) for scheduled automations")
 	cmd.Flags().StringVar(&bodyScheduleTimezone, "schedule-timezone", "", "Schedule timezone")
-	cmd.Flags().BoolVar(&bodyStopOnResponse, "stop-on-response", false, "Stop on response")
+	cmd.Flags().StringVar(&bodyStartNodeId, "start-node-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTrigger, "trigger", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyTriggerConditions, "trigger-conditions", "", "Trigger conditions")
 	cmd.Flags().StringVar(&bodyTriggerEvent, "trigger-event", "", "Event that triggers this automation (e.g., contact.created, deal.stage_changed)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")

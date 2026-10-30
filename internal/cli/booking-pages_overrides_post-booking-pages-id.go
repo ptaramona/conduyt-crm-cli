@@ -13,6 +13,14 @@ import (
 )
 
 func newBookingPagesOverridesPostBookingPagesIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDate string
+	var bodyEndTime string
+	var bodyIsBlocked string
+	var bodyReason string
+	var bodyStartTime string
+	var bodyUserId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -37,6 +45,12 @@ func newBookingPagesOverridesPostBookingPagesIdCmd(flags *rootFlags) *cobra.Comm
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +65,24 @@ func newBookingPagesOverridesPostBookingPagesIdCmd(flags *rootFlags) *cobra.Comm
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDate != "" {
+					bodyMap["date"] = bodyDate
+				}
+				if bodyEndTime != "" {
+					bodyMap["endTime"] = bodyEndTime
+				}
+				if bodyIsBlocked != "" {
+					bodyMap["isBlocked"] = bodyIsBlocked
+				}
+				if bodyReason != "" {
+					bodyMap["reason"] = bodyReason
+				}
+				if bodyStartTime != "" {
+					bodyMap["startTime"] = bodyStartTime
+				}
+				if bodyUserId != "" {
+					bodyMap["userId"] = bodyUserId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +227,14 @@ func newBookingPagesOverridesPostBookingPagesIdCmd(flags *rootFlags) *cobra.Comm
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyDate, "date", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEndTime, "end-time", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsBlocked, "is-blocked", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReason, "reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStartTime, "start-time", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

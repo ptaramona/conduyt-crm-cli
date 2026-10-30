@@ -20,6 +20,7 @@ func newDripEnrollmentsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newDripEnrollmentsPostBatchPauseCmd(flags))
 	cmd.AddCommand(newDripEnrollmentsPostBatchResumeCmd(flags))
 	cmd.AddCommand(newDripEnrollmentsPostBatchStopCmd(flags))
+	cmd.AddCommand(newDripEnrollmentsCancelBarrierCmd(flags))
 	cmd.AddCommand(newDripEnrollmentsTimelineCmd(flags))
 	return cmd
 }

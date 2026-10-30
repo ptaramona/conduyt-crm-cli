@@ -14,6 +14,8 @@ import (
 
 func newAdminImpersonateCmd(flags *rootFlags) *cobra.Command {
 	var bodyAccountId string
+	var bodyReason string
+	var bodyTicket string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -55,6 +57,12 @@ func newAdminImpersonateCmd(flags *rootFlags) *cobra.Command {
 				body = bodyMap
 				if bodyAccountId != "" {
 					bodyMap["accountId"] = bodyAccountId
+				}
+				if bodyReason != "" {
+					bodyMap["reason"] = bodyReason
+				}
+				if bodyTicket != "" {
+					bodyMap["ticket"] = bodyTicket
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -201,6 +209,8 @@ func newAdminImpersonateCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyAccountId, "account-id", "", "Account id")
+	cmd.Flags().StringVar(&bodyReason, "reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTicket, "ticket", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

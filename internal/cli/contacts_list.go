@@ -12,23 +12,38 @@ import (
 )
 
 func newContactsListCmd(flags *rootFlags) *cobra.Command {
-	var flagPage string
-	var flagPerPage int
-	var flagSearch string
-	var flagEmail []string
-	var flagTag string
-	var flagTags string
-	var flagSource string
-	var flagCompany string
 	var flagAssignedTo string
+	var flagCf string
+	var flagCompany string
+	var flagCompanyId string
 	var flagCreatedFrom string
 	var flagCreatedTo string
+	var flagDealContextOwners string
+	var flagDealContextStages string
+	var flagDealContextStatuses string
+	var flagExcludeMasterStatus string
+	var flagFilters string
+	var flagImportId string
+	var flagInclude string
+	var flagLimit int
+	var flagMasterStatus string
+	var flagMinScore int
+	var flagOrder string
+	var flagPage string
+	var flagPerPage int
+	var flagReachability string
+	var flagSearch string
+	var flagEmail []string
+	var flagSmartView string
+	var flagSmartListId string
+	var flagSort string
+	var flagSource string
+	var flagTag string
+	var flagTagId string
+	var flagTags string
 	var flagUpdatedFrom string
 	var flagUpdatedTo string
-	var flagMinScore int
-	var flagSmartView string
-	var flagSort string
-	var flagOrder string
+	var flagCfKey string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -37,43 +52,10 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli contacts list",
 		Annotations: map[string]string{"pp:endpoint": "contacts.list", "pp:method": "GET", "pp:path": "/contacts", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Changed("smart-view") {
-				allowedSmartView := []string{"needs_follow_up", "hot_leads", "new_this_week", "recently_won", "untagged", "missing_email", "missing_phone"}
-				validSmartView := false
-				for _, v := range allowedSmartView {
-					if flagSmartView == v {
-						validSmartView = true
-						break
-					}
-				}
-				if !validSmartView {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagSmartView, "smart-view", allowedSmartView)
-				}
-			}
-			if cmd.Flags().Changed("sort") {
-				allowedSort := []string{"createdAt", "updatedAt", "firstName", "lastName", "email", "company", "leadScore"}
-				validSort := false
-				for _, v := range allowedSort {
-					if flagSort == v {
-						validSort = true
-						break
-					}
-				}
-				if !validSort {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagSort, "sort", allowedSort)
-				}
-			}
-			if cmd.Flags().Changed("order") {
-				allowedOrder := []string{"asc", "desc"}
-				validOrder := false
-				for _, v := range allowedOrder {
-					if flagOrder == v {
-						validOrder = true
-						break
-					}
-				}
-				if !validOrder {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagOrder, "order", allowedOrder)
+			if cmd.Flags().Changed("cf") {
+				var parsedCf any
+				if err := json.Unmarshal([]byte(flagCf), &parsedCf); err != nil {
+					return fmt.Errorf("--cf must be valid JSON: %w", err)
 				}
 			}
 			path := "/contacts"
@@ -88,23 +70,45 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 					return usageErr(err)
 				}
 			}
+			// PATCH(reprint-637-full-public-api): the public document lists `limit` as an alias of per_page that must carry the same
+			// value when both are sent; the print paged on `limit` with its default 50 next to --per-page, so --per-page 100 answered
+			// 400. Pages ride per_page as before the reprint; limit is sent only when --limit is passed.
+			limitParam := ""
+			if cmd.Flags().Changed("limit") {
+				limitParam = formatCLIParamValue(flagLimit)
+			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "contacts", path, map[string]string{
-				"page":         formatCLIParamValue(flagPage),
-				"per_page":     formatCLIParamValue(flagPerPage),
-				"search":       formatCLIParamValue(flagSearch),
-				"tag":          formatCLIParamValue(flagTag),
-				"tags":         formatCLIParamValue(flagTags),
-				"source":       formatCLIParamValue(flagSource),
-				"company":      formatCLIParamValue(flagCompany),
-				"assigned_to":  formatCLIParamValue(flagAssignedTo),
-				"created_from": formatCLIParamValue(flagCreatedFrom),
-				"created_to":   formatCLIParamValue(flagCreatedTo),
-				"updated_from": formatCLIParamValue(flagUpdatedFrom),
-				"updated_to":   formatCLIParamValue(flagUpdatedTo),
-				"min_score":    formatCLIParamValue(flagMinScore),
-				"smart_view":   formatCLIParamValue(flagSmartView),
-				"sort":         formatCLIParamValue(flagSort),
-				"order":        formatCLIParamValue(flagOrder),
+				"assigned_to":           formatCLIParamValue(flagAssignedTo),
+				"cf":                    formatCLIParamValue(flagCf),
+				"company":               formatCLIParamValue(flagCompany),
+				"company_id":            formatCLIParamValue(flagCompanyId),
+				"created_from":          formatCLIParamValue(flagCreatedFrom),
+				"created_to":            formatCLIParamValue(flagCreatedTo),
+				"deal_context_owners":   formatCLIParamValue(flagDealContextOwners),
+				"deal_context_stages":   formatCLIParamValue(flagDealContextStages),
+				"deal_context_statuses": formatCLIParamValue(flagDealContextStatuses),
+				"exclude_master_status": formatCLIParamValue(flagExcludeMasterStatus),
+				"filters":               formatCLIParamValue(flagFilters),
+				"import_id":             formatCLIParamValue(flagImportId),
+				"include":               formatCLIParamValue(flagInclude),
+				"limit":                 limitParam,
+				"master_status":         formatCLIParamValue(flagMasterStatus),
+				"min_score":             formatCLIParamValue(flagMinScore),
+				"order":                 formatCLIParamValue(flagOrder),
+				"page":                  formatCLIParamValue(flagPage),
+				"per_page":              formatCLIParamValue(flagPerPage),
+				"reachability":          formatCLIParamValue(flagReachability),
+				"search":                formatCLIParamValue(flagSearch),
+				"smart_view":            formatCLIParamValue(flagSmartView),
+				"smartListId":           formatCLIParamValue(flagSmartListId),
+				"sort":                  formatCLIParamValue(flagSort),
+				"source":                formatCLIParamValue(flagSource),
+				"tag":                   formatCLIParamValue(flagTag),
+				"tagId":                 formatCLIParamValue(flagTagId),
+				"tags":                  formatCLIParamValue(flagTags),
+				"updated_from":          formatCLIParamValue(flagUpdatedFrom),
+				"updated_to":            formatCLIParamValue(flagUpdatedTo),
+				"cf[<key>]":             formatCLIParamValue(flagCfKey),
 			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -153,23 +157,38 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCf, "cf", "", "string — compact custom-field filters for generated clients.")
+	cmd.Flags().StringVar(&flagCompany, "company", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCompanyId, "company-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCreatedFrom, "created-from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCreatedTo, "created-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDealContextOwners, "deal-context-owners", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDealContextStages, "deal-context-stages", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDealContextStatuses, "deal-context-statuses", "", "Query parameter read by this route.")
+	cmd.Flags().StringArrayVar(&flagEmail, "email", nil, "Exact email lookup, repeatable (--email a@x.com --email b@y.com; a comma list or JSON array is also accepted). Each address is at most 254 characters; an empty or invalid value, or more than 20 distinct addresses, is a 400; a 422 means the unready-index lookup exceeded its stored-spelling bind budget.")
+	cmd.Flags().StringVar(&flagExcludeMasterStatus, "exclude-master-status", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagFilters, "filters", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagImportId, "import-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagInclude, "include", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 0, "Alias of --per-page; when both are sent they must carry the same value (else 400). Sent only when passed")
+	cmd.Flags().StringVar(&flagMasterStatus, "master-status", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagMinScore, "min-score", 0, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOrder, "order", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
-	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
-	cmd.Flags().StringArrayVar(&flagEmail, "email", nil, "Exact email lookup, repeatable (--email a@x.com --email b@y.com; a comma list or JSON array is also accepted). Each address is at most 254 characters; an empty or invalid value, or more than 20 distinct addresses, is a 400; a 422 means the unready-index lookup exceeded its stored-spelling bind budget.")
-	cmd.Flags().StringVar(&flagTag, "tag", "", "Filter by single tag name")
-	cmd.Flags().StringVar(&flagTags, "tags", "", "Filter by comma-separated tag names")
-	cmd.Flags().StringVar(&flagSource, "source", "", "Source")
-	cmd.Flags().StringVar(&flagCompany, "company", "", "Company")
-	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Assigned to")
-	cmd.Flags().StringVar(&flagCreatedFrom, "created-from", "", "Created from")
-	cmd.Flags().StringVar(&flagCreatedTo, "created-to", "", "Created to")
-	cmd.Flags().StringVar(&flagUpdatedFrom, "updated-from", "", "Updated from")
-	cmd.Flags().StringVar(&flagUpdatedTo, "updated-to", "", "Updated to")
-	cmd.Flags().IntVar(&flagMinScore, "min-score", 0, "Minimum lead score filter")
-	cmd.Flags().StringVar(&flagSmartView, "smart-view", "", "Smart view (one of: needs_follow_up, hot_leads, new_this_week, recently_won, untagged, missing_email, missing_phone)")
-	cmd.Flags().StringVar(&flagSort, "sort", "createdAt", "Sort (one of: createdAt, updatedAt, firstName, lastName, email, company, leadScore)")
-	cmd.Flags().StringVar(&flagOrder, "order", "desc", "Order (one of: asc, desc)")
+	cmd.Flags().StringVar(&flagReachability, "reachability", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Text search over name, email, phone (any formatting, incl. secondary phones) and company.")
+	cmd.Flags().StringVar(&flagSmartView, "smart-view", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSmartListId, "smart-list-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSort, "sort", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSource, "source", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTag, "tag", "", "Tag name filter, repeatable (?tag=a&tag=b; form style, exploded).")
+	cmd.Flags().StringVar(&flagTagId, "tag-id", "", "Tag id filter, repeatable (?tagId=<uuid>&tagId=<uuid>; form style, exploded). The contact carries ANY of the given tags.")
+	cmd.Flags().StringVar(&flagTags, "tags", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagUpdatedFrom, "updated-from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagUpdatedTo, "updated-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCfKey, "cf-key", "", "string — filter by contact custom field key.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

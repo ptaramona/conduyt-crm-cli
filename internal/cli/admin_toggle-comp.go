@@ -15,6 +15,7 @@ import (
 
 func newAdminToggleCompCmd(flags *rootFlags) *cobra.Command {
 	var bodyIsComp string
+	var bodyReason string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -68,6 +69,9 @@ func newAdminToggleCompCmd(flags *rootFlags) *cobra.Command {
 						return fmt.Errorf("parsing --is-comp as bool: %w", err)
 					}
 					bodyMap["isComp"] = parsedIsComp
+				}
+				if bodyReason != "" {
+					bodyMap["reason"] = bodyReason
 				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
@@ -214,6 +218,7 @@ func newAdminToggleCompCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyIsComp, "is-comp", "", "Is comp")
+	cmd.Flags().StringVar(&bodyReason, "reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

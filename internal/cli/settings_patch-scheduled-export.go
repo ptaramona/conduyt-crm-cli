@@ -9,10 +9,14 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newSettingsPatchScheduledExportCmd(flags *rootFlags) *cobra.Command {
+	var bodyEnabled bool
+	var bodyEntities string
+	var bodyFrequency string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +47,19 @@ func newSettingsPatchScheduledExportCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("enabled") {
+					bodyMap["enabled"] = bodyEnabled
+				}
+				if bodyEntities != "" {
+					parsedEntities, parseErr := cliutil.ParseStringList(bodyEntities)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --entities list: %w", parseErr)
+					}
+					bodyMap["entities"] = parsedEntities
+				}
+				if bodyFrequency != "" {
+					bodyMap["frequency"] = bodyFrequency
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +204,9 @@ func newSettingsPatchScheduledExportCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&bodyEnabled, "enabled", false, "Enabled")
+	cmd.Flags().StringVar(&bodyEntities, "entities", "", "Entities")
+	cmd.Flags().StringVar(&bodyFrequency, "frequency", "", "Frequency")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,6 +13,26 @@ import (
 )
 
 func newWebhooksInboundDealCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactCompany string
+	var bodyContactCountry string
+	var bodyContactEmail string
+	var bodyContactFirstName string
+	var bodyContactFirstName2 string
+	var bodyContactLastName string
+	var bodyContactLastName2 string
+	var bodyContactPhone string
+	var bodyContactId string
+	var bodyCurrency string
+	var bodyCustomFields string
+	var bodyExpectedCloseDate string
+	var bodyLostReason string
+	var bodyPipelineId string
+	var bodyPriority string
+	var bodySource string
+	var bodyStageId string
+	var bodyStatus string
+	var bodyTitle string
+	var bodyValue string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +63,72 @@ func newWebhooksInboundDealCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				{
+					nestedContact := map[string]any{}
+					if bodyContactCompany != "" {
+						nestedContact["company"] = bodyContactCompany
+					}
+					if bodyContactCountry != "" {
+						nestedContact["country"] = bodyContactCountry
+					}
+					if bodyContactEmail != "" {
+						nestedContact["email"] = bodyContactEmail
+					}
+					if bodyContactFirstName != "" {
+						nestedContact["firstName"] = bodyContactFirstName
+					}
+					if bodyContactFirstName2 != "" {
+						nestedContact["first_name"] = bodyContactFirstName2
+					}
+					if bodyContactLastName != "" {
+						nestedContact["lastName"] = bodyContactLastName
+					}
+					if bodyContactLastName2 != "" {
+						nestedContact["last_name"] = bodyContactLastName2
+					}
+					if bodyContactPhone != "" {
+						nestedContact["phone"] = bodyContactPhone
+					}
+					if len(nestedContact) > 0 {
+						bodyMap["contact"] = nestedContact
+					}
+				}
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if bodyCurrency != "" {
+					bodyMap["currency"] = bodyCurrency
+				}
+				if bodyCustomFields != "" {
+					bodyMap["customFields"] = bodyCustomFields
+				}
+				if bodyExpectedCloseDate != "" {
+					bodyMap["expectedCloseDate"] = bodyExpectedCloseDate
+				}
+				if bodyLostReason != "" {
+					bodyMap["lostReason"] = bodyLostReason
+				}
+				if bodyPipelineId != "" {
+					bodyMap["pipelineId"] = bodyPipelineId
+				}
+				if bodyPriority != "" {
+					bodyMap["priority"] = bodyPriority
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
+				}
+				if bodyStageId != "" {
+					bodyMap["stageId"] = bodyStageId
+				}
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
+				}
+				if bodyTitle != "" {
+					bodyMap["title"] = bodyTitle
+				}
+				if bodyValue != "" {
+					bodyMap["value"] = bodyValue
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +273,26 @@ func newWebhooksInboundDealCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactCompany, "contact-company", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactCountry, "contact-country", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactEmail, "contact-email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactFirstName, "contact-first-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactFirstName2, "contact-first-name-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactLastName, "contact-last-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactLastName2, "contact-last-name-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactPhone, "contact-phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCurrency, "currency", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedCloseDate, "expected-close-date", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLostReason, "lost-reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPipelineId, "pipeline-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPriority, "priority", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStageId, "stage-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTitle, "title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyValue, "value", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

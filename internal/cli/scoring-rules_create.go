@@ -13,7 +13,12 @@ import (
 )
 
 func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
-	var bodyCondition string
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyConditionField string
+	var bodyConditionFieldKey string
+	var bodyConditionOperator string
+	var bodyConditionValue string
 	var bodyIsActive bool
 	var bodyName string
 	var bodyPoints int
@@ -32,9 +37,6 @@ func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("condition") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "condition")
-				}
 				if !cmd.Flags().Changed("name") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "name")
 				}
@@ -48,6 +50,12 @@ func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -62,12 +70,23 @@ func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyCondition != "" {
-					var parsedCondition any
-					if err := json.Unmarshal([]byte(bodyCondition), &parsedCondition); err != nil {
-						return fmt.Errorf("parsing --condition JSON: %w", err)
+				{
+					nestedCondition := map[string]any{}
+					if bodyConditionField != "" {
+						nestedCondition["field"] = bodyConditionField
 					}
-					bodyMap["condition"] = parsedCondition
+					if bodyConditionFieldKey != "" {
+						nestedCondition["fieldKey"] = bodyConditionFieldKey
+					}
+					if bodyConditionOperator != "" {
+						nestedCondition["operator"] = bodyConditionOperator
+					}
+					if bodyConditionValue != "" {
+						nestedCondition["value"] = bodyConditionValue
+					}
+					if len(nestedCondition) > 0 {
+						bodyMap["condition"] = nestedCondition
+					}
 				}
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
@@ -222,7 +241,12 @@ func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyCondition, "condition", "", "Rule condition: { field, operator, value }")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyConditionField, "condition-field", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyConditionFieldKey, "condition-field-key", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyConditionOperator, "condition-operator", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyConditionValue, "condition-value", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().IntVar(&bodyPoints, "points", 0, "Points")

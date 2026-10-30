@@ -13,15 +13,26 @@ import (
 )
 
 func newDialerPostQueueWorkedCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactId string
+	var bodySmartViewId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-queue-worked",
 		Short:       "Create / invoke dialer queue worked",
-		Example:     "  conduyt-crm-pp-cli dialer post-queue-worked",
+		Example:     "  conduyt-crm-pp-cli dialer post-queue-worked --contact-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "dialer.post-queue-worked", "pp:method": "POST", "pp:path": "/dialer/queue/worked"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
+				}
 			}
 			path := "/dialer/queue/worked"
 			c, err := flags.newClient()
@@ -43,6 +54,12 @@ func newDialerPostQueueWorkedCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if bodySmartViewId != "" {
+					bodyMap["smartViewId"] = bodySmartViewId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +204,8 @@ func newDialerPostQueueWorkedCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodySmartViewId, "smart-view-id", "", "Smart view id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

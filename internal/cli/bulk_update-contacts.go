@@ -9,13 +9,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newBulkUpdateContactsCmd(flags *rootFlags) *cobra.Command {
-	var bodyData string
-	var bodyIds string
+	var bodyUpdates string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -24,19 +22,7 @@ func newBulkUpdateContactsCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli bulk update-contacts",
 		Annotations: map[string]string{"pp:endpoint": "bulk.update-contacts", "pp:method": "POST", "pp:path": "/bulk/contacts/update"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("data") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "data")
-				}
-				if !cmd.Flags().Changed("ids") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "ids")
-				}
 			}
 			path := "/bulk/contacts/update"
 			c, err := flags.newClient()
@@ -58,19 +44,12 @@ func newBulkUpdateContactsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyData != "" {
-					var parsedData any
-					if err := json.Unmarshal([]byte(bodyData), &parsedData); err != nil {
-						return fmt.Errorf("parsing --data JSON: %w", err)
+				if bodyUpdates != "" {
+					var parsedUpdates any
+					if err := json.Unmarshal([]byte(bodyUpdates), &parsedUpdates); err != nil {
+						return fmt.Errorf("parsing --updates JSON: %w", err)
 					}
-					bodyMap["data"] = parsedData
-				}
-				if bodyIds != "" {
-					parsedIds, parseErr := cliutil.ParseStringList(bodyIds)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --ids list: %w", parseErr)
-					}
-					bodyMap["ids"] = parsedIds
+					bodyMap["updates"] = parsedUpdates
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -216,8 +195,7 @@ func newBulkUpdateContactsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyData, "data", "", "Data")
-	cmd.Flags().StringVar(&bodyIds, "ids", "", "Ids")
+	cmd.Flags().StringVar(&bodyUpdates, "updates", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

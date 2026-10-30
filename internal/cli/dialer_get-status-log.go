@@ -12,6 +12,7 @@ import (
 )
 
 func newDialerGetStatusLogCmd(flags *rootFlags) *cobra.Command {
+	var flagDate string
 
 	cmd := &cobra.Command{
 		Use:         "get-status-log",
@@ -25,6 +26,9 @@ func newDialerGetStatusLogCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDate != "" {
+				params["date"] = formatCLIParamValue(flagDate)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +77,7 @@ func newDialerGetStatusLogCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagDate, "date", "", "Query parameter read by this route.")
 
 	return cmd
 }

@@ -13,6 +13,8 @@ import (
 )
 
 func newBillingPostAddonsCmd(flags *rootFlags) *cobra.Command {
+	var bodyAddonKey string
+	var bodyQuantity string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +45,12 @@ func newBillingPostAddonsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAddonKey != "" {
+					bodyMap["addonKey"] = bodyAddonKey
+				}
+				if bodyQuantity != "" {
+					bodyMap["quantity"] = bodyQuantity
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +195,8 @@ func newBillingPostAddonsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAddonKey, "addon-key", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyQuantity, "quantity", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

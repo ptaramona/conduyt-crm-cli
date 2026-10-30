@@ -13,16 +13,35 @@ import (
 )
 
 func newCallFlowsPostCmd(flags *rootFlags) *cobra.Command {
+	var bodyDraftGraphEntryId string
+	var bodyDraftGraphNodes string
+	var bodyName string
+	var bodyPhoneNumber string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post",
 		Aliases:     []string{"create"},
 		Short:       "Create / invoke call-flows",
-		Example:     "  conduyt-crm-pp-cli call-flows post",
+		Example:     "  conduyt-crm-pp-cli call-flows post --name example-resource",
 		Annotations: map[string]string{"pp:endpoint": "call-flows.post", "pp:method": "POST", "pp:path": "/call-flows"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("draft-graph-entry-id") && nestedFlagGroupChanged(cmd, "draft-graph") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "draft-graph-entry-id")
+				}
+				if !cmd.Flags().Changed("draft-graph-nodes") && nestedFlagGroupChanged(cmd, "draft-graph") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "draft-graph-nodes")
+				}
+				if !cmd.Flags().Changed("name") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "name")
+				}
 			}
 			path := "/call-flows"
 			c, err := flags.newClient()
@@ -44,6 +63,28 @@ func newCallFlowsPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				{
+					nestedDraftGraph := map[string]any{}
+					if bodyDraftGraphEntryId != "" {
+						nestedDraftGraph["entryId"] = bodyDraftGraphEntryId
+					}
+					if bodyDraftGraphNodes != "" {
+						var parsedDraftGraphNodes any
+						if err := json.Unmarshal([]byte(bodyDraftGraphNodes), &parsedDraftGraphNodes); err != nil {
+							return fmt.Errorf("parsing --draft-graph-nodes JSON: %w", err)
+						}
+						nestedDraftGraph["nodes"] = parsedDraftGraphNodes
+					}
+					if len(nestedDraftGraph) > 0 {
+						bodyMap["draftGraph"] = nestedDraftGraph
+					}
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyPhoneNumber != "" {
+					bodyMap["phoneNumber"] = bodyPhoneNumber
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +229,10 @@ func newCallFlowsPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDraftGraphEntryId, "draft-graph-entry-id", "", "Entry id")
+	cmd.Flags().StringVar(&bodyDraftGraphNodes, "draft-graph-nodes", "", "Nodes")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Display name (required; trimmed, longer than 120 characters is cut)")
+	cmd.Flags().StringVar(&bodyPhoneNumber, "phone-number", "", "E.164 number this flow will answer (optional; must be unclaimed → 409 otherwise)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -12,6 +12,9 @@ import (
 )
 
 func newDripEnrollmentsTimelineGetDripEnrollmentsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagPage string
+	var flagPerPage int
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-drip-enrollments-id <id>",
@@ -32,8 +35,10 @@ func newDripEnrollmentsTimelineGetDripEnrollmentsIdCmd(flags *rootFlags) *cobra.
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "timeline", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "timeline", path, map[string]string{
+				"page":     formatCLIParamValue(flagPage),
+				"per_page": formatCLIParamValue(flagPerPage),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -81,6 +86,9 @@ func newDripEnrollmentsTimelineGetDripEnrollmentsIdCmd(flags *rootFlags) *cobra.
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 100, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

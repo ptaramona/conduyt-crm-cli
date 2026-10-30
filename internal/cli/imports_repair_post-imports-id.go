@@ -13,6 +13,8 @@ import (
 )
 
 func newImportsRepairPostImportsIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyAction string
+	var bodyDryRun string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +53,12 @@ func newImportsRepairPostImportsIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAction != "" {
+					bodyMap["action"] = bodyAction
+				}
+				if bodyDryRun != "" {
+					bodyMap["dry_run"] = bodyDryRun
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +203,8 @@ func newImportsRepairPostImportsIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAction, "action", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDryRun, "dry-run", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -12,6 +12,30 @@ import (
 )
 
 func newContactsExportCmd(flags *rootFlags) *cobra.Command {
+	var flagAssignedTo string
+	var flagCf string
+	var flagCompany string
+	var flagCompanyId string
+	var flagCreatedFrom string
+	var flagCreatedTo string
+	var flagEmail string
+	var flagExcludeMasterStatus string
+	var flagFilters string
+	var flagFormat string
+	var flagImportId string
+	var flagMasterStatus string
+	var flagMinScore int
+	var flagReachability string
+	var flagSearch string
+	var flagSmartView string
+	var flagSmartListId string
+	var flagSource string
+	var flagTag string
+	var flagTagId string
+	var flagTags string
+	var flagUpdatedFrom string
+	var flagUpdatedTo string
+	var flagCfKey string
 
 	cmd := &cobra.Command{
 		Use:         "export",
@@ -19,12 +43,90 @@ func newContactsExportCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli contacts export",
 		Annotations: map[string]string{"pp:endpoint": "contacts.export", "pp:method": "GET", "pp:path": "/contacts/export", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("cf") {
+				var parsedCf any
+				if err := json.Unmarshal([]byte(flagCf), &parsedCf); err != nil {
+					return fmt.Errorf("--cf must be valid JSON: %w", err)
+				}
+			}
 			path := "/contacts/export"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
+			if flagAssignedTo != "" {
+				params["assigned_to"] = formatCLIParamValue(flagAssignedTo)
+			}
+			if flagCf != "" {
+				params["cf"] = formatCLIParamValue(flagCf)
+			}
+			if flagCompany != "" {
+				params["company"] = formatCLIParamValue(flagCompany)
+			}
+			if flagCompanyId != "" {
+				params["company_id"] = formatCLIParamValue(flagCompanyId)
+			}
+			if flagCreatedFrom != "" {
+				params["created_from"] = formatCLIParamValue(flagCreatedFrom)
+			}
+			if flagCreatedTo != "" {
+				params["created_to"] = formatCLIParamValue(flagCreatedTo)
+			}
+			if flagEmail != "" {
+				params["email"] = formatCLIParamValue(flagEmail)
+			}
+			if flagExcludeMasterStatus != "" {
+				params["exclude_master_status"] = formatCLIParamValue(flagExcludeMasterStatus)
+			}
+			if flagFilters != "" {
+				params["filters"] = formatCLIParamValue(flagFilters)
+			}
+			if flagFormat != "" {
+				params["format"] = formatCLIParamValue(flagFormat)
+			}
+			if flagImportId != "" {
+				params["import_id"] = formatCLIParamValue(flagImportId)
+			}
+			if flagMasterStatus != "" {
+				params["master_status"] = formatCLIParamValue(flagMasterStatus)
+			}
+			if flagMinScore != 0 {
+				params["min_score"] = formatCLIParamValue(flagMinScore)
+			}
+			if flagReachability != "" {
+				params["reachability"] = formatCLIParamValue(flagReachability)
+			}
+			if flagSearch != "" {
+				params["search"] = formatCLIParamValue(flagSearch)
+			}
+			if flagSmartView != "" {
+				params["smart_view"] = formatCLIParamValue(flagSmartView)
+			}
+			if flagSmartListId != "" {
+				params["smartListId"] = formatCLIParamValue(flagSmartListId)
+			}
+			if flagSource != "" {
+				params["source"] = formatCLIParamValue(flagSource)
+			}
+			if flagTag != "" {
+				params["tag"] = formatCLIParamValue(flagTag)
+			}
+			if flagTagId != "" {
+				params["tagId"] = formatCLIParamValue(flagTagId)
+			}
+			if flagTags != "" {
+				params["tags"] = formatCLIParamValue(flagTags)
+			}
+			if flagUpdatedFrom != "" {
+				params["updated_from"] = formatCLIParamValue(flagUpdatedFrom)
+			}
+			if flagUpdatedTo != "" {
+				params["updated_to"] = formatCLIParamValue(flagUpdatedTo)
+			}
+			if flagCfKey != "" {
+				params["cf[<key>]"] = formatCLIParamValue(flagCfKey)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "contacts", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +175,30 @@ func newContactsExportCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCf, "cf", "", "string — compact custom-field filters for generated clients.")
+	cmd.Flags().StringVar(&flagCompany, "company", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCompanyId, "company-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCreatedFrom, "created-from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCreatedTo, "created-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagEmail, "email", "", "Exact email lookup, repeatable (?email=a@x.com&email=b@y.com; form style, exploded).")
+	cmd.Flags().StringVar(&flagExcludeMasterStatus, "exclude-master-status", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagFilters, "filters", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagFormat, "format", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagImportId, "import-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagMasterStatus, "master-status", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagMinScore, "min-score", 0, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagReachability, "reachability", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
+	cmd.Flags().StringVar(&flagSmartView, "smart-view", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSmartListId, "smart-list-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSource, "source", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTag, "tag", "", "Tag name filter, repeatable (?tag=a&tag=b; form style, exploded).")
+	cmd.Flags().StringVar(&flagTagId, "tag-id", "", "Tag id filter, repeatable (?tagId=<uuid>&tagId=<uuid>; form style, exploded). The contact carries ANY of the given tags.")
+	cmd.Flags().StringVar(&flagTags, "tags", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagUpdatedFrom, "updated-from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagUpdatedTo, "updated-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCfKey, "cf-key", "", "string — filter by contact custom field key.")
 
 	return cmd
 }

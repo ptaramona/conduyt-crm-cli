@@ -12,6 +12,9 @@ import (
 )
 
 func newApiKeysListCmd(flags *rootFlags) *cobra.Command {
+	var flagPage string
+	var flagPerPage string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -24,8 +27,10 @@ func newApiKeysListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "api-keys", true, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "api-keys", path, map[string]string{
+				"page":     formatCLIParamValue(flagPage),
+				"per_page": formatCLIParamValue(flagPerPage),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +78,9 @@ func newApiKeysListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 100, default 25), or the word all: every active API key in one query")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

@@ -222,7 +222,7 @@ func newPushSubscribeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyEndpoint, "endpoint", "", "Endpoint")
+	cmd.Flags().StringVar(&bodyEndpoint, "endpoint", "", "The server parses the value with the WHATWG URL parser (Zod's .")
 	cmd.Flags().StringVar(&bodyKeysAuth, "keys-auth", "", "Auth")
 	cmd.Flags().StringVar(&bodyKeysP256dh, "keys-p256dh", "", "P256dh")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")

@@ -12,6 +12,10 @@ import (
 )
 
 func newAutomationsVersionsGetAutomationsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagCursor string
+	var flagLimit int
+	var flagOffset string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-automations-id <id>",
@@ -32,8 +36,11 @@ func newAutomationsVersionsGetAutomationsIdCmd(flags *rootFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "versions", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "versions", path, map[string]string{
+				"cursor": formatCLIParamValue(flagCursor),
+				"limit":  formatCLIParamValue(flagLimit),
+				"offset": formatCLIParamValue(flagOffset),
+			}, nil, flagAll, "cursor", "cursor", "limit", 20, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -81,6 +88,10 @@ func newAutomationsVersionsGetAutomationsIdCmd(flags *rootFlags) *cobra.Command 
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 20, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOffset, "offset", "0", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

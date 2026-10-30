@@ -6,14 +6,18 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newWebhooksSmsStatusCmd(flags *rootFlags) *cobra.Command {
-	var stdinBody bool
+	var bodyErrorCode string
+	var bodyErrorMessage string
+	var bodyMessageSid string
+	var bodyMessageStatus string
+	var bodySmsSid string
+	var bodySmsStatus string
 
 	cmd := &cobra.Command{
 		Use:         "sms-status",
@@ -21,30 +25,34 @@ func newWebhooksSmsStatusCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli webhooks sms-status",
 		Annotations: map[string]string{"pp:endpoint": "webhooks.sms-status", "pp:method": "POST", "pp:path": "/webhooks/sms/status"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !stdinBody {
-			}
 			path := "/webhooks/sms/status"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			var body any
-			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return fmt.Errorf("reading stdin: %w", err)
-				}
-				var jsonBody map[string]any
-				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
-					return fmt.Errorf("parsing stdin JSON: %w", err)
-				}
-				body = jsonBody
-			} else {
-				bodyMap := map[string]any{}
-				body = bodyMap
+			fields := map[string]string{}
+			fileFields := map[string]string{}
+			if bodyErrorCode != "" {
+				fields["ErrorCode"] = bodyErrorCode
 			}
-			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
+			if bodyErrorMessage != "" {
+				fields["ErrorMessage"] = bodyErrorMessage
+			}
+			if bodyMessageSid != "" {
+				fields["MessageSid"] = bodyMessageSid
+			}
+			if bodyMessageStatus != "" {
+				fields["MessageStatus"] = bodyMessageStatus
+			}
+			if bodySmsSid != "" {
+				fields["SmsSid"] = bodySmsSid
+			}
+			if bodySmsStatus != "" {
+				fields["SmsStatus"] = bodySmsStatus
+			}
+
+			data, statusCode, err := c.PostMultipartWithParams(cmd.Context(), path, params, fields, fileFields)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -187,7 +195,12 @@ func newWebhooksSmsStatusCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
+	cmd.Flags().StringVar(&bodyErrorCode, "error-code", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyErrorMessage, "error-message", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyMessageSid, "message-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyMessageStatus, "message-status", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodySmsSid, "sms-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodySmsStatus, "sms-status", "", "A form field the handler reads")
 
 	return cmd
 }

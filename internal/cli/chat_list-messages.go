@@ -12,8 +12,11 @@ import (
 )
 
 func newChatListMessagesCmd(flags *rootFlags) *cobra.Command {
-	var flagPage string
-	var flagPerPage int
+	var flagAfterSeq string
+	var flagCursor string
+	var flagLimit int
+	var flagMarkRead bool
+	var flagReadUpTo string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -35,9 +38,12 @@ func newChatListMessagesCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "chat", path, map[string]string{
-				"page":     formatCLIParamValue(flagPage),
-				"per_page": formatCLIParamValue(flagPerPage),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+				"afterSeq": formatCLIParamValue(flagAfterSeq),
+				"cursor":   formatCLIParamValue(flagCursor),
+				"limit":    formatCLIParamValue(flagLimit),
+				"markRead": formatCLIParamValue(flagMarkRead),
+				"readUpTo": formatCLIParamValue(flagReadUpTo),
+			}, nil, flagAll, "cursor", "cursor", "limit", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -85,8 +91,11 @@ func newChatListMessagesCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagAfterSeq, "after-seq", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 50, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagMarkRead, "mark-read", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagReadUpTo, "read-up-to", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

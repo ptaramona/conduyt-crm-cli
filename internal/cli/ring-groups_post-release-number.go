@@ -13,6 +13,10 @@ import (
 )
 
 func newRingGroupsPostReleaseNumberCmd(flags *rootFlags) *cobra.Command {
+	var bodyConfirm string
+	var bodyForce string
+	var bodyForceReason string
+	var bodyPhoneNumber string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +47,18 @@ func newRingGroupsPostReleaseNumberCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyConfirm != "" {
+					bodyMap["confirm"] = bodyConfirm
+				}
+				if bodyForce != "" {
+					bodyMap["force"] = bodyForce
+				}
+				if bodyForceReason != "" {
+					bodyMap["forceReason"] = bodyForceReason
+				}
+				if bodyPhoneNumber != "" {
+					bodyMap["phoneNumber"] = bodyPhoneNumber
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +203,10 @@ func newRingGroupsPostReleaseNumberCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyConfirm, "confirm", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyForce, "force", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyForceReason, "force-reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPhoneNumber, "phone-number", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

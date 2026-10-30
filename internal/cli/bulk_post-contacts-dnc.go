@@ -13,6 +13,10 @@ import (
 )
 
 func newBulkPostContactsDncCmd(flags *rootFlags) *cobra.Command {
+	var bodyAction string
+	var bodyContactIds string
+	var bodyReason string
+	var bodyTier string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +47,18 @@ func newBulkPostContactsDncCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAction != "" {
+					bodyMap["action"] = bodyAction
+				}
+				if bodyContactIds != "" {
+					bodyMap["contactIds"] = bodyContactIds
+				}
+				if bodyReason != "" {
+					bodyMap["reason"] = bodyReason
+				}
+				if bodyTier != "" {
+					bodyMap["tier"] = bodyTier
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +203,10 @@ func newBulkPostContactsDncCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAction, "action", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactIds, "contact-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReason, "reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTier, "tier", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

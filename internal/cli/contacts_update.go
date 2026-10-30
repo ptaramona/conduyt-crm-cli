@@ -14,6 +14,8 @@ import (
 )
 
 func newContactsUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyAddressLine1 string
 	var bodyAddressLine2 string
 	var bodyAssignedTo string
@@ -23,23 +25,33 @@ func newContactsUpdateCmd(flags *rootFlags) *cobra.Command {
 	var bodyCompanyId string
 	var bodyCountry string
 	var bodyCustomFields string
+	var bodyCustomFieldsPutIfEmpty string
+	var bodyDoNotContact string
+	var bodyDoNotContactReason string
 	var bodyEmail string
+	var bodyExpectedRevision int
+	var bodyExternalBackend string
 	var bodyFirstName string
 	var bodyJobTitle string
+	var bodyKeepPreviousOwnerAsCollaborator bool
+	var bodyLanguage string
 	var bodyLastName string
+	var bodyLeadScore int
+	var bodyLegacyStatus string
+	var bodyMasterStatus string
 	var bodyMetadata string
 	var bodyOptedOutEmail bool
 	var bodyOptedOutSms bool
 	var bodyPhone string
 	var bodySource string
 	var bodyState string
-	var bodyTags string
+	var bodyTimezone string
 	var bodyZip string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
-		Short:       "Update a contact",
+		Short:       "Deprecated on contacts (2026-10-13): `customFields.oes_number` and `customFields.dpp_oes_raw`.",
 		Example:     "  conduyt-crm-pp-cli contacts update 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "contacts.update", "pp:method": "PATCH", "pp:path": "/contacts/{id}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -58,6 +70,12 @@ func newContactsUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -103,8 +121,27 @@ func newContactsUpdateCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["customFields"] = parsedCustomFields
 				}
+				if bodyCustomFieldsPutIfEmpty != "" {
+					parsedCustomFieldsPutIfEmpty, parseErr := cliutil.ParseStringList(bodyCustomFieldsPutIfEmpty)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --custom-fields-put-if-empty list: %w", parseErr)
+					}
+					bodyMap["customFieldsPutIfEmpty"] = parsedCustomFieldsPutIfEmpty
+				}
+				if bodyDoNotContact != "" {
+					bodyMap["doNotContact"] = bodyDoNotContact
+				}
+				if bodyDoNotContactReason != "" {
+					bodyMap["doNotContactReason"] = bodyDoNotContactReason
+				}
 				if bodyEmail != "" {
 					bodyMap["email"] = bodyEmail
+				}
+				if bodyExpectedRevision != 0 {
+					bodyMap["expectedRevision"] = bodyExpectedRevision
+				}
+				if bodyExternalBackend != "" {
+					bodyMap["externalBackend"] = bodyExternalBackend
 				}
 				if bodyFirstName != "" {
 					bodyMap["firstName"] = bodyFirstName
@@ -112,15 +149,30 @@ func newContactsUpdateCmd(flags *rootFlags) *cobra.Command {
 				if bodyJobTitle != "" {
 					bodyMap["jobTitle"] = bodyJobTitle
 				}
+				if cmd.Flags().Changed("keep-previous-owner-as-collaborator") {
+					bodyMap["keepPreviousOwnerAsCollaborator"] = bodyKeepPreviousOwnerAsCollaborator
+				}
+				if bodyLanguage != "" {
+					bodyMap["language"] = bodyLanguage
+				}
 				if bodyLastName != "" {
 					bodyMap["lastName"] = bodyLastName
+				}
+				if bodyLeadScore != 0 {
+					bodyMap["leadScore"] = bodyLeadScore
+				}
+				if bodyLegacyStatus != "" {
+					bodyMap["legacyStatus"] = bodyLegacyStatus
+				}
+				if bodyMasterStatus != "" {
+					bodyMap["masterStatus"] = bodyMasterStatus
 				}
 				if bodyMetadata != "" {
 					var parsedMetadata any
 					if err := json.Unmarshal([]byte(bodyMetadata), &parsedMetadata); err != nil {
 						return fmt.Errorf("parsing --metadata JSON: %w", err)
 					}
-					bodyMap["metadata"] = parsedMetadata
+					bodyMap["metadata"] = bodyMetadata
 				}
 				if cmd.Flags().Changed("opted-out-email") {
 					bodyMap["optedOutEmail"] = bodyOptedOutEmail
@@ -137,12 +189,8 @@ func newContactsUpdateCmd(flags *rootFlags) *cobra.Command {
 				if bodyState != "" {
 					bodyMap["state"] = bodyState
 				}
-				if bodyTags != "" {
-					parsedTags, parseErr := cliutil.ParseStringList(bodyTags)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --tags list: %w", parseErr)
-					}
-					bodyMap["tags"] = parsedTags
+				if bodyTimezone != "" {
+					bodyMap["timezone"] = bodyTimezone
 				}
 				if bodyZip != "" {
 					bodyMap["zip"] = bodyZip
@@ -291,6 +339,8 @@ func newContactsUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyAddressLine1, "address-line1", "", "Address line1")
 	cmd.Flags().StringVar(&bodyAddressLine2, "address-line2", "", "Address line2")
 	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
@@ -298,19 +348,29 @@ func newContactsUpdateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyCity, "city", "", "City")
 	cmd.Flags().StringVar(&bodyCompany, "company", "", "Company")
 	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Company id")
-	cmd.Flags().StringVar(&bodyCountry, "country", "", "Country")
-	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Key-value pairs for custom fields. Max 100KB.")
+	cmd.Flags().StringVar(&bodyCountry, "country", "", "A non-empty country. It cannot be cleared (null or blank is refused with `country_invalid`).")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Key-value pairs for custom fields. At most 65536 bytes (64 KiB) as UTF-8 JSON (JSON.")
+	cmd.Flags().StringVar(&bodyCustomFieldsPutIfEmpty, "custom-fields-put-if-empty", "", "Custom fields put if empty")
+	cmd.Flags().StringVar(&bodyDoNotContact, "do-not-contact", "", "Do not contact")
+	cmd.Flags().StringVar(&bodyDoNotContactReason, "do-not-contact-reason", "", "Do not contact reason")
 	cmd.Flags().StringVar(&bodyEmail, "email", "", "Email")
+	cmd.Flags().IntVar(&bodyExpectedRevision, "expected-revision", 0, "Optional optimistic-concurrency pin: the contact's `revision` as the caller last read it (returned by GET")
+	cmd.Flags().StringVar(&bodyExternalBackend, "external-backend", "", "External backend")
 	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name")
 	cmd.Flags().StringVar(&bodyJobTitle, "job-title", "", "Job title")
+	cmd.Flags().BoolVar(&bodyKeepPreviousOwnerAsCollaborator, "keep-previous-owner-as-collaborator", false, "With assignedTo set to another user")
+	cmd.Flags().StringVar(&bodyLanguage, "language", "", "Language")
 	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
-	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Metadata")
+	cmd.Flags().IntVar(&bodyLeadScore, "lead-score", 0, "Lead score")
+	cmd.Flags().StringVar(&bodyLegacyStatus, "legacy-status", "", "Legacy status")
+	cmd.Flags().StringVar(&bodyMasterStatus, "master-status", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "A JSON object, null or absent; any other kind is refused.")
 	cmd.Flags().BoolVar(&bodyOptedOutEmail, "opted-out-email", false, "Opted out email")
 	cmd.Flags().BoolVar(&bodyOptedOutSms, "opted-out-sms", false, "Opted out sms")
 	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
 	cmd.Flags().StringVar(&bodySource, "source", "", "Source")
 	cmd.Flags().StringVar(&bodyState, "state", "", "State")
-	cmd.Flags().StringVar(&bodyTags, "tags", "", "Tags")
+	cmd.Flags().StringVar(&bodyTimezone, "timezone", "", "A valid IANA time zone identifier (e.g. America/New_York); any other value is refused.")
 	cmd.Flags().StringVar(&bodyZip, "zip", "", "Zip")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

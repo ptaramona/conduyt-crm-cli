@@ -13,14 +13,16 @@ import (
 )
 
 func newSettingsTestSmsCmd(flags *rootFlags) *cobra.Command {
-	var bodyToNumber string
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyTo string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:   "test-sms",
 		Short: "Send a test SMS",
 		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli settings test-sms --to-number example-value",
+		Example:     "  conduyt-crm-pp-cli settings test-sms --to example-value",
 		Annotations: map[string]string{"pp:endpoint": "settings.test-sms", "pp:method": "POST", "pp:path": "/settings/sms/test"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -30,8 +32,8 @@ func newSettingsTestSmsCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("to-number") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "to-number")
+				if !cmd.Flags().Changed("to") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "to")
 				}
 			}
 			path := "/settings/sms/test"
@@ -40,6 +42,12 @@ func newSettingsTestSmsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -54,8 +62,8 @@ func newSettingsTestSmsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyToNumber != "" {
-					bodyMap["toNumber"] = bodyToNumber
+				if bodyTo != "" {
+					bodyMap["to"] = bodyTo
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -201,7 +209,9 @@ func newSettingsTestSmsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyToNumber, "to-number", "", "To number")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "To")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

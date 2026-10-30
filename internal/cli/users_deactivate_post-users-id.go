@@ -13,6 +13,7 @@ import (
 )
 
 func newUsersDeactivatePostUsersIdCmd(flags *rootFlags) *cobra.Command {
+	var flagReassignTo string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -37,6 +38,9 @@ func newUsersDeactivatePostUsersIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagReassignTo != "" {
+				params["reassign_to"] = formatCLIParamValue(flagReassignTo)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -195,6 +199,7 @@ func newUsersDeactivatePostUsersIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagReassignTo, "reassign-to", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

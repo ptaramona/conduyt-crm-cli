@@ -13,11 +13,28 @@ import (
 )
 
 func newSmartViewsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDescription string
+	var bodyDialCooldownMinutes string
+	var bodyDialEnabled string
+	var bodyDialIncludeUnassigned string
+	var bodyDialPoolAssignOn string
+	var bodyDialSchedule string
+	var bodyFilters string
+	var bodyGroupId string
+	var bodyIcon string
+	var bodyIsEnabled string
+	var bodyMaxDialAttempts string
+	var bodyMaxDialAttemptsPerDay string
+	var bodyMembers string
+	var bodyName string
+	var bodySortField string
+	var bodySortOrder string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "patch-id <id>",
-		Aliases:     []string{"update"},
 		Short:       "Update smart-views id",
 		Example:     "  conduyt-crm-pp-cli smart-views patch-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "smart-views.patch-id", "pp:method": "PATCH", "pp:path": "/smart-views/{id}"},
@@ -37,6 +54,12 @@ func newSmartViewsPatchIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +74,66 @@ func newSmartViewsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyDialCooldownMinutes != "" {
+					bodyMap["dialCooldownMinutes"] = bodyDialCooldownMinutes
+				}
+				if bodyDialEnabled != "" {
+					bodyMap["dialEnabled"] = bodyDialEnabled
+				}
+				if bodyDialIncludeUnassigned != "" {
+					bodyMap["dialIncludeUnassigned"] = bodyDialIncludeUnassigned
+				}
+				if bodyDialPoolAssignOn != "" {
+					bodyMap["dialPoolAssignOn"] = bodyDialPoolAssignOn
+				}
+				if bodyDialSchedule != "" {
+					var parsedDialSchedule any
+					if err := json.Unmarshal([]byte(bodyDialSchedule), &parsedDialSchedule); err != nil {
+						return fmt.Errorf("parsing --dial-schedule JSON: %w", err)
+					}
+					bodyMap["dialSchedule"] = parsedDialSchedule
+				}
+				if bodyFilters != "" {
+					var parsedFilters any
+					if err := json.Unmarshal([]byte(bodyFilters), &parsedFilters); err != nil {
+						return fmt.Errorf("parsing --filters JSON: %w", err)
+					}
+					bodyMap["filters"] = parsedFilters
+				}
+				if bodyGroupId != "" {
+					bodyMap["groupId"] = bodyGroupId
+				}
+				if bodyIcon != "" {
+					bodyMap["icon"] = bodyIcon
+				}
+				if bodyIsEnabled != "" {
+					bodyMap["isEnabled"] = bodyIsEnabled
+				}
+				if bodyMaxDialAttempts != "" {
+					bodyMap["maxDialAttempts"] = bodyMaxDialAttempts
+				}
+				if bodyMaxDialAttemptsPerDay != "" {
+					bodyMap["maxDialAttemptsPerDay"] = bodyMaxDialAttemptsPerDay
+				}
+				if bodyMembers != "" {
+					var parsedMembers any
+					if err := json.Unmarshal([]byte(bodyMembers), &parsedMembers); err != nil {
+						return fmt.Errorf("parsing --members JSON: %w", err)
+					}
+					bodyMap["members"] = parsedMembers
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodySortField != "" {
+					bodyMap["sortField"] = bodySortField
+				}
+				if bodySortOrder != "" {
+					bodyMap["sortOrder"] = bodySortOrder
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +278,24 @@ func newSmartViewsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDialCooldownMinutes, "dial-cooldown-minutes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDialEnabled, "dial-enabled", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDialIncludeUnassigned, "dial-include-unassigned", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDialPoolAssignOn, "dial-pool-assign-on", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDialSchedule, "dial-schedule", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFilters, "filters", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGroupId, "group-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIcon, "icon", "", "The view's icon: one of heart, star, trophy, badge, target, eye, clock, hourglass, siren, bolt, fire, rain, funnel")
+	cmd.Flags().StringVar(&bodyIsEnabled, "is-enabled", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMaxDialAttempts, "max-dial-attempts", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMaxDialAttemptsPerDay, "max-dial-attempts-per-day", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMembers, "members", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySortField, "sort-field", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySortOrder, "sort-order", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

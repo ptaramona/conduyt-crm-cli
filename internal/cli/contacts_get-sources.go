@@ -12,6 +12,7 @@ import (
 )
 
 func newContactsGetSourcesCmd(flags *rootFlags) *cobra.Command {
+	var flagSearch string
 
 	cmd := &cobra.Command{
 		Use:         "get-sources",
@@ -25,6 +26,9 @@ func newContactsGetSourcesCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagSearch != "" {
+				params["search"] = formatCLIParamValue(flagSearch)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "contacts", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +77,7 @@ func newContactsGetSourcesCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Query parameter read by this route.")
 
 	return cmd
 }

@@ -12,6 +12,22 @@ import (
 )
 
 func newDealsGetExportCmd(flags *rootFlags) *cobra.Command {
+	var flagAssignedTo string
+	var flagAssignedTo2 string
+	var flagCreatedAfter string
+	var flagCreatedBefore string
+	var flagFormat string
+	var flagHealth string
+	var flagMaxValue string
+	var flagMinValue string
+	var flagNeedsAction bool
+	var flagPipeline string
+	var flagSearch string
+	var flagStale bool
+	var flagStatus string
+	var flagTagIds string
+	var flagValueMax string
+	var flagValueMin string
 
 	cmd := &cobra.Command{
 		Use:         "get-export",
@@ -24,55 +40,91 @@ func newDealsGetExportCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			headerOverrides := map[string]string{
+				"X-Printing-Press-Binary-Response": "true",
+			}
 			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "deals", false, path, params, nil, "", cmd.ErrOrStderr())
+			if flagAssignedTo != "" {
+				params["assigned_to"] = formatCLIParamValue(flagAssignedTo)
+			}
+			if flagAssignedTo2 != "" {
+				params["assignedTo"] = formatCLIParamValue(flagAssignedTo2)
+			}
+			if flagCreatedAfter != "" {
+				params["created_after"] = formatCLIParamValue(flagCreatedAfter)
+			}
+			if flagCreatedBefore != "" {
+				params["created_before"] = formatCLIParamValue(flagCreatedBefore)
+			}
+			if flagFormat != "" {
+				params["format"] = formatCLIParamValue(flagFormat)
+			}
+			if flagHealth != "" {
+				params["health"] = formatCLIParamValue(flagHealth)
+			}
+			if flagMaxValue != "" {
+				params["maxValue"] = formatCLIParamValue(flagMaxValue)
+			}
+			if flagMinValue != "" {
+				params["minValue"] = formatCLIParamValue(flagMinValue)
+			}
+			if flagNeedsAction != false {
+				params["needsAction"] = formatCLIParamValue(flagNeedsAction)
+			}
+			if flagPipeline != "" {
+				params["pipeline"] = formatCLIParamValue(flagPipeline)
+			}
+			if flagSearch != "" {
+				params["search"] = formatCLIParamValue(flagSearch)
+			}
+			if flagStale != false {
+				params["stale"] = formatCLIParamValue(flagStale)
+			}
+			if flagStatus != "" {
+				params["status"] = formatCLIParamValue(flagStatus)
+			}
+			if flagTagIds != "" {
+				params["tag_ids"] = formatCLIParamValue(flagTagIds)
+			}
+			if flagValueMax != "" {
+				params["value_max"] = formatCLIParamValue(flagValueMax)
+			}
+			if flagValueMin != "" {
+				params["value_min"] = formatCLIParamValue(flagValueMin)
+			}
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "deals", false, path, params, headerOverrides, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
-			// Print provenance to stderr for human-facing output only.
-			// Machine-format flags (--json, --csv, --compact, --quiet, --plain,
-			// --select) and piped stdout suppress this line; the JSON envelope
-			// already carries meta.source for those consumers.
-			// SYNC: keep this gate aligned with command_promoted.go.tmpl.
-			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var countItems []json.RawMessage
-				_ = json.Unmarshal(data, &countItems)
-				printProvenance(cmd, len(countItems), prov)
+			_ = json.Valid
+			_ = os.Stderr
+			_ = prov
+			if flags.quiet {
+				return nil
 			}
-			// For JSON output, wrap with provenance envelope before passing through flags.
-			// --select wins over --compact when both are set; --compact only runs when
-			// no explicit fields were requested. Explicit format flags (--csv, --quiet,
-			// --plain) opt out of the auto-JSON path so piped consumers that asked for
-			// a non-JSON format reach the standard pipeline below.
-			if flags.asJSON || (!isTerminal(cmd.OutOrStdout()) && !flags.csv && !flags.quiet && !flags.plain) {
-				filtered := data
-				if flags.selectFields != "" {
-					filtered = filterFields(filtered, flags.selectFields)
-				} else if flags.compact {
-					filtered = compactFields(filtered)
-				}
-				wrapped, wrapErr := wrapWithProvenance(filtered, prov)
-				if wrapErr != nil {
-					return wrapErr
-				}
-				return printOutput(cmd.OutOrStdout(), wrapped, true)
+			if flags.asJSON || flags.csv || flags.compact || flags.plain || flags.selectFields != "" {
+				return fmt.Errorf("binary response cannot be rendered as structured output; redirect stdout or use --deliver file:<path>")
 			}
-			// For all other output modes (table, csv, plain, quiet), use the standard pipeline
-			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var items []map[string]any
-				if json.Unmarshal(data, &items) == nil && len(items) > 0 {
-					if err := printAutoTable(cmd.OutOrStdout(), items); err != nil {
-						return err
-					}
-					if len(items) >= 25 {
-						fmt.Fprintf(os.Stderr, "\nShowing %d results. To narrow: add --limit, --json --select, or filter flags.\n", len(items))
-					}
-					return nil
-				}
-			}
-			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
+			_, err = cmd.OutOrStdout().Write(data)
+			return err
 		},
 	}
+	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagAssignedTo2, "assigned-to-2", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCreatedAfter, "created-after", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCreatedBefore, "created-before", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagFormat, "format", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagHealth, "health", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagMaxValue, "max-value", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagMinValue, "min-value", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagNeedsAction, "needs-action", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPipeline, "pipeline", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagStale, "stale", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTagIds, "tag-ids", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagValueMax, "value-max", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagValueMin, "value-min", "", "Query parameter read by this route.")
 
 	return cmd
 }

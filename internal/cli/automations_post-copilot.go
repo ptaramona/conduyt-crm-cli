@@ -13,6 +13,28 @@ import (
 )
 
 func newAutomationsPostCopilotCmd(flags *rootFlags) *cobra.Command {
+	var bodyGraph string
+	var bodyKind string
+	var bodyMode string
+	var bodyPrompt string
+	var bodyTriggerConditionsBookingPageId string
+	var bodyTriggerConditionsBookingPageIds string
+	var bodyTriggerConditionsCancelOnStatusChange string
+	var bodyTriggerConditionsFilters string
+	var bodyTriggerConditionsFormId string
+	var bodyTriggerConditionsNewStageId string
+	var bodyTriggerConditionsPipelineId string
+	var bodyTriggerConditionsPreviousPipelineId string
+	var bodyTriggerConditionsPreviousStageId string
+	var bodyTriggerConditionsRequireSignature string
+	var bodyTriggerConditionsStageId string
+	var bodyTriggerConditionsTagId string
+	var bodyTriggerConditionsTagIds string
+	var bodyTriggerConditionsTriggerName string
+	var bodyTriggerConditionsUntouchedDays string
+	var bodyTriggerConditionsWebhookId string
+	var bodyTriggerConditionsWebhookSecret string
+	var bodyTriggerEvent string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +65,90 @@ func newAutomationsPostCopilotCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyGraph != "" {
+					if looksLikeJSONComposite(bodyGraph) {
+						var parsedGraph any
+						if err := json.Unmarshal([]byte(bodyGraph), &parsedGraph); err != nil {
+							return fmt.Errorf("parsing --graph JSON: %w", err)
+						}
+						bodyMap["graph"] = parsedGraph
+					} else {
+						bodyMap["graph"] = bodyGraph
+					}
+				}
+				if bodyKind != "" {
+					bodyMap["kind"] = bodyKind
+				}
+				if bodyMode != "" {
+					bodyMap["mode"] = bodyMode
+				}
+				if bodyPrompt != "" {
+					bodyMap["prompt"] = bodyPrompt
+				}
+				{
+					nestedTriggerConditions := map[string]any{}
+					if bodyTriggerConditionsBookingPageId != "" {
+						nestedTriggerConditions["bookingPageId"] = bodyTriggerConditionsBookingPageId
+					}
+					if bodyTriggerConditionsBookingPageIds != "" {
+						nestedTriggerConditions["bookingPageIds"] = bodyTriggerConditionsBookingPageIds
+					}
+					if bodyTriggerConditionsCancelOnStatusChange != "" {
+						nestedTriggerConditions["cancelOnStatusChange"] = bodyTriggerConditionsCancelOnStatusChange
+					}
+					if bodyTriggerConditionsFilters != "" {
+						var parsedTriggerConditionsFilters any
+						if err := json.Unmarshal([]byte(bodyTriggerConditionsFilters), &parsedTriggerConditionsFilters); err != nil {
+							return fmt.Errorf("parsing --trigger-conditions-filters JSON: %w", err)
+						}
+						nestedTriggerConditions["filters"] = parsedTriggerConditionsFilters
+					}
+					if bodyTriggerConditionsFormId != "" {
+						nestedTriggerConditions["formId"] = bodyTriggerConditionsFormId
+					}
+					if bodyTriggerConditionsNewStageId != "" {
+						nestedTriggerConditions["newStageId"] = bodyTriggerConditionsNewStageId
+					}
+					if bodyTriggerConditionsPipelineId != "" {
+						nestedTriggerConditions["pipelineId"] = bodyTriggerConditionsPipelineId
+					}
+					if bodyTriggerConditionsPreviousPipelineId != "" {
+						nestedTriggerConditions["previousPipelineId"] = bodyTriggerConditionsPreviousPipelineId
+					}
+					if bodyTriggerConditionsPreviousStageId != "" {
+						nestedTriggerConditions["previousStageId"] = bodyTriggerConditionsPreviousStageId
+					}
+					if bodyTriggerConditionsRequireSignature != "" {
+						nestedTriggerConditions["requireSignature"] = bodyTriggerConditionsRequireSignature
+					}
+					if bodyTriggerConditionsStageId != "" {
+						nestedTriggerConditions["stageId"] = bodyTriggerConditionsStageId
+					}
+					if bodyTriggerConditionsTagId != "" {
+						nestedTriggerConditions["tagId"] = bodyTriggerConditionsTagId
+					}
+					if bodyTriggerConditionsTagIds != "" {
+						nestedTriggerConditions["tagIds"] = bodyTriggerConditionsTagIds
+					}
+					if bodyTriggerConditionsTriggerName != "" {
+						nestedTriggerConditions["triggerName"] = bodyTriggerConditionsTriggerName
+					}
+					if bodyTriggerConditionsUntouchedDays != "" {
+						nestedTriggerConditions["untouchedDays"] = bodyTriggerConditionsUntouchedDays
+					}
+					if bodyTriggerConditionsWebhookId != "" {
+						nestedTriggerConditions["webhookId"] = bodyTriggerConditionsWebhookId
+					}
+					if bodyTriggerConditionsWebhookSecret != "" {
+						nestedTriggerConditions["webhookSecret"] = bodyTriggerConditionsWebhookSecret
+					}
+					if len(nestedTriggerConditions) > 0 {
+						bodyMap["triggerConditions"] = nestedTriggerConditions
+					}
+				}
+				if bodyTriggerEvent != "" {
+					bodyMap["triggerEvent"] = bodyTriggerEvent
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +293,28 @@ func newAutomationsPostCopilotCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyGraph, "graph", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyKind, "kind", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMode, "mode", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPrompt, "prompt", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsBookingPageId, "trigger-conditions-booking-page-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsBookingPageIds, "trigger-conditions-booking-page-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsCancelOnStatusChange, "trigger-conditions-cancel-on-status-change", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsFilters, "trigger-conditions-filters", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsFormId, "trigger-conditions-form-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsNewStageId, "trigger-conditions-new-stage-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsPipelineId, "trigger-conditions-pipeline-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsPreviousPipelineId, "trigger-conditions-previous-pipeline-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsPreviousStageId, "trigger-conditions-previous-stage-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsRequireSignature, "trigger-conditions-require-signature", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsStageId, "trigger-conditions-stage-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsTagId, "trigger-conditions-tag-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsTagIds, "trigger-conditions-tag-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsTriggerName, "trigger-conditions-trigger-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsUntouchedDays, "trigger-conditions-untouched-days", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsWebhookId, "trigger-conditions-webhook-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsWebhookSecret, "trigger-conditions-webhook-secret", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerEvent, "trigger-event", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

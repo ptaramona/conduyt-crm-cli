@@ -14,7 +14,17 @@ import (
 
 func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 	var bodyBody string
+	var bodyCardCallId string
+	var bodyCardContactId string
+	var bodyCardDealId string
+	var bodyCardEndSec string
+	var bodyCardQuote string
+	var bodyCardStartSec string
+	var bodyClaimToken string
+	var bodyEffect string
+	var bodyIdempotencyKey string
 	var bodyKind string
+	var bodyMetadataAttachments string
 	var bodyParentId string
 	var stdinBody bool
 
@@ -66,8 +76,54 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 				if bodyBody != "" {
 					bodyMap["body"] = bodyBody
 				}
+				{
+					nestedCard := map[string]any{}
+					if bodyCardCallId != "" {
+						nestedCard["callId"] = bodyCardCallId
+					}
+					if bodyCardContactId != "" {
+						nestedCard["contactId"] = bodyCardContactId
+					}
+					if bodyCardDealId != "" {
+						nestedCard["dealId"] = bodyCardDealId
+					}
+					if bodyCardEndSec != "" {
+						nestedCard["endSec"] = bodyCardEndSec
+					}
+					if bodyCardQuote != "" {
+						nestedCard["quote"] = bodyCardQuote
+					}
+					if bodyCardStartSec != "" {
+						nestedCard["startSec"] = bodyCardStartSec
+					}
+					if len(nestedCard) > 0 {
+						bodyMap["card"] = nestedCard
+					}
+				}
+				if bodyClaimToken != "" {
+					bodyMap["claimToken"] = bodyClaimToken
+				}
+				if bodyEffect != "" {
+					bodyMap["effect"] = bodyEffect
+				}
+				if bodyIdempotencyKey != "" {
+					bodyMap["idempotencyKey"] = bodyIdempotencyKey
+				}
 				if bodyKind != "" {
 					bodyMap["kind"] = bodyKind
+				}
+				{
+					nestedMetadata := map[string]any{}
+					if bodyMetadataAttachments != "" {
+						var parsedMetadataAttachments any
+						if err := json.Unmarshal([]byte(bodyMetadataAttachments), &parsedMetadataAttachments); err != nil {
+							return fmt.Errorf("parsing --metadata-attachments JSON: %w", err)
+						}
+						nestedMetadata["attachments"] = parsedMetadataAttachments
+					}
+					if len(nestedMetadata) > 0 {
+						bodyMap["metadata"] = nestedMetadata
+					}
 				}
 				if bodyParentId != "" {
 					bodyMap["parentId"] = bodyParentId
@@ -217,7 +273,17 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyBody, "body", "", "Body")
+	cmd.Flags().StringVar(&bodyCardCallId, "card-call-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCardContactId, "card-contact-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCardDealId, "card-deal-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCardEndSec, "card-end-sec", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCardQuote, "card-quote", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCardStartSec, "card-start-sec", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyClaimToken, "claim-token", "", "(Paired AI agent keys) the listener's claim on the source turn, `<generation>:<listener id>`.")
+	cmd.Flags().StringVar(&bodyEffect, "effect", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIdempotencyKey, "idempotency-key", "", "(Paired AI agent keys only; a person's key or session gets 400.")
 	cmd.Flags().StringVar(&bodyKind, "kind", "text", "Kind")
+	cmd.Flags().StringVar(&bodyMetadataAttachments, "metadata-attachments", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyParentId, "parent-id", "", "Parent message ID for threads")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

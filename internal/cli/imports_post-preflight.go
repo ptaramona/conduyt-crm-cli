@@ -13,6 +13,17 @@ import (
 )
 
 func newImportsPostPreflightCmd(flags *rootFlags) *cobra.Command {
+	var bodyAmbiguousMatchMode string
+	var bodyDuplicateCheckFields string
+	var bodyEmails string
+	var bodyEnrollAdditionalCampaign string
+	var bodyImportMode string
+	var bodyMappedFields string
+	var bodyObjectType string
+	var bodyPhones string
+	var bodyRemoveDuplicates string
+	var bodyRowIdentifiers string
+	var bodyTotalRows string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +54,43 @@ func newImportsPostPreflightCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAmbiguousMatchMode != "" {
+					bodyMap["ambiguousMatchMode"] = bodyAmbiguousMatchMode
+				}
+				if bodyDuplicateCheckFields != "" {
+					bodyMap["duplicateCheckFields"] = bodyDuplicateCheckFields
+				}
+				if bodyEmails != "" {
+					bodyMap["emails"] = bodyEmails
+				}
+				if bodyEnrollAdditionalCampaign != "" {
+					bodyMap["enrollAdditionalCampaign"] = bodyEnrollAdditionalCampaign
+				}
+				if bodyImportMode != "" {
+					bodyMap["importMode"] = bodyImportMode
+				}
+				if bodyMappedFields != "" {
+					bodyMap["mappedFields"] = bodyMappedFields
+				}
+				if bodyObjectType != "" {
+					bodyMap["objectType"] = bodyObjectType
+				}
+				if bodyPhones != "" {
+					bodyMap["phones"] = bodyPhones
+				}
+				if bodyRemoveDuplicates != "" {
+					bodyMap["removeDuplicates"] = bodyRemoveDuplicates
+				}
+				if bodyRowIdentifiers != "" {
+					var parsedRowIdentifiers any
+					if err := json.Unmarshal([]byte(bodyRowIdentifiers), &parsedRowIdentifiers); err != nil {
+						return fmt.Errorf("parsing --row-identifiers JSON: %w", err)
+					}
+					bodyMap["rowIdentifiers"] = parsedRowIdentifiers
+				}
+				if bodyTotalRows != "" {
+					bodyMap["totalRows"] = bodyTotalRows
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +235,17 @@ func newImportsPostPreflightCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAmbiguousMatchMode, "ambiguous-match-mode", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDuplicateCheckFields, "duplicate-check-fields", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEmails, "emails", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEnrollAdditionalCampaign, "enroll-additional-campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyImportMode, "import-mode", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMappedFields, "mapped-fields", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyObjectType, "object-type", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPhones, "phones", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyRemoveDuplicates, "remove-duplicates", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyRowIdentifiers, "row-identifiers", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTotalRows, "total-rows", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

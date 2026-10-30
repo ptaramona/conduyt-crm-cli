@@ -12,11 +12,12 @@ import (
 )
 
 func newMessagesListCmd(flags *rootFlags) *cobra.Command {
+	var flagChannel string
+	var flagContactId string
+	var flagDirection string
 	var flagPage string
 	var flagPerPage int
-	var flagContactId string
-	var flagChannel string
-	var flagDirection string
+	var flagStatus string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -25,43 +26,18 @@ func newMessagesListCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli messages list",
 		Annotations: map[string]string{"pp:endpoint": "messages.list", "pp:method": "GET", "pp:path": "/messages", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Changed("channel") {
-				allowedChannel := []string{"sms", "email"}
-				validChannel := false
-				for _, v := range allowedChannel {
-					if flagChannel == v {
-						validChannel = true
-						break
-					}
-				}
-				if !validChannel {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagChannel, "channel", allowedChannel)
-				}
-			}
-			if cmd.Flags().Changed("direction") {
-				allowedDirection := []string{"inbound", "outbound"}
-				validDirection := false
-				for _, v := range allowedDirection {
-					if flagDirection == v {
-						validDirection = true
-						break
-					}
-				}
-				if !validDirection {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagDirection, "direction", allowedDirection)
-				}
-			}
 			path := "/messages"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "messages", path, map[string]string{
-				"page":       formatCLIParamValue(flagPage),
-				"per_page":   formatCLIParamValue(flagPerPage),
-				"contact_id": formatCLIParamValue(flagContactId),
-				"channel":    formatCLIParamValue(flagChannel),
-				"direction":  formatCLIParamValue(flagDirection),
+				"channel":   formatCLIParamValue(flagChannel),
+				"contactId": formatCLIParamValue(flagContactId),
+				"direction": formatCLIParamValue(flagDirection),
+				"page":      formatCLIParamValue(flagPage),
+				"per_page":  formatCLIParamValue(flagPerPage),
+				"status":    formatCLIParamValue(flagStatus),
 			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -110,11 +86,12 @@ func newMessagesListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagChannel, "channel", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDirection, "direction", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
-	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&flagChannel, "channel", "", "Channel (one of: sms, email)")
-	cmd.Flags().StringVar(&flagDirection, "direction", "", "Direction (one of: inbound, outbound)")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

@@ -12,6 +12,10 @@ import (
 )
 
 func newStatusMetadataGetCmd(flags *rootFlags) *cobra.Command {
+	var flagBucket string
+	var flagCode string
+	var flagStageId string
+	var flagStageId2 string
 
 	cmd := &cobra.Command{
 		Use:         "get",
@@ -26,6 +30,18 @@ func newStatusMetadataGetCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagBucket != "" {
+				params["bucket"] = formatCLIParamValue(flagBucket)
+			}
+			if flagCode != "" {
+				params["code"] = formatCLIParamValue(flagCode)
+			}
+			if flagStageId != "" {
+				params["stage_id"] = formatCLIParamValue(flagStageId)
+			}
+			if flagStageId2 != "" {
+				params["stageId"] = formatCLIParamValue(flagStageId2)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "status-metadata", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -74,6 +90,10 @@ func newStatusMetadataGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagBucket, "bucket", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCode, "code", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStageId, "stage-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStageId2, "stage-id-2", "", "Query parameter read by this route.")
 
 	return cmd
 }

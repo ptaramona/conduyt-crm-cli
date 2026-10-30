@@ -15,7 +15,6 @@ func newAiGetDailyBriefCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "get-daily-brief",
-		Aliases:     []string{"list"},
 		Short:       "List ai daily-brief",
 		Example:     "  conduyt-crm-pp-cli ai get-daily-brief",
 		Annotations: map[string]string{"pp:endpoint": "ai.get-daily-brief", "pp:method": "GET", "pp:path": "/ai/daily-brief", "mcp:read-only": "true"},

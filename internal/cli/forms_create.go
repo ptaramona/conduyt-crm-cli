@@ -13,12 +13,17 @@ import (
 )
 
 func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyDescription string
 	var bodyFields string
+	var bodyHyrosTag string
+	var bodyIsActive string
 	var bodyName string
 	var bodyRedirectUrl string
-	var bodySettings string
+	var bodySettingsConsentLinkUrl string
 	var bodySlug string
+	var bodyTemplate string
 	var bodyThankYouMessage string
 	var stdinBody bool
 
@@ -51,6 +56,12 @@ func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -75,21 +86,38 @@ func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["fields"] = parsedFields
 				}
+				if bodyHyrosTag != "" {
+					bodyMap["hyrosTag"] = bodyHyrosTag
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
+				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
 				}
 				if bodyRedirectUrl != "" {
 					bodyMap["redirectUrl"] = bodyRedirectUrl
 				}
-				if bodySettings != "" {
-					var parsedSettings any
-					if err := json.Unmarshal([]byte(bodySettings), &parsedSettings); err != nil {
-						return fmt.Errorf("parsing --settings JSON: %w", err)
+				{
+					nestedSettings := map[string]any{}
+					{
+						nestedSettingsConsent := map[string]any{}
+						if bodySettingsConsentLinkUrl != "" {
+							nestedSettingsConsent["linkUrl"] = bodySettingsConsentLinkUrl
+						}
+						if len(nestedSettingsConsent) > 0 {
+							nestedSettings["consent"] = nestedSettingsConsent
+						}
 					}
-					bodyMap["settings"] = parsedSettings
+					if len(nestedSettings) > 0 {
+						bodyMap["settings"] = nestedSettings
+					}
 				}
 				if bodySlug != "" {
 					bodyMap["slug"] = bodySlug
+				}
+				if bodyTemplate != "" {
+					bodyMap["template"] = bodyTemplate
 				}
 				if bodyThankYouMessage != "" {
 					bodyMap["thankYouMessage"] = bodyThankYouMessage
@@ -238,12 +266,17 @@ func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
 	cmd.Flags().StringVar(&bodyFields, "fields", "", "Fields")
+	cmd.Flags().StringVar(&bodyHyrosTag, "hyros-tag", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().StringVar(&bodyRedirectUrl, "redirect-url", "", "Redirect url")
-	cmd.Flags().StringVar(&bodySettings, "settings", "", "Settings")
+	cmd.Flags().StringVar(&bodySettingsConsentLinkUrl, "settings-consent-link-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodySlug, "slug", "", "Slug")
+	cmd.Flags().StringVar(&bodyTemplate, "template", "", "Hosted page template. null (default) renders the standard card; 'bda' renders the BDA split panel.")
 	cmd.Flags().StringVar(&bodyThankYouMessage, "thank-you-message", "", "Thank you message")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

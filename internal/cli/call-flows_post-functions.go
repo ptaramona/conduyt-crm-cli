@@ -13,15 +13,33 @@ import (
 )
 
 func newCallFlowsPostFunctionsCmd(flags *rootFlags) *cobra.Command {
+	var bodyName string
+	var bodySecret string
+	var bodyUrl string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-functions",
 		Short:       "Create / invoke call-flows functions",
-		Example:     "  conduyt-crm-pp-cli call-flows post-functions",
+		Example:     "  conduyt-crm-pp-cli call-flows post-functions --name example-resource",
 		Annotations: map[string]string{"pp:endpoint": "call-flows.post-functions", "pp:method": "POST", "pp:path": "/call-flows/functions"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("name") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "name")
+				}
+				if !cmd.Flags().Changed("secret") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "secret")
+				}
+				if !cmd.Flags().Changed("url") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "url")
+				}
 			}
 			path := "/call-flows/functions"
 			c, err := flags.newClient()
@@ -43,6 +61,15 @@ func newCallFlowsPostFunctionsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodySecret != "" {
+					bodyMap["secret"] = bodySecret
+				}
+				if bodyUrl != "" {
+					bodyMap["url"] = bodyUrl
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +214,9 @@ func newCallFlowsPostFunctionsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyName, "name", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodySecret, "secret", "", "Secret")
+	cmd.Flags().StringVar(&bodyUrl, "url", "", "Must parse as an https:// URL with a host: no username or password, no #fragment, port 443 or 8443 only ('https")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

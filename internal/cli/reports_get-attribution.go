@@ -12,6 +12,14 @@ import (
 )
 
 func newReportsGetAttributionCmd(flags *rootFlags) *cobra.Command {
+	var flagFrom string
+	var flagGroup string
+	var flagTo string
+	var flagTouch string
+	var flagDateRange string
+	var flagRange string
+	var flagStart string
+	var flagEnd string
 
 	cmd := &cobra.Command{
 		Use:         "get-attribution",
@@ -25,6 +33,30 @@ func newReportsGetAttributionCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagFrom != "" {
+				params["from"] = formatCLIParamValue(flagFrom)
+			}
+			if flagGroup != "" {
+				params["group"] = formatCLIParamValue(flagGroup)
+			}
+			if flagTo != "" {
+				params["to"] = formatCLIParamValue(flagTo)
+			}
+			if flagTouch != "" {
+				params["touch"] = formatCLIParamValue(flagTouch)
+			}
+			if flagDateRange != "" {
+				params["dateRange"] = formatCLIParamValue(flagDateRange)
+			}
+			if flagRange != "" {
+				params["range"] = formatCLIParamValue(flagRange)
+			}
+			if flagStart != "" {
+				params["start"] = formatCLIParamValue(flagStart)
+			}
+			if flagEnd != "" {
+				params["end"] = formatCLIParamValue(flagEnd)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +105,14 @@ func newReportsGetAttributionCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagFrom, "from", "", "ISO datetime — window start (spans over 366 days clamp to the last 366 before `to`)")
+	cmd.Flags().StringVar(&flagGroup, "group", "", "string — source (default: the UTM source when the touch carried one, else the recorded source)")
+	cmd.Flags().StringVar(&flagTo, "to", "", "ISO datetime — window end (default now)")
+	cmd.Flags().StringVar(&flagTouch, "touch", "", "string — first (default) | last: group contacts by their first or their latest touch")
+	cmd.Flags().StringVar(&flagDateRange, "date-range", "", "string — shared dashboard range key (today, week, month, last_month, quarter, year, custom, ...")
+	cmd.Flags().StringVar(&flagRange, "range", "", "string — alias of dateRange")
+	cmd.Flags().StringVar(&flagStart, "start", "", "ISO datetime — with dateRange=custom: the custom window start")
+	cmd.Flags().StringVar(&flagEnd, "end", "", "ISO datetime — with dateRange=custom: the custom window end")
 
 	return cmd
 }

@@ -12,6 +12,10 @@ import (
 )
 
 func newPipelinesListCmd(flags *rootFlags) *cobra.Command {
+	var flagArchived bool
+	var flagPage string
+	var flagPerPage string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -24,8 +28,11 @@ func newPipelinesListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "pipelines", true, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "pipelines", path, map[string]string{
+				"archived": formatCLIParamValue(flagArchived),
+				"page":     formatCLIParamValue(flagPage),
+				"per_page": formatCLIParamValue(flagPerPage),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +80,10 @@ func newPipelinesListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagArchived, "archived", false, "true (owner or admin): list the ARCHIVED pipelines instead, as { id, name (the name before archiving), archivedName")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 100, default 50), or the word all: every pipeline in one query; the answer is then { data: { data")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

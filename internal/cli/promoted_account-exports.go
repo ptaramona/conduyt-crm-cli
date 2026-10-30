@@ -12,6 +12,8 @@ import (
 )
 
 func newAccountExportsPromotedCmd(flags *rootFlags) *cobra.Command {
+	var flagCursor string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "account-exports",
@@ -26,8 +28,9 @@ func newAccountExportsPromotedCmd(flags *rootFlags) *cobra.Command {
 			}
 
 			path := "/account-exports"
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "account-exports", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "account-exports", path, map[string]string{
+				"cursor": formatCLIParamValue(flagCursor),
+			}, nil, flagAll, "cursor", "cursor", "", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -77,6 +80,8 @@ func newAccountExportsPromotedCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	// Wire sibling endpoints and sub-resources as subcommands
 	{

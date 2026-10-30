@@ -12,6 +12,7 @@ import (
 )
 
 func newSavedFiltersGetCmd(flags *rootFlags) *cobra.Command {
+	var flagEntityType string
 
 	cmd := &cobra.Command{
 		Use:         "get",
@@ -26,6 +27,9 @@ func newSavedFiltersGetCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagEntityType != "" {
+				params["entity_type"] = formatCLIParamValue(flagEntityType)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "saved-filters", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -74,6 +78,7 @@ func newSavedFiltersGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagEntityType, "entity-type", "", "Query parameter read by this route.")
 
 	return cmd
 }

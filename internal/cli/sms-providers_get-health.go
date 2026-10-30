@@ -12,6 +12,7 @@ import (
 )
 
 func newSmsProvidersGetHealthCmd(flags *rootFlags) *cobra.Command {
+	var flagDays int
 
 	cmd := &cobra.Command{
 		Use:         "get-health",
@@ -25,6 +26,9 @@ func newSmsProvidersGetHealthCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDays != 0 {
+				params["days"] = formatCLIParamValue(flagDays)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "sms-providers", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +77,7 @@ func newSmsProvidersGetHealthCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().IntVar(&flagDays, "days", 30, "Query parameter read by this route.")
 
 	return cmd
 }

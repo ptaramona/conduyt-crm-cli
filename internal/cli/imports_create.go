@@ -9,17 +9,35 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newImportsCreateCmd(flags *rootFlags) *cobra.Command {
-	var flagBodyJSON string
+	var bodyAmbiguousMatchMode string
+	var bodyDuplicateCheckFields string
+	var bodyFileData string
+	var bodyFileName string
+	var bodyFileSize int
+	var bodyFileUrl string
+	var bodyFormat string
+	var bodyImportMode string
+	var bodyMappings string
+	var bodyMetadataFingerprint string
+	var bodyObjectType string
+	var bodyReEnrollMode string
+	var bodyRemoveDuplicates bool
+	var bodyRows string
+	var bodySmartListId string
+	var bodyTagIds string
+	var bodyTotalRows int
+	var bodyVerifyLineType string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "create",
 		Short:       "Create an import job",
-		Example:     "  conduyt-crm-pp-cli imports create",
+		Example:     "  conduyt-crm-pp-cli imports create --object-type contacts",
 		Annotations: map[string]string{"pp:endpoint": "imports.create", "pp:method": "POST", "pp:path": "/imports"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -29,8 +47,8 @@ func newImportsCreateCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("body-json") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "body-json")
+				if !cmd.Flags().Changed("object-type") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "object-type")
 				}
 			}
 			path := "/imports"
@@ -53,16 +71,75 @@ func newImportsCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if flagBodyJSON != "" {
-					var parsedBodyJSON any
-					if err := json.Unmarshal([]byte(flagBodyJSON), &parsedBodyJSON); err != nil {
-						return fmt.Errorf("parsing --body-json: %w", err)
+				if bodyAmbiguousMatchMode != "" {
+					bodyMap["ambiguousMatchMode"] = bodyAmbiguousMatchMode
+				}
+				if bodyDuplicateCheckFields != "" {
+					parsedDuplicateCheckFields, parseErr := cliutil.ParseStringList(bodyDuplicateCheckFields)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --duplicate-check-fields list: %w", parseErr)
 					}
-					asMap, ok := parsedBodyJSON.(map[string]any)
-					if !ok {
-						return fmt.Errorf("--body-json must be a JSON object, got JSON %T", parsedBodyJSON)
+					bodyMap["duplicateCheckFields"] = parsedDuplicateCheckFields
+				}
+				if bodyFileData != "" {
+					bodyMap["fileData"] = bodyFileData
+				}
+				if bodyFileName != "" {
+					bodyMap["fileName"] = bodyFileName
+				}
+				if bodyFileSize != 0 {
+					bodyMap["fileSize"] = bodyFileSize
+				}
+				if bodyFileUrl != "" {
+					bodyMap["fileUrl"] = bodyFileUrl
+				}
+				if bodyFormat != "" {
+					bodyMap["format"] = bodyFormat
+				}
+				if bodyImportMode != "" {
+					bodyMap["importMode"] = bodyImportMode
+				}
+				if bodyMappings != "" {
+					var parsedMappings any
+					if err := json.Unmarshal([]byte(bodyMappings), &parsedMappings); err != nil {
+						return fmt.Errorf("parsing --mappings JSON: %w", err)
 					}
-					body = asMap
+					bodyMap["mappings"] = parsedMappings
+				}
+				if bodyMetadataFingerprint != "" {
+					bodyMap["metadataFingerprint"] = bodyMetadataFingerprint
+				}
+				if bodyObjectType != "" {
+					bodyMap["objectType"] = bodyObjectType
+				}
+				if bodyReEnrollMode != "" {
+					bodyMap["reEnrollMode"] = bodyReEnrollMode
+				}
+				if cmd.Flags().Changed("remove-duplicates") {
+					bodyMap["removeDuplicates"] = bodyRemoveDuplicates
+				}
+				if bodyRows != "" {
+					var parsedRows any
+					if err := json.Unmarshal([]byte(bodyRows), &parsedRows); err != nil {
+						return fmt.Errorf("parsing --rows JSON: %w", err)
+					}
+					bodyMap["rows"] = parsedRows
+				}
+				if bodySmartListId != "" {
+					bodyMap["smartListId"] = bodySmartListId
+				}
+				if bodyTagIds != "" {
+					parsedTagIds, parseErr := cliutil.ParseStringList(bodyTagIds)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --tag-ids list: %w", parseErr)
+					}
+					bodyMap["tagIds"] = parsedTagIds
+				}
+				if bodyTotalRows != 0 {
+					bodyMap["totalRows"] = bodyTotalRows
+				}
+				if bodyVerifyLineType != "" {
+					bodyMap["verifyLineType"] = bodyVerifyLineType
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -208,7 +285,24 @@ func newImportsCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&flagBodyJSON, "body-json", "", "Provide the full request body as a JSON object string (this endpoint accepts a polymorphic schema: oneOf/anyOf)")
+	cmd.Flags().StringVar(&bodyAmbiguousMatchMode, "ambiguous-match-mode", "", "'create_new' is retired for new imports (400); use 'proposal' (the default) or 'hold'.")
+	cmd.Flags().StringVar(&bodyDuplicateCheckFields, "duplicate-check-fields", "", "Identity selectors — only 'email' and 'phone' are accepted (case/whitespace-insensitive; any other value is a 400).")
+	cmd.Flags().StringVar(&bodyFileData, "file-data", "", "Base64 CSV content; at most 25 MB once decoded (413), and it must parse as CSV (400).")
+	cmd.Flags().StringVar(&bodyFileName, "file-name", "", "Required for CSV imports; optional in JSON mode because the server synthesizes a CSV file name. Must end in .")
+	cmd.Flags().IntVar(&bodyFileSize, "file-size", 0, "File size")
+	cmd.Flags().StringVar(&bodyFileUrl, "file-url", "", "An import file uploaded for this account (POST /imports/upload); not together with fileData or rows; otherwise a 400.")
+	cmd.Flags().StringVar(&bodyFormat, "format", "", "Set to json to submit inline row objects through rows instead of uploading or referencing a CSV file.")
+	cmd.Flags().StringVar(&bodyImportMode, "import-mode", "", "Import mode")
+	cmd.Flags().StringVar(&bodyMappings, "mappings", "", "CSV column to Conduyt field mapping. Required for CSV imports; synthesized from row keys in JSON mode when omitted.")
+	cmd.Flags().StringVar(&bodyMetadataFingerprint, "metadata-fingerprint", "", "The import wizard's metadata fingerprint.")
+	cmd.Flags().StringVar(&bodyObjectType, "object-type", "", "Object type")
+	cmd.Flags().StringVar(&bodyReEnrollMode, "re-enroll-mode", "", "Persisted re-enrollment choice for matched (duplicate) contacts.")
+	cmd.Flags().BoolVar(&bodyRemoveDuplicates, "remove-duplicates", false, "Remove duplicates")
+	cmd.Flags().StringVar(&bodyRows, "rows", "", "JSON mode only.")
+	cmd.Flags().StringVar(&bodySmartListId, "smart-list-id", "", "Smart list id")
+	cmd.Flags().StringVar(&bodyTagIds, "tag-ids", "", "The tags every imported row gets (at most 20; more is a 400). A re-enroll import's campaign tags are among them.")
+	cmd.Flags().IntVar(&bodyTotalRows, "total-rows", 0, "At most 50000 rows per job (the parsed inline rows, else this declared count); more is a 413.")
+	cmd.Flags().StringVar(&bodyVerifyLineType, "verify-line-type", "", "Opt-in Twilio line-type verification of the imported contacts (tenant-paid, ~$0.008/number).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,11 +13,15 @@ import (
 )
 
 func newSettingsTestIntegrationCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyApiKey string
+	var bodyChannel string
+	var bodyHolderUid string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "test-integration <id>",
-		Aliases:     []string{"create"},
 		Short:       "Test an integration connection",
 		Example:     "  conduyt-crm-pp-cli settings test-integration 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "settings.test-integration", "pp:method": "POST", "pp:path": "/settings/integrations/{id}/test"},
@@ -37,6 +41,12 @@ func newSettingsTestIntegrationCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +61,15 @@ func newSettingsTestIntegrationCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyApiKey != "" {
+					bodyMap["apiKey"] = bodyApiKey
+				}
+				if bodyChannel != "" {
+					bodyMap["channel"] = bodyChannel
+				}
+				if bodyHolderUid != "" {
+					bodyMap["holderUid"] = bodyHolderUid
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +214,11 @@ func newSettingsTestIntegrationCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyApiKey, "api-key", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyChannel, "channel", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyHolderUid, "holder-uid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

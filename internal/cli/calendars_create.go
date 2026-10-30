@@ -13,7 +13,10 @@ import (
 )
 
 func newCalendarsCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyDescription string
+	var bodyIsDefault string
 	var bodyName string
 	var bodyTimezone string
 	var stdinBody bool
@@ -41,6 +44,12 @@ func newCalendarsCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -57,6 +66,9 @@ func newCalendarsCreateCmd(flags *rootFlags) *cobra.Command {
 				body = bodyMap
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
+				}
+				if bodyIsDefault != "" {
+					bodyMap["isDefault"] = bodyIsDefault
 				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
@@ -208,7 +220,10 @@ func newCalendarsCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
+	cmd.Flags().StringVar(&bodyIsDefault, "is-default", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().StringVar(&bodyTimezone, "timezone", "America/Los_Angeles", "Timezone")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")

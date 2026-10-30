@@ -21,5 +21,6 @@ func newAppointmentsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newAppointmentsGetCmd(flags))
 	cmd.AddCommand(newAppointmentsListCmd(flags))
 	cmd.AddCommand(newAppointmentsUpdateCmd(flags))
+	cmd.AddCommand(newAppointmentsOutcomeCmd(flags))
 	return cmd
 }

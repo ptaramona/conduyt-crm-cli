@@ -12,6 +12,12 @@ import (
 )
 
 func newDocumentTemplatesListCmd(flags *rootFlags) *cobra.Command {
+	var flagCategory string
+	var flagIsActive string
+	var flagPage string
+	var flagPerPage string
+	var flagSearch string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -24,8 +30,13 @@ func newDocumentTemplatesListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "document-templates", true, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "document-templates", path, map[string]string{
+				"category":  formatCLIParamValue(flagCategory),
+				"is_active": formatCLIParamValue(flagIsActive),
+				"page":      formatCLIParamValue(flagPage),
+				"per_page":  formatCLIParamValue(flagPerPage),
+				"search":    formatCLIParamValue(flagSearch),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +84,12 @@ func newDocumentTemplatesListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCategory, "category", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagIsActive, "is-active", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 200, default 50), or the word all: every template of the filters in one query.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "string — templates whose name, category or body contains it (case-insensitive)")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

@@ -12,11 +12,15 @@ import (
 )
 
 func newAdminListAccountsCmd(flags *rootFlags) *cobra.Command {
+	var flagLimit int
+	var flagQ string
+	var flagStatus string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list-accounts",
 		Aliases:     []string{"list"},
-		Short:       "List all accounts (super-admin)",
+		Short:       "Every account with the columns the admin console needs.",
 		Example:     "  conduyt-crm-pp-cli admin list-accounts",
 		Annotations: map[string]string{"pp:endpoint": "admin.list-accounts", "pp:method": "GET", "pp:path": "/admin/accounts", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -25,8 +29,11 @@ func newAdminListAccountsCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "admin", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "admin", path, map[string]string{
+				"limit":  formatCLIParamValue(flagLimit),
+				"q":      formatCLIParamValue(flagQ),
+				"status": formatCLIParamValue(flagStatus),
+			}, nil, flagAll, "", "offset", "limit", 200, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -74,6 +81,10 @@ func newAdminListAccountsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().IntVar(&flagLimit, "limit", 200, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagQ, "q", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

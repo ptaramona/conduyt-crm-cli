@@ -18,6 +18,7 @@ func newScreenShareCmd(flags *rootFlags) *cobra.Command {
 
 	cmd.AddCommand(newScreenShareDeleteSessionCodeCmd(flags))
 	cmd.AddCommand(newScreenShareGetSeatsCmd(flags))
+	cmd.AddCommand(newScreenShareGetSessionCodeCmd(flags))
 	cmd.AddCommand(newScreenSharePostSeatsCmd(flags))
 	cmd.AddCommand(newScreenSharePostSessionCmd(flags))
 	return cmd

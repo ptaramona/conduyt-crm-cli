@@ -13,6 +13,8 @@ import (
 )
 
 func newDialerPostCallIdHangupCmd(flags *rootFlags) *cobra.Command {
+	var flagCloseWithoutLegs bool
+	var flagConfirmIphoneEnded bool
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -36,6 +38,12 @@ func newDialerPostCallIdHangupCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagCloseWithoutLegs != false {
+				params["closeWithoutLegs"] = formatCLIParamValue(flagCloseWithoutLegs)
+			}
+			if flagConfirmIphoneEnded != false {
+				params["confirmIphoneEnded"] = formatCLIParamValue(flagConfirmIphoneEnded)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -194,6 +202,8 @@ func newDialerPostCallIdHangupCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagCloseWithoutLegs, "close-without-legs", false, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagConfirmIphoneEnded, "confirm-iphone-ended", false, "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

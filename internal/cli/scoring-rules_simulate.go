@@ -13,6 +13,7 @@ import (
 )
 
 func newScoringRulesSimulateCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +44,9 @@ func newScoringRulesSimulateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +191,7 @@ func newScoringRulesSimulateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,6 +13,11 @@ import (
 )
 
 func newConversationsStatePatchConversationsContactIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyOwnerId string
+	var bodyPriority string
+	var bodySlaMinutes string
+	var bodySnoozedUntil string
+	var bodyStatus string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +56,21 @@ func newConversationsStatePatchConversationsContactIdCmd(flags *rootFlags) *cobr
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyOwnerId != "" {
+					bodyMap["ownerId"] = bodyOwnerId
+				}
+				if bodyPriority != "" {
+					bodyMap["priority"] = bodyPriority
+				}
+				if bodySlaMinutes != "" {
+					bodyMap["slaMinutes"] = bodySlaMinutes
+				}
+				if bodySnoozedUntil != "" {
+					bodyMap["snoozedUntil"] = bodySnoozedUntil
+				}
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +215,11 @@ func newConversationsStatePatchConversationsContactIdCmd(flags *rootFlags) *cobr
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyOwnerId, "owner-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPriority, "priority", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySlaMinutes, "sla-minutes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySnoozedUntil, "snoozed-until", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

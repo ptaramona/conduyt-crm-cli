@@ -12,6 +12,7 @@ import (
 )
 
 func newDialerGetCallIdPostCallCmd(flags *rootFlags) *cobra.Command {
+	var flagInclude string
 
 	cmd := &cobra.Command{
 		Use:         "get-call-id-post-call <id>",
@@ -32,6 +33,9 @@ func newDialerGetCallIdPostCallCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagInclude != "" {
+				params["include"] = formatCLIParamValue(flagInclude)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -80,6 +84,7 @@ func newDialerGetCallIdPostCallCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagInclude, "include", "", "Query parameter read by this route.")
 
 	return cmd
 }

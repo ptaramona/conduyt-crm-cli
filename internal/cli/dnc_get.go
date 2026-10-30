@@ -12,6 +12,13 @@ import (
 )
 
 func newDncGetCmd(flags *rootFlags) *cobra.Command {
+	var flagCountOnly bool
+	var flagPage string
+	var flagPerPage int
+	var flagPhone string
+	var flagSearch string
+	var flagTier string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get",
@@ -25,8 +32,14 @@ func newDncGetCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dnc", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "dnc", path, map[string]string{
+				"count_only": formatCLIParamValue(flagCountOnly),
+				"page":       formatCLIParamValue(flagPage),
+				"per_page":   formatCLIParamValue(flagPerPage),
+				"phone":      formatCLIParamValue(flagPhone),
+				"search":     formatCLIParamValue(flagSearch),
+				"tier":       formatCLIParamValue(flagTier),
+			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -74,6 +87,13 @@ func newDncGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagCountOnly, "count-only", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPhone, "phone", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTier, "tier", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

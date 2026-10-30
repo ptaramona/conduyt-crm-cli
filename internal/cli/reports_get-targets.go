@@ -12,6 +12,7 @@ import (
 )
 
 func newReportsGetTargetsCmd(flags *rootFlags) *cobra.Command {
+	var flagUserId string
 
 	cmd := &cobra.Command{
 		Use:         "get-targets",
@@ -25,6 +26,9 @@ func newReportsGetTargetsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagUserId != "" {
+				params["userId"] = formatCLIParamValue(flagUserId)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +77,7 @@ func newReportsGetTargetsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "uuid — one user's targets (admins and owners; anyone else always gets their own)")
 
 	return cmd
 }

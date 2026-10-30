@@ -12,6 +12,9 @@ import (
 )
 
 func newDialerGetInboundLookupCmd(flags *rootFlags) *cobra.Command {
+	var flagCallSid string
+	var flagContactId string
+	var flagPhone string
 
 	cmd := &cobra.Command{
 		Use:         "get-inbound-lookup",
@@ -25,6 +28,15 @@ func newDialerGetInboundLookupCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagCallSid != "" {
+				params["callSid"] = formatCLIParamValue(flagCallSid)
+			}
+			if flagContactId != "" {
+				params["contactId"] = formatCLIParamValue(flagContactId)
+			}
+			if flagPhone != "" {
+				params["phone"] = formatCLIParamValue(flagPhone)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +85,9 @@ func newDialerGetInboundLookupCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCallSid, "call-sid", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPhone, "phone", "", "Query parameter read by this route.")
 
 	return cmd
 }

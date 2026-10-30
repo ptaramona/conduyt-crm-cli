@@ -8,6 +8,7 @@ import (
 
 	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // Hand-written (board #116 for app #111, contract frozen at app 5729bc7b4): `deals list --board-snapshot --pipeline <id>
@@ -26,7 +27,7 @@ type dealsBoardSnapshotArgs struct {
 	perPage    int
 }
 
-const dealsListBoardSnapshotLong = "List deals (GET /deals). BOARD SNAPSHOT: --board-snapshot with --pipeline <id> and --board-columns <stageId>[:<limit>],... reads every named column of that one pipeline from ONE database snapshot, so a deal moved while the read runs is in exactly one column. It prints { columns: [{ stageId, limit, deals }], meta: { board_snapshot: true } } (under data): columns in the order named, each column's deals exactly what --stage <stageId> --per-page <limit> rows-only answers (same filters, order and projection), no totals; deals.length equal to limit means the column may hold more. 1-50 live stages of the pipeline, no stage twice, limit a whole number 1-1000 (default --per-page, itself default 50), at most 5000 rows in total. Refused before any request (usage error): --page (even 1: a snapshot is always page one), --stage, --all, --board-columns without --board-snapshot, a missing --pipeline or --board-columns, --data-source local, and a --board-columns value the server would refuse. A snapshot is always read live (never the response cache, never written into the local store). 503 (nothing was changed; retried by the client, then the error carries the code and retryAfter): board_snapshot_busy (--board-snapshot only: the one snapshot could not finish in its budget; read the columns one by one with --stage, or retry) and gate_busy (any deals list call, snapshot or not: the access check could not finish in time; retry after Retry-After)."
+const dealsListBoardSnapshotLong = "List deals (GET /deals). BOARD SNAPSHOT: --board-snapshot with --pipeline <id> and --board-columns <stageId>[:<limit>],... reads every named column of that one pipeline from ONE database snapshot, so a deal moved while the read runs is in exactly one column. It prints { columns: [{ stageId, limit, deals }], meta: { board_snapshot: true } } (under data): columns in the order named, each column's deals exactly what --stage <stageId> --per-page <limit> rows-only answers (same filters, order and projection), no totals; deals.length equal to limit means the column may hold more. 1-50 live stages of the pipeline, no stage twice, limit a whole number 1-1000 (default --per-page, itself default 50), at most 5000 rows in total. Refused before any request (usage error): --page (even 1: a snapshot is always page one), --stage, --all, every other deals list filter (the snapshot forwards only --pipeline, --status, --assigned-to, --sort, --order and --per-page), --board-columns without --board-snapshot, a missing --pipeline or --board-columns, --data-source local, and a --board-columns value the server would refuse. A snapshot is always read live (never the response cache, never written into the local store). 503 (nothing was changed; retried by the client, then the error carries the code and retryAfter): board_snapshot_busy (--board-snapshot only: the one snapshot could not finish in its budget; read the columns one by one with --stage, or retry) and gate_busy (any deals list call, snapshot or not: the access check could not finish in time; retry after Retry-After)."
 
 func runDealsBoardSnapshot(cmd *cobra.Command, flags *rootFlags, snapshot bool, a dealsBoardSnapshotArgs) error {
 	if !snapshot {
@@ -38,6 +39,16 @@ func runDealsBoardSnapshot(cmd *cobra.Command, flags *rootFlags, snapshot bool, 
 			conflicts = append(conflicts, "--"+name)
 		}
 	}
+	// reprint637: the full public GET /deals adds stage aliases, health_*, rows_only, summary, search and other filters that
+	// this snapshot request does not forward; refuse every other local flag instead of silently dropping it.
+	snapshotForwards := map[string]bool{"board-snapshot": true, "board-columns": true, "pipeline": true, "per-page": true,
+		"status": true, "assigned-to": true, "sort": true, "order": true, "page": true, "stage": true, "all": true}
+	local := cmd.LocalNonPersistentFlags()
+	cmd.Flags().Visit(func(f *pflag.Flag) {
+		if local.Lookup(f.Name) != nil && !snapshotForwards[f.Name] {
+			conflicts = append(conflicts, "--"+f.Name)
+		}
+	})
 	if len(conflicts) > 0 {
 		return usageErr(fmt.Errorf("--board-snapshot cannot be combined with %s: it answers every named column's first rows, rows only, from one snapshot", strings.Join(conflicts, ", ")))
 	}

@@ -13,6 +13,8 @@ import (
 )
 
 func newCalendarWebhookMicrosoftCmd(flags *rootFlags) *cobra.Command {
+	var flagValidationToken string
+	var bodyValue string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -29,6 +31,9 @@ func newCalendarWebhookMicrosoftCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagValidationToken != "" {
+				params["validationToken"] = formatCLIParamValue(flagValidationToken)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +48,13 @@ func newCalendarWebhookMicrosoftCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyValue != "" {
+					var parsedValue any
+					if err := json.Unmarshal([]byte(bodyValue), &parsedValue); err != nil {
+						return fmt.Errorf("parsing --value JSON: %w", err)
+					}
+					bodyMap["value"] = parsedValue
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +199,8 @@ func newCalendarWebhookMicrosoftCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagValidationToken, "validation-token", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&bodyValue, "value", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

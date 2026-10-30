@@ -18,7 +18,9 @@ func newDialerCmd(flags *rootFlags) *cobra.Command {
 
 	cmd.AddCommand(newDialerDeleteCallIdParticipantsParticipantSidCmd(flags))
 	cmd.AddCommand(newDialerDeleteCallIdSuperviseCmd(flags))
+	cmd.AddCommand(newDialerGetAgentStatusesCmd(flags))
 	cmd.AddCommand(newDialerGetAgentsStatusCmd(flags))
+	cmd.AddCommand(newDialerGetCallIdCmd(flags))
 	cmd.AddCommand(newDialerGetCallIdMediaCmd(flags))
 	cmd.AddCommand(newDialerGetCallIdParticipantsCmd(flags))
 	cmd.AddCommand(newDialerGetCallIdPostCallCmd(flags))

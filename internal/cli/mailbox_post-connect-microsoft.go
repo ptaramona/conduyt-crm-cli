@@ -17,7 +17,6 @@ func newMailboxPostConnectMicrosoftCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "post-connect-microsoft",
-		Aliases:     []string{"create"},
 		Short:       "Create / invoke mailbox connect microsoft",
 		Example:     "  conduyt-crm-pp-cli mailbox post-connect-microsoft",
 		Annotations: map[string]string{"pp:endpoint": "mailbox.post-connect-microsoft", "pp:method": "POST", "pp:path": "/mailbox/connect/microsoft"},

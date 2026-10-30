@@ -12,6 +12,7 @@ import (
 )
 
 func newContactsDncGetContactsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagTo string
 
 	cmd := &cobra.Command{
 		Use:         "get-contacts-id <id>",
@@ -33,6 +34,9 @@ func newContactsDncGetContactsIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagTo != "" {
+				params["to"] = formatCLIParamValue(flagTo)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dnc", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -81,6 +85,7 @@ func newContactsDncGetContactsIdCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagTo, "to", "", "Query parameter read by this route.")
 
 	return cmd
 }

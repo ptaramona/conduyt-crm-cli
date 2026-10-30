@@ -12,6 +12,7 @@ import (
 )
 
 func newDialerGetStatsCmd(flags *rootFlags) *cobra.Command {
+	var flagAllAgents bool
 
 	cmd := &cobra.Command{
 		Use:         "get-stats",
@@ -25,6 +26,9 @@ func newDialerGetStatsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagAllAgents != false {
+				params["all_agents"] = formatCLIParamValue(flagAllAgents)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +77,7 @@ func newDialerGetStatsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagAllAgents, "all-agents", false, "Query parameter read by this route.")
 
 	return cmd
 }

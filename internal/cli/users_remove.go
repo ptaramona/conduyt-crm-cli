@@ -12,6 +12,7 @@ import (
 )
 
 func newUsersRemoveCmd(flags *rootFlags) *cobra.Command {
+	var flagReassignTo string
 
 	cmd := &cobra.Command{
 		Use:         "remove <id>",
@@ -33,6 +34,9 @@ func newUsersRemoveCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagReassignTo != "" {
+				params["reassign_to"] = formatCLIParamValue(flagReassignTo)
+			}
 			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
 			if err != nil {
 				return classifyDeleteError(err, flags)
@@ -173,6 +177,7 @@ func newUsersRemoveCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagReassignTo, "reassign-to", "", "Query parameter read by this route.")
 
 	return cmd
 }

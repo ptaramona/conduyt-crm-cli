@@ -13,6 +13,16 @@ import (
 )
 
 func newDealsPatchViewsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDescription string
+	var bodyFilters string
+	var bodyIcon string
+	var bodyIsEnabled string
+	var bodyMembers string
+	var bodyName string
+	var bodySortField string
+	var bodySortOrder string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -36,6 +46,12 @@ func newDealsPatchViewsIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -50,6 +66,38 @@ func newDealsPatchViewsIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyFilters != "" {
+					var parsedFilters any
+					if err := json.Unmarshal([]byte(bodyFilters), &parsedFilters); err != nil {
+						return fmt.Errorf("parsing --filters JSON: %w", err)
+					}
+					bodyMap["filters"] = parsedFilters
+				}
+				if bodyIcon != "" {
+					bodyMap["icon"] = bodyIcon
+				}
+				if bodyIsEnabled != "" {
+					bodyMap["isEnabled"] = bodyIsEnabled
+				}
+				if bodyMembers != "" {
+					var parsedMembers any
+					if err := json.Unmarshal([]byte(bodyMembers), &parsedMembers); err != nil {
+						return fmt.Errorf("parsing --members JSON: %w", err)
+					}
+					bodyMap["members"] = parsedMembers
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodySortField != "" {
+					bodyMap["sortField"] = bodySortField
+				}
+				if bodySortOrder != "" {
+					bodyMap["sortOrder"] = bodySortOrder
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +242,16 @@ func newDealsPatchViewsIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFilters, "filters", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIcon, "icon", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsEnabled, "is-enabled", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMembers, "members", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySortField, "sort-field", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySortOrder, "sort-order", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

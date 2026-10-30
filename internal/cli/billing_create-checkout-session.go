@@ -13,7 +13,8 @@ import (
 )
 
 func newBillingCreateCheckoutSessionCmd(flags *rootFlags) *cobra.Command {
-	var bodyPriceId string
+	var bodyInterval string
+	var bodyPlanId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -45,8 +46,11 @@ func newBillingCreateCheckoutSessionCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyPriceId != "" {
-					bodyMap["priceId"] = bodyPriceId
+				if bodyInterval != "" {
+					bodyMap["interval"] = bodyInterval
+				}
+				if bodyPlanId != "" {
+					bodyMap["planId"] = bodyPlanId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -192,7 +196,8 @@ func newBillingCreateCheckoutSessionCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyPriceId, "price-id", "", "Price id")
+	cmd.Flags().StringVar(&bodyInterval, "interval", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPlanId, "plan-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

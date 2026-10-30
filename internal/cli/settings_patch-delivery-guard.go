@@ -9,10 +9,16 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newSettingsPatchDeliveryGuardCmd(flags *rootFlags) *cobra.Command {
+	var bodyDisableThreshold int
+	var bodyEnabled bool
+	var bodyMinSent int
+	var bodyNotifyRoles string
+	var bodyWarnThreshold int
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +49,25 @@ func newSettingsPatchDeliveryGuardCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDisableThreshold != 0 {
+					bodyMap["disableThreshold"] = bodyDisableThreshold
+				}
+				if cmd.Flags().Changed("enabled") {
+					bodyMap["enabled"] = bodyEnabled
+				}
+				if bodyMinSent != 0 {
+					bodyMap["minSent"] = bodyMinSent
+				}
+				if bodyNotifyRoles != "" {
+					parsedNotifyRoles, parseErr := cliutil.ParseStringList(bodyNotifyRoles)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --notify-roles list: %w", parseErr)
+					}
+					bodyMap["notifyRoles"] = parsedNotifyRoles
+				}
+				if bodyWarnThreshold != 0 {
+					bodyMap["warnThreshold"] = bodyWarnThreshold
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +212,11 @@ func newSettingsPatchDeliveryGuardCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().IntVar(&bodyDisableThreshold, "disable-threshold", 0, "Disable threshold")
+	cmd.Flags().BoolVar(&bodyEnabled, "enabled", false, "Enabled")
+	cmd.Flags().IntVar(&bodyMinSent, "min-sent", 0, "Min sent")
+	cmd.Flags().StringVar(&bodyNotifyRoles, "notify-roles", "", "Notify roles")
+	cmd.Flags().IntVar(&bodyWarnThreshold, "warn-threshold", 0, "Warn threshold")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,41 +13,29 @@ import (
 )
 
 func newEmailsUpdateTemplateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyBody string
 	var bodyBodyHtml string
+	var bodyBodyMode string
 	var bodyCategory string
-	var bodyChannel string
+	var bodyHtml string
 	var bodyIsActive bool
 	var bodyName string
+	var bodyProvider string
 	var bodySubject string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:   "update-template <id>",
-		Short: "Update an email template",
-		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli emails update-template 550e8400-e29b-41d4-a716-446655440000 --body example-value",
+		Use:         "update-template <id>",
+		Short:       "Email templates built in the editor keep their builder state in hidden markers",
+		Example:     "  conduyt-crm-pp-cli emails update-template 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "emails.update-template", "pp:method": "PATCH", "pp:path": "/emails/templates/{id}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("body") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "body")
-				}
-				if !cmd.Flags().Changed("channel") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "channel")
-				}
-				if !cmd.Flags().Changed("name") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "name")
-				}
 			}
 			path := "/emails/templates/{id}"
 			if len(args) < 1 || args[0] == "" {
@@ -59,6 +47,12 @@ func newEmailsUpdateTemplateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -79,17 +73,23 @@ func newEmailsUpdateTemplateCmd(flags *rootFlags) *cobra.Command {
 				if bodyBodyHtml != "" {
 					bodyMap["bodyHtml"] = bodyBodyHtml
 				}
+				if bodyBodyMode != "" {
+					bodyMap["bodyMode"] = bodyBodyMode
+				}
 				if bodyCategory != "" {
 					bodyMap["category"] = bodyCategory
 				}
-				if bodyChannel != "" {
-					bodyMap["channel"] = bodyChannel
+				if bodyHtml != "" {
+					bodyMap["html"] = bodyHtml
 				}
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
 				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
+				}
+				if bodyProvider != "" {
+					bodyMap["provider"] = bodyProvider
 				}
 				if bodySubject != "" {
 					bodyMap["subject"] = bodySubject
@@ -238,12 +238,16 @@ func newEmailsUpdateTemplateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyBody, "body", "", "Body")
 	cmd.Flags().StringVar(&bodyBodyHtml, "body-html", "", "Body html")
+	cmd.Flags().StringVar(&bodyBodyMode, "body-mode", "", "Body mode")
 	cmd.Flags().StringVar(&bodyCategory, "category", "", "Category")
-	cmd.Flags().StringVar(&bodyChannel, "channel", "", "Channel")
-	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
+	cmd.Flags().StringVar(&bodyHtml, "html", "", "Html")
+	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "Is active")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().StringVar(&bodyProvider, "provider", "", "Provider")
 	cmd.Flags().StringVar(&bodySubject, "subject", "", "Subject")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

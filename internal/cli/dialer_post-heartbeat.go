@@ -13,6 +13,16 @@ import (
 )
 
 func newDialerPostHeartbeatCmd(flags *rootFlags) *cobra.Command {
+	var bodyActiveCallId string
+	var bodyFallbackStatus string
+	var bodyFallbackStatusCode string
+	var bodyOwnsCall string
+	var bodyProtocol string
+	var bodyPublisher string
+	var bodySeenEpoch string
+	var bodySeenSeq string
+	var bodyStatus string
+	var bodyStatusCode string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +53,36 @@ func newDialerPostHeartbeatCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyActiveCallId != "" {
+					bodyMap["activeCallId"] = bodyActiveCallId
+				}
+				if bodyFallbackStatus != "" {
+					bodyMap["fallbackStatus"] = bodyFallbackStatus
+				}
+				if bodyFallbackStatusCode != "" {
+					bodyMap["fallbackStatusCode"] = bodyFallbackStatusCode
+				}
+				if bodyOwnsCall != "" {
+					bodyMap["ownsCall"] = bodyOwnsCall
+				}
+				if bodyProtocol != "" {
+					bodyMap["protocol"] = bodyProtocol
+				}
+				if bodyPublisher != "" {
+					bodyMap["publisher"] = bodyPublisher
+				}
+				if bodySeenEpoch != "" {
+					bodyMap["seenEpoch"] = bodySeenEpoch
+				}
+				if bodySeenSeq != "" {
+					bodyMap["seenSeq"] = bodySeenSeq
+				}
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
+				}
+				if bodyStatusCode != "" {
+					bodyMap["statusCode"] = bodyStatusCode
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +227,16 @@ func newDialerPostHeartbeatCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyActiveCallId, "active-call-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFallbackStatus, "fallback-status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFallbackStatusCode, "fallback-status-code", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyOwnsCall, "owns-call", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyProtocol, "protocol", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPublisher, "publisher", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySeenEpoch, "seen-epoch", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySeenSeq, "seen-seq", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatusCode, "status-code", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

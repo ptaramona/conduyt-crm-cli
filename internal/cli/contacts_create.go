@@ -14,23 +14,43 @@ import (
 )
 
 func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyAddressLine1 string
 	var bodyAddressLine2 string
 	var bodyAssignedTo string
+	var bodyAttributionClickIds string
+	var bodyAttributionLandingUrl string
+	var bodyAttributionPageTitle string
+	var bodyAttributionReferrer string
+	var bodyAttributionUtmCampaign string
+	var bodyAttributionUtmContent string
+	var bodyAttributionUtmMedium string
+	var bodyAttributionUtmSource string
+	var bodyAttributionUtmTerm string
 	var bodyCallId string
 	var bodyCity string
 	var bodyCompany string
 	var bodyCompanyId string
 	var bodyCountry string
-	var bodyCustomFields string
+	var bodyCustomFieldsLinkedin string
+	var bodyCustomFieldsTwitter string
+	var bodyCustomFieldsWebsite string
+	var bodyDoNotContact string
+	var bodyDoNotContactReason string
 	var bodyEmail string
+	var bodyExternalBackend string
 	var bodyFirstName string
 	var bodyJobTitle string
+	var bodyLanguage string
 	var bodyLastName string
+	var bodyLegacyStatus string
+	var bodyMasterStatus string
 	var bodyPhone string
 	var bodySource string
 	var bodyState string
 	var bodyTags string
+	var bodyTimezone string
 	var bodyZip string
 	var stdinBody bool
 
@@ -49,6 +69,12 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -75,6 +101,43 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyAssignedTo != "" {
 					bodyMap["assignedTo"] = bodyAssignedTo
 				}
+				{
+					nestedAttribution := map[string]any{}
+					if bodyAttributionClickIds != "" {
+						var parsedAttributionClickIds any
+						if err := json.Unmarshal([]byte(bodyAttributionClickIds), &parsedAttributionClickIds); err != nil {
+							return fmt.Errorf("parsing --attribution-click-ids JSON: %w", err)
+						}
+						nestedAttribution["clickIds"] = parsedAttributionClickIds
+					}
+					if bodyAttributionLandingUrl != "" {
+						nestedAttribution["landingUrl"] = bodyAttributionLandingUrl
+					}
+					if bodyAttributionPageTitle != "" {
+						nestedAttribution["pageTitle"] = bodyAttributionPageTitle
+					}
+					if bodyAttributionReferrer != "" {
+						nestedAttribution["referrer"] = bodyAttributionReferrer
+					}
+					if bodyAttributionUtmCampaign != "" {
+						nestedAttribution["utm_campaign"] = bodyAttributionUtmCampaign
+					}
+					if bodyAttributionUtmContent != "" {
+						nestedAttribution["utm_content"] = bodyAttributionUtmContent
+					}
+					if bodyAttributionUtmMedium != "" {
+						nestedAttribution["utm_medium"] = bodyAttributionUtmMedium
+					}
+					if bodyAttributionUtmSource != "" {
+						nestedAttribution["utm_source"] = bodyAttributionUtmSource
+					}
+					if bodyAttributionUtmTerm != "" {
+						nestedAttribution["utm_term"] = bodyAttributionUtmTerm
+					}
+					if len(nestedAttribution) > 0 {
+						bodyMap["attribution"] = nestedAttribution
+					}
+				}
 				if bodyCallId != "" {
 					bodyMap["callId"] = bodyCallId
 				}
@@ -90,15 +153,32 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyCountry != "" {
 					bodyMap["country"] = bodyCountry
 				}
-				if bodyCustomFields != "" {
-					var parsedCustomFields any
-					if err := json.Unmarshal([]byte(bodyCustomFields), &parsedCustomFields); err != nil {
-						return fmt.Errorf("parsing --custom-fields JSON: %w", err)
+				{
+					nestedCustomFields := map[string]any{}
+					if bodyCustomFieldsLinkedin != "" {
+						nestedCustomFields["linkedin"] = bodyCustomFieldsLinkedin
 					}
-					bodyMap["customFields"] = parsedCustomFields
+					if bodyCustomFieldsTwitter != "" {
+						nestedCustomFields["twitter"] = bodyCustomFieldsTwitter
+					}
+					if bodyCustomFieldsWebsite != "" {
+						nestedCustomFields["website"] = bodyCustomFieldsWebsite
+					}
+					if len(nestedCustomFields) > 0 {
+						bodyMap["customFields"] = nestedCustomFields
+					}
+				}
+				if bodyDoNotContact != "" {
+					bodyMap["doNotContact"] = bodyDoNotContact
+				}
+				if bodyDoNotContactReason != "" {
+					bodyMap["doNotContactReason"] = bodyDoNotContactReason
 				}
 				if bodyEmail != "" {
 					bodyMap["email"] = bodyEmail
+				}
+				if bodyExternalBackend != "" {
+					bodyMap["externalBackend"] = bodyExternalBackend
 				}
 				if bodyFirstName != "" {
 					bodyMap["firstName"] = bodyFirstName
@@ -106,8 +186,17 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyJobTitle != "" {
 					bodyMap["jobTitle"] = bodyJobTitle
 				}
+				if bodyLanguage != "" {
+					bodyMap["language"] = bodyLanguage
+				}
 				if bodyLastName != "" {
 					bodyMap["lastName"] = bodyLastName
+				}
+				if bodyLegacyStatus != "" {
+					bodyMap["legacyStatus"] = bodyLegacyStatus
+				}
+				if bodyMasterStatus != "" {
+					bodyMap["masterStatus"] = bodyMasterStatus
 				}
 				if bodyPhone != "" {
 					bodyMap["phone"] = bodyPhone
@@ -124,6 +213,9 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 						return fmt.Errorf("parsing --tags list: %w", parseErr)
 					}
 					bodyMap["tags"] = parsedTags
+				}
+				if bodyTimezone != "" {
+					bodyMap["timezone"] = bodyTimezone
 				}
 				if bodyZip != "" {
 					bodyMap["zip"] = bodyZip
@@ -277,23 +369,43 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyAddressLine1, "address-line1", "", "Address line1")
 	cmd.Flags().StringVar(&bodyAddressLine2, "address-line2", "", "Address line2")
 	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to (refused together with --call-id: the server assigns the rep who took the call)")
+	cmd.Flags().StringVar(&bodyAttributionClickIds, "attribution-click-ids", "", "Click ids")
+	cmd.Flags().StringVar(&bodyAttributionLandingUrl, "attribution-landing-url", "", "Landing url")
+	cmd.Flags().StringVar(&bodyAttributionPageTitle, "attribution-page-title", "", "Page title")
+	cmd.Flags().StringVar(&bodyAttributionReferrer, "attribution-referrer", "", "Referrer")
+	cmd.Flags().StringVar(&bodyAttributionUtmCampaign, "attribution-utm-campaign", "", "Utm campaign")
+	cmd.Flags().StringVar(&bodyAttributionUtmContent, "attribution-utm-content", "", "Utm content")
+	cmd.Flags().StringVar(&bodyAttributionUtmMedium, "attribution-utm-medium", "", "Utm medium")
+	cmd.Flags().StringVar(&bodyAttributionUtmSource, "attribution-utm-source", "", "Utm source")
+	cmd.Flags().StringVar(&bodyAttributionUtmTerm, "attribution-utm-term", "", "Utm term")
 	cmd.Flags().StringVar(&bodyCallId, "call-id", "", "A contact-less inbound call to link the new contact to, in the same transaction (board #35, the unknown-caller prompt).")
 	cmd.Flags().StringVar(&bodyCity, "city", "", "City")
 	cmd.Flags().StringVar(&bodyCompany, "company", "", "Company")
 	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Company id")
-	cmd.Flags().StringVar(&bodyCountry, "country", "", "Country")
-	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Key-value pairs for custom fields. Max 100KB.")
+	cmd.Flags().StringVar(&bodyCountry, "country", "", "A country name is converted to its ISO code: the value is trimmed")
+	cmd.Flags().StringVar(&bodyCustomFieldsLinkedin, "custom-fields-linkedin", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCustomFieldsTwitter, "custom-fields-twitter", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCustomFieldsWebsite, "custom-fields-website", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDoNotContact, "do-not-contact", "", "Do not contact")
+	cmd.Flags().StringVar(&bodyDoNotContactReason, "do-not-contact-reason", "", "Do not contact reason")
 	cmd.Flags().StringVar(&bodyEmail, "email", "", "Email")
+	cmd.Flags().StringVar(&bodyExternalBackend, "external-backend", "", "External backend")
 	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name")
 	cmd.Flags().StringVar(&bodyJobTitle, "job-title", "", "Job title")
+	cmd.Flags().StringVar(&bodyLanguage, "language", "", "Language")
 	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
+	cmd.Flags().StringVar(&bodyLegacyStatus, "legacy-status", "", "Legacy status")
+	cmd.Flags().StringVar(&bodyMasterStatus, "master-status", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
 	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
 	cmd.Flags().StringVar(&bodySource, "source", "", "Source (refused together with --call-id: the server sets 'Inbound Call')")
 	cmd.Flags().StringVar(&bodyState, "state", "", "State")
 	cmd.Flags().StringVar(&bodyTags, "tags", "", "Tags")
+	cmd.Flags().StringVar(&bodyTimezone, "timezone", "", "A valid IANA time zone identifier (e.g. America/New_York); any other value is refused.")
 	cmd.Flags().StringVar(&bodyZip, "zip", "", "Zip")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

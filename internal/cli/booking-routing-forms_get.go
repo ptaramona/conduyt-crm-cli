@@ -12,6 +12,11 @@ import (
 )
 
 func newBookingRoutingFormsGetCmd(flags *rootFlags) *cobra.Command {
+	var flagIsActive string
+	var flagPage string
+	var flagPerPage int
+	var flagSearch string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get",
@@ -25,8 +30,12 @@ func newBookingRoutingFormsGetCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "booking-routing-forms", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "booking-routing-forms", path, map[string]string{
+				"is_active": formatCLIParamValue(flagIsActive),
+				"page":      formatCLIParamValue(flagPage),
+				"per_page":  formatCLIParamValue(flagPerPage),
+				"search":    formatCLIParamValue(flagSearch),
+			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -74,6 +83,11 @@ func newBookingRoutingFormsGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagIsActive, "is-active", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

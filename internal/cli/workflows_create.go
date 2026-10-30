@@ -18,6 +18,7 @@ func newWorkflowsCreateCmd(flags *rootFlags) *cobra.Command {
 	var bodyIsActive bool
 	var bodyName string
 	var bodyTrigger string
+	var bodyTriggerEvent string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -85,6 +86,9 @@ func newWorkflowsCreateCmd(flags *rootFlags) *cobra.Command {
 						return fmt.Errorf("parsing --trigger JSON: %w", err)
 					}
 					bodyMap["trigger"] = parsedTrigger
+				}
+				if bodyTriggerEvent != "" {
+					bodyMap["triggerEvent"] = bodyTriggerEvent
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -235,6 +239,7 @@ func newWorkflowsCreateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "Is active")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().StringVar(&bodyTrigger, "trigger", "", "Trigger")
+	cmd.Flags().StringVar(&bodyTriggerEvent, "trigger-event", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -12,6 +12,9 @@ import (
 )
 
 func newCompaniesDeleteCompanyCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagForce bool
+	var flagSandbox bool
 
 	cmd := &cobra.Command{
 		Use:         "delete-company <id>",
@@ -33,6 +36,15 @@ func newCompaniesDeleteCompanyCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagForce != false {
+				params["force"] = formatCLIParamValue(flagForce)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
 			if err != nil {
 				return classifyDeleteError(err, flags)
@@ -173,6 +185,9 @@ func newCompaniesDeleteCompanyCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagForce, "force", false, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 
 	return cmd
 }

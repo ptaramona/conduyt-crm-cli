@@ -13,14 +13,20 @@ import (
 )
 
 func newCompaniesUpdateCompanyCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyAddress string
+	var bodyAnnualRevenue string
 	var bodyCity string
 	var bodyCountry string
 	var bodyCustomFields string
 	var bodyDescription string
 	var bodyDomain string
 	var bodyIndustry string
+	var bodyLifecycleStage string
 	var bodyName string
+	var bodyOwnerId string
+	var bodyParentCompanyId string
 	var bodyPhone string
 	var bodySize string
 	var bodyState string
@@ -32,22 +38,13 @@ func newCompaniesUpdateCompanyCmd(flags *rootFlags) *cobra.Command {
 		Use:         "update-company <id>",
 		Aliases:     []string{"update"},
 		Short:       "Update a company",
-		Example:     "  conduyt-crm-pp-cli companies update-company 550e8400-e29b-41d4-a716-446655440000 --name example-resource",
+		Example:     "  conduyt-crm-pp-cli companies update-company 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "companies.update-company", "pp:method": "PATCH", "pp:path": "/companies/{id}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("name") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "name")
-				}
 			}
 			path := "/companies/{id}"
 			if len(args) < 1 || args[0] == "" {
@@ -59,6 +56,12 @@ func newCompaniesUpdateCompanyCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -75,6 +78,9 @@ func newCompaniesUpdateCompanyCmd(flags *rootFlags) *cobra.Command {
 				body = bodyMap
 				if bodyAddress != "" {
 					bodyMap["address"] = bodyAddress
+				}
+				if bodyAnnualRevenue != "" {
+					bodyMap["annualRevenue"] = bodyAnnualRevenue
 				}
 				if bodyCity != "" {
 					bodyMap["city"] = bodyCity
@@ -98,8 +104,17 @@ func newCompaniesUpdateCompanyCmd(flags *rootFlags) *cobra.Command {
 				if bodyIndustry != "" {
 					bodyMap["industry"] = bodyIndustry
 				}
+				if bodyLifecycleStage != "" {
+					bodyMap["lifecycleStage"] = bodyLifecycleStage
+				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
+				}
+				if bodyOwnerId != "" {
+					bodyMap["ownerId"] = bodyOwnerId
+				}
+				if bodyParentCompanyId != "" {
+					bodyMap["parentCompanyId"] = bodyParentCompanyId
 				}
 				if bodyPhone != "" {
 					bodyMap["phone"] = bodyPhone
@@ -260,14 +275,20 @@ func newCompaniesUpdateCompanyCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyAddress, "address", "", "Address")
+	cmd.Flags().StringVar(&bodyAnnualRevenue, "annual-revenue", "", "Annual revenue")
 	cmd.Flags().StringVar(&bodyCity, "city", "", "City")
 	cmd.Flags().StringVar(&bodyCountry, "country", "", "Country")
-	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Custom fields")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "At most 65536 bytes (64 KiB) as UTF-8 JSON (JSON.stringify of the object); a larger object is refused (413).")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
-	cmd.Flags().StringVar(&bodyDomain, "domain", "", "Domain")
+	cmd.Flags().StringVar(&bodyDomain, "domain", "", "Trimmed and lowercased (a leading http:// or https://, www.")
 	cmd.Flags().StringVar(&bodyIndustry, "industry", "", "Industry")
+	cmd.Flags().StringVar(&bodyLifecycleStage, "lifecycle-stage", "", "Lifecycle stage")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().StringVar(&bodyOwnerId, "owner-id", "", "Owner id")
+	cmd.Flags().StringVar(&bodyParentCompanyId, "parent-company-id", "", "Must not be the company's own id; otherwise a 400.")
 	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
 	cmd.Flags().StringVar(&bodySize, "size", "", "Size")
 	cmd.Flags().StringVar(&bodyState, "state", "", "State")

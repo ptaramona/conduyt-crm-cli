@@ -12,6 +12,12 @@ import (
 )
 
 func newErrorsPromotedCmd(flags *rootFlags) *cobra.Command {
+	var bodyDigest string
+	var bodyKind string
+	var bodyMessage string
+	var bodyPagePath string
+	var bodyStack string
+	var bodyStatus string
 
 	cmd := &cobra.Command{
 		Use:         "errors",
@@ -33,6 +39,24 @@ func newErrorsPromotedCmd(flags *rootFlags) *cobra.Command {
 			// second store-backed POST-search consumer ships.
 			bodyMap := map[string]any{}
 			var body any = bodyMap
+			if bodyDigest != "" {
+				bodyMap["digest"] = bodyDigest
+			}
+			if bodyKind != "" {
+				bodyMap["kind"] = bodyKind
+			}
+			if bodyMessage != "" {
+				bodyMap["message"] = bodyMessage
+			}
+			if bodyPagePath != "" {
+				bodyMap["pagePath"] = bodyPagePath
+			}
+			if bodyStack != "" {
+				bodyMap["stack"] = bodyStack
+			}
+			if bodyStatus != "" {
+				bodyMap["status"] = bodyStatus
+			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 
 			if err != nil {
@@ -92,6 +116,12 @@ func newErrorsPromotedCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&bodyDigest, "digest", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyKind, "kind", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMessage, "message", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPagePath, "page-path", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStack, "stack", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 
 	// Wire sibling endpoints and sub-resources as subcommands
 

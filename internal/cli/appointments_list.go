@@ -12,8 +12,15 @@ import (
 )
 
 func newAppointmentsListCmd(flags *rootFlags) *cobra.Command {
+	var flagAssignedTo string
+	var flagBookingPageId string
+	var flagCalendarId string
+	var flagContactId string
+	var flagFrom string
 	var flagPage string
 	var flagPerPage int
+	var flagStatus string
+	var flagTo string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -28,8 +35,15 @@ func newAppointmentsListCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "appointments", path, map[string]string{
-				"page":     formatCLIParamValue(flagPage),
-				"per_page": formatCLIParamValue(flagPerPage),
+				"assigned_to":     formatCLIParamValue(flagAssignedTo),
+				"booking_page_id": formatCLIParamValue(flagBookingPageId),
+				"calendar_id":     formatCLIParamValue(flagCalendarId),
+				"contact_id":      formatCLIParamValue(flagContactId),
+				"from":            formatCLIParamValue(flagFrom),
+				"page":            formatCLIParamValue(flagPage),
+				"per_page":        formatCLIParamValue(flagPerPage),
+				"status":          formatCLIParamValue(flagStatus),
+				"to":              formatCLIParamValue(flagTo),
 			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -78,8 +92,15 @@ func newAppointmentsListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagBookingPageId, "booking-page-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCalendarId, "calendar-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagFrom, "from", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTo, "to", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

@@ -23,6 +23,7 @@ func newDealsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newDealsGetExportCmd(flags))
 	cmd.AddCommand(newDealsGetForecastCmd(flags))
 	cmd.AddCommand(newDealsGetInspectionCmd(flags))
+	cmd.AddCommand(newDealsGetLeadIdCmd(flags))
 	cmd.AddCommand(newDealsGetViewsCmd(flags))
 	cmd.AddCommand(newDealsGetViewsIdCmd(flags))
 	cmd.AddCommand(newDealsListCmd(flags))

@@ -13,6 +13,12 @@ import (
 )
 
 func newImportsProcessImportCmd(flags *rootFlags) *cobra.Command {
+	var bodyEnrollAdditionalCampaign string
+	var bodyHeaders string
+	var bodyReenrollActiveContacts string
+	var bodyRows string
+	var bodyTotalRows string
+	var bodyWorkflowPreflightOnly string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +57,24 @@ func newImportsProcessImportCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyEnrollAdditionalCampaign != "" {
+					bodyMap["enrollAdditionalCampaign"] = bodyEnrollAdditionalCampaign
+				}
+				if bodyHeaders != "" {
+					bodyMap["headers"] = bodyHeaders
+				}
+				if bodyReenrollActiveContacts != "" {
+					bodyMap["reenrollActiveContacts"] = bodyReenrollActiveContacts
+				}
+				if bodyRows != "" {
+					bodyMap["rows"] = bodyRows
+				}
+				if bodyTotalRows != "" {
+					bodyMap["totalRows"] = bodyTotalRows
+				}
+				if bodyWorkflowPreflightOnly != "" {
+					bodyMap["workflowPreflightOnly"] = bodyWorkflowPreflightOnly
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +219,12 @@ func newImportsProcessImportCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyEnrollAdditionalCampaign, "enroll-additional-campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyHeaders, "headers", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReenrollActiveContacts, "reenroll-active-contacts", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyRows, "rows", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTotalRows, "total-rows", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyWorkflowPreflightOnly, "workflow-preflight-only", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

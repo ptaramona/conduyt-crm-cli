@@ -13,6 +13,14 @@ import (
 )
 
 func newGeneratedDocumentsSendPostGeneratedDocumentsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyBody string
+	var bodyOverrideReason string
+	var bodyOverrideRecipient string
+	var bodyResendAcknowledged string
+	var bodySubject string
+	var bodyTo string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -37,6 +45,12 @@ func newGeneratedDocumentsSendPostGeneratedDocumentsIdCmd(flags *rootFlags) *cob
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +65,24 @@ func newGeneratedDocumentsSendPostGeneratedDocumentsIdCmd(flags *rootFlags) *cob
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBody != "" {
+					bodyMap["body"] = bodyBody
+				}
+				if bodyOverrideReason != "" {
+					bodyMap["overrideReason"] = bodyOverrideReason
+				}
+				if bodyOverrideRecipient != "" {
+					bodyMap["overrideRecipient"] = bodyOverrideRecipient
+				}
+				if bodyResendAcknowledged != "" {
+					bodyMap["resendAcknowledged"] = bodyResendAcknowledged
+				}
+				if bodySubject != "" {
+					bodyMap["subject"] = bodySubject
+				}
+				if bodyTo != "" {
+					bodyMap["to"] = bodyTo
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +227,14 @@ func newGeneratedDocumentsSendPostGeneratedDocumentsIdCmd(flags *rootFlags) *cob
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyBody, "body", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyOverrideReason, "override-reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyOverrideRecipient, "override-recipient", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyResendAcknowledged, "resend-acknowledged", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySubject, "subject", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

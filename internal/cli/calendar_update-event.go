@@ -13,6 +13,15 @@ import (
 )
 
 func newCalendarUpdateEventCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAllDay string
+	var bodyAttendees string
+	var bodyDescription string
+	var bodyEndAt string
+	var bodyLocation string
+	var bodyStartAt string
+	var bodyTitle string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -37,6 +46,12 @@ func newCalendarUpdateEventCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +66,27 @@ func newCalendarUpdateEventCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAllDay != "" {
+					bodyMap["allDay"] = bodyAllDay
+				}
+				if bodyAttendees != "" {
+					bodyMap["attendees"] = bodyAttendees
+				}
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyEndAt != "" {
+					bodyMap["endAt"] = bodyEndAt
+				}
+				if bodyLocation != "" {
+					bodyMap["location"] = bodyLocation
+				}
+				if bodyStartAt != "" {
+					bodyMap["startAt"] = bodyStartAt
+				}
+				if bodyTitle != "" {
+					bodyMap["title"] = bodyTitle
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +231,15 @@ func newCalendarUpdateEventCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAllDay, "all-day", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttendees, "attendees", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEndAt, "end-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLocation, "location", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStartAt, "start-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTitle, "title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

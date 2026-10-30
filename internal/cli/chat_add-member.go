@@ -13,30 +13,20 @@ import (
 )
 
 func newChatAddMemberCmd(flags *rootFlags) *cobra.Command {
-	var bodyRole string
-	var bodyUserId string
+	var bodyUserIds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "add-member <id>",
 		Aliases:     []string{"create"},
 		Short:       "Add a member to a channel",
-		Example:     "  conduyt-crm-pp-cli chat add-member 550e8400-e29b-41d4-a716-446655440000 --user-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli chat add-member 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "chat.add-member", "pp:method": "POST", "pp:path": "/chat/channels/{id}/members"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("user-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "user-id")
-				}
 			}
 			path := "/chat/channels/{id}/members"
 			if len(args) < 1 || args[0] == "" {
@@ -62,11 +52,8 @@ func newChatAddMemberCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyRole != "" {
-					bodyMap["role"] = bodyRole
-				}
-				if bodyUserId != "" {
-					bodyMap["userId"] = bodyUserId
+				if bodyUserIds != "" {
+					bodyMap["userIds"] = bodyUserIds
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -212,8 +199,7 @@ func newChatAddMemberCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyRole, "role", "member", "Role")
-	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "User id")
+	cmd.Flags().StringVar(&bodyUserIds, "user-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

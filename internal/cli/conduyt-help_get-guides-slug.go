@@ -11,21 +11,30 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newCalendarMicrosoftCallbackCmd(flags *rootFlags) *cobra.Command {
+func newConduytHelpGetGuidesSlugCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:         "microsoft-callback",
-		Short:       "Microsoft Calendar OAuth callback",
-		Example:     "  conduyt-crm-pp-cli calendar microsoft-callback",
-		Annotations: map[string]string{"pp:endpoint": "calendar.microsoft-callback", "pp:method": "GET", "pp:path": "/calendar/callback/microsoft", "mcp:read-only": "true"},
+		Use:     "get-guides-slug <slug>",
+		Aliases: []string{"get"},
+		Short:   "Get help guides slug",
+		// TODO: replace placeholder example values before relying on this for live dogfood.
+		Example:     "  conduyt-crm-pp-cli conduyt-help get-guides-slug example-value",
+		Annotations: map[string]string{"pp:endpoint": "conduyt-help.get-guides-slug", "pp:method": "GET", "pp:path": "/help/guides/{slug}", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := "/calendar/callback/microsoft"
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+			path := "/help/guides/{slug}"
+			if len(args) < 1 || args[0] == "" {
+				return usageErr(fmt.Errorf("slug is required\nUsage: %s <%s>", cmd.CommandPath(), "slug"))
+			}
+			path = replacePathParam(path, "slug", args[0])
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "calendar", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "conduyt-help", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}

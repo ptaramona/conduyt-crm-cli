@@ -18,6 +18,7 @@ func newConduytAuthCmd(flags *rootFlags) *cobra.Command {
 
 	cmd.AddCommand(newConduytAuthAcceptInviteCmd(flags))
 	cmd.AddCommand(newConduytAuthChangePasswordCmd(flags))
+	cmd.AddCommand(newConduytAuthConfirmSsoSignupCmd(flags))
 	cmd.AddCommand(newConduytAuthDeleteSessionsCmd(flags))
 	cmd.AddCommand(newConduytAuthForgotPasswordCmd(flags))
 	cmd.AddCommand(newConduytAuthGetLoginHistoryCmd(flags))
@@ -35,8 +36,12 @@ func newConduytAuthCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newConduytAuthPostMfaSetupCmd(flags))
 	cmd.AddCommand(newConduytAuthPostMfaVerifyCmd(flags))
 	cmd.AddCommand(newConduytAuthPostSandboxKeyCmd(flags))
+	cmd.AddCommand(newConduytAuthPostSignupEventsCmd(flags))
+	cmd.AddCommand(newConduytAuthReadSsoSignupConsentCmd(flags))
 	cmd.AddCommand(newConduytAuthRegisterCmd(flags))
 	cmd.AddCommand(newConduytAuthResetPasswordCmd(flags))
+	cmd.AddCommand(newConduytAuthStartGoogleSignupCmd(flags))
+	cmd.AddCommand(newConduytAuthStartMicrosoftSignupCmd(flags))
 	cmd.AddCommand(newConduytAuthSwitchAccountCmd(flags))
 	return cmd
 }

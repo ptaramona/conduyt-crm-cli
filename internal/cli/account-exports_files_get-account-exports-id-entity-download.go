@@ -12,6 +12,7 @@ import (
 )
 
 func newAccountExportsFilesGetAccountExportsIdEntityDownloadCmd(flags *rootFlags) *cobra.Command {
+	var flagPart int
 
 	cmd := &cobra.Command{
 		Use:     "get-account-exports-id-entity-download <id> <entity>",
@@ -41,6 +42,9 @@ func newAccountExportsFilesGetAccountExportsIdEntityDownloadCmd(flags *rootFlags
 				"X-Printing-Press-Binary-Response": "true",
 			}
 			params := map[string]string{}
+			if flagPart != 0 {
+				params["part"] = formatCLIParamValue(flagPart)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "files", false, path, params, headerOverrides, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -58,6 +62,7 @@ func newAccountExportsFilesGetAccountExportsIdEntityDownloadCmd(flags *rootFlags
 			return err
 		},
 	}
+	cmd.Flags().IntVar(&flagPart, "part", 0, "Query parameter read by this route.")
 
 	return cmd
 }

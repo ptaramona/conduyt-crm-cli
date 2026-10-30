@@ -9,20 +9,29 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newAiComposeEmailCmd(flags *rootFlags) *cobra.Command {
-	var bodyContactId string
-	var bodyPrompt string
+	var bodyCompanyName string
+	var bodyContactCompany string
+	var bodyContactEmail string
+	var bodyContactName string
+	var bodyContactTitle string
+	var bodyDealStage string
+	var bodyDealValue float64
+	var bodyPreviousMessages string
+	var bodyPurpose string
+	var bodySenderName string
+	var bodySenderTitle string
 	var bodyTone string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:   "compose-email",
-		Short: "AI-assisted email composition",
-		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli ai compose-email --prompt example-value",
+		Use:         "compose-email",
+		Short:       "AI-assisted email composition",
+		Example:     "  conduyt-crm-pp-cli ai compose-email --company-name example-resource",
 		Annotations: map[string]string{"pp:endpoint": "ai.compose-email", "pp:method": "POST", "pp:path": "/ai/compose-email"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -32,8 +41,17 @@ func newAiComposeEmailCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("prompt") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "prompt")
+				if !cmd.Flags().Changed("company-name") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "company-name")
+				}
+				if !cmd.Flags().Changed("contact-name") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contact-name")
+				}
+				if !cmd.Flags().Changed("purpose") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "purpose")
+				}
+				if !cmd.Flags().Changed("sender-name") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "sender-name")
 				}
 			}
 			path := "/ai/compose-email"
@@ -56,11 +74,42 @@ func newAiComposeEmailCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContactId != "" {
-					bodyMap["contactId"] = bodyContactId
+				if bodyCompanyName != "" {
+					bodyMap["companyName"] = bodyCompanyName
 				}
-				if bodyPrompt != "" {
-					bodyMap["prompt"] = bodyPrompt
+				if bodyContactCompany != "" {
+					bodyMap["contactCompany"] = bodyContactCompany
+				}
+				if bodyContactEmail != "" {
+					bodyMap["contactEmail"] = bodyContactEmail
+				}
+				if bodyContactName != "" {
+					bodyMap["contactName"] = bodyContactName
+				}
+				if bodyContactTitle != "" {
+					bodyMap["contactTitle"] = bodyContactTitle
+				}
+				if bodyDealStage != "" {
+					bodyMap["dealStage"] = bodyDealStage
+				}
+				if bodyDealValue != 0.0 {
+					bodyMap["dealValue"] = bodyDealValue
+				}
+				if bodyPreviousMessages != "" {
+					parsedPreviousMessages, parseErr := cliutil.ParseStringList(bodyPreviousMessages)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --previous-messages list: %w", parseErr)
+					}
+					bodyMap["previousMessages"] = parsedPreviousMessages
+				}
+				if bodyPurpose != "" {
+					bodyMap["purpose"] = bodyPurpose
+				}
+				if bodySenderName != "" {
+					bodyMap["senderName"] = bodySenderName
+				}
+				if bodySenderTitle != "" {
+					bodyMap["senderTitle"] = bodySenderTitle
 				}
 				if bodyTone != "" {
 					bodyMap["tone"] = bodyTone
@@ -209,8 +258,17 @@ func newAiComposeEmailCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&bodyPrompt, "prompt", "", "Prompt")
+	cmd.Flags().StringVar(&bodyCompanyName, "company-name", "", "Company name")
+	cmd.Flags().StringVar(&bodyContactCompany, "contact-company", "", "Contact company")
+	cmd.Flags().StringVar(&bodyContactEmail, "contact-email", "", "The pattern above is the server's rule (Zod's email check). It accepts a domain label that ends in a hyphen (a@b-.")
+	cmd.Flags().StringVar(&bodyContactName, "contact-name", "", "Contact name")
+	cmd.Flags().StringVar(&bodyContactTitle, "contact-title", "", "Contact title")
+	cmd.Flags().StringVar(&bodyDealStage, "deal-stage", "", "Deal stage")
+	cmd.Flags().Float64Var(&bodyDealValue, "deal-value", 0.0, "Deal value")
+	cmd.Flags().StringVar(&bodyPreviousMessages, "previous-messages", "", "Previous messages")
+	cmd.Flags().StringVar(&bodyPurpose, "purpose", "", "Purpose")
+	cmd.Flags().StringVar(&bodySenderName, "sender-name", "", "Sender name")
+	cmd.Flags().StringVar(&bodySenderTitle, "sender-title", "", "Sender title")
 	cmd.Flags().StringVar(&bodyTone, "tone", "", "Tone")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

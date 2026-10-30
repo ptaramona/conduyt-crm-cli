@@ -13,6 +13,8 @@ import (
 )
 
 func newDialerPostQueueNextCmd(flags *rootFlags) *cobra.Command {
+	var flagSmartViewId string
+	var bodySmartViewId2 string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -29,6 +31,9 @@ func newDialerPostQueueNextCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagSmartViewId != "" {
+				params["smartViewId"] = formatCLIParamValue(flagSmartViewId)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +48,9 @@ func newDialerPostQueueNextCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodySmartViewId2 != "" {
+					bodyMap["smartViewId"] = bodySmartViewId2
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +195,8 @@ func newDialerPostQueueNextCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagSmartViewId, "smart-view-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&bodySmartViewId2, "smart-view-id-2", "", "Smart view id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

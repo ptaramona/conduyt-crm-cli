@@ -13,15 +13,25 @@ import (
 )
 
 func newSettingsPutWhatsappCmd(flags *rootFlags) *cobra.Command {
+	var bodySenderSid string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "put-whatsapp",
 		Short:       "Update settings whatsapp",
-		Example:     "  conduyt-crm-pp-cli settings put-whatsapp",
+		Example:     "  conduyt-crm-pp-cli settings put-whatsapp --sender-sid 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "settings.put-whatsapp", "pp:method": "PUT", "pp:path": "/settings/whatsapp"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("sender-sid") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "sender-sid")
+				}
 			}
 			path := "/settings/whatsapp"
 			c, err := flags.newClient()
@@ -43,6 +53,9 @@ func newSettingsPutWhatsappCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodySenderSid != "" {
+					bodyMap["senderSid"] = bodySenderSid
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +200,7 @@ func newSettingsPutWhatsappCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodySenderSid, "sender-sid", "", "Sender sid")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

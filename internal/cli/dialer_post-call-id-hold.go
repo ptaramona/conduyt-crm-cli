@@ -13,6 +13,7 @@ import (
 )
 
 func newDialerPostCallIdHoldCmd(flags *rootFlags) *cobra.Command {
+	var bodyHeld bool
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -50,6 +51,9 @@ func newDialerPostCallIdHoldCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("held") {
+					bodyMap["held"] = bodyHeld
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +198,7 @@ func newDialerPostCallIdHoldCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&bodyHeld, "held", false, "true puts the customer on hold, false takes the customer off hold.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

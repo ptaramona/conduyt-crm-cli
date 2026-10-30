@@ -13,7 +13,12 @@ import (
 )
 
 func newSmartListsCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDescription string
+	var bodyFilters string
 	var bodyName string
+	var bodyType string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -39,6 +44,12 @@ func newSmartListsCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -53,8 +64,21 @@ func newSmartListsCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyFilters != "" {
+					var parsedFilters any
+					if err := json.Unmarshal([]byte(bodyFilters), &parsedFilters); err != nil {
+						return fmt.Errorf("parsing --filters JSON: %w", err)
+					}
+					bodyMap["filters"] = parsedFilters
+				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
+				}
+				if bodyType != "" {
+					bodyMap["type"] = bodyType
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -200,7 +224,12 @@ func newSmartListsCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFilters, "filters", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().StringVar(&bodyType, "type", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

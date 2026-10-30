@@ -77,20 +77,38 @@ func TestCheckEmailSendBodyKeys(t *testing.T) {
 	}
 }
 
-// specSendProps returns the property schemas of POST /email/send from upstream/openapi.yaml.
-func specSendProps(t *testing.T) map[string]struct {
+// specSendProp is one send-body property of upstream/openapi.yaml. reprint637: the full public document writes a nullable
+// field as anyOf [string-with-bounds, null], so the bounds are read from the string branch when the property has none itself.
+type specSendProp struct {
 	MaxLength int    `yaml:"maxLength"`
 	Pattern   string `yaml:"pattern"`
-} {
+	AnyOf     []struct {
+		Type      any    `yaml:"type"`
+		MaxLength int    `yaml:"maxLength"`
+		Pattern   string `yaml:"pattern"`
+	} `yaml:"anyOf"`
+}
+
+func (p specSendProp) bounds() (int, string) {
+	if p.MaxLength != 0 || p.Pattern != "" {
+		return p.MaxLength, p.Pattern
+	}
+	for _, b := range p.AnyOf {
+		if b.Type == "string" {
+			return b.MaxLength, b.Pattern
+		}
+	}
+	return 0, ""
+}
+
+// specSendProps returns the property schemas of POST /email/send from upstream/openapi.yaml.
+func specSendProps(t *testing.T) map[string]specSendProp {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "upstream", "openapi.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	type prop = struct {
-		MaxLength int    `yaml:"maxLength"`
-		Pattern   string `yaml:"pattern"`
-	}
+	type prop = specSendProp
 	var doc struct {
 		Paths map[string]map[string]struct {
 			RequestBody struct {
@@ -124,9 +142,9 @@ func TestEmailSendLimitsMatchPublicSpec(t *testing.T) {
 		"replyTo":      {"replyTo", 0, EmailSendReplyToRE},
 		"sendDomainId": {"sendDomainId", 0, EmailSendSendDomainRE},
 	} {
-		got := p[c.prop]
-		if got.MaxLength != c.max || got.Pattern != c.pattern {
-			t.Errorf("%s: code has maxLength=%d pattern=%q, spec has maxLength=%d pattern=%q", name, c.max, c.pattern, got.MaxLength, got.Pattern)
+		gotMax, gotPattern := p[c.prop].bounds()
+		if gotMax != c.max || gotPattern != c.pattern {
+			t.Errorf("%s: code has maxLength=%d pattern=%q, spec has maxLength=%d pattern=%q", name, c.max, c.pattern, gotMax, gotPattern)
 		}
 	}
 }
@@ -250,10 +268,7 @@ func TestEveryBoundedSendFieldCountsUTF16(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	type prop struct {
-		MaxLength int    `yaml:"maxLength"`
-		Pattern   string `yaml:"pattern"`
-	}
+	type prop = specSendProp
 	var doc struct {
 		Paths map[string]map[string]struct {
 			RequestBody struct {
@@ -269,11 +284,11 @@ func TestEveryBoundedSendFieldCountsUTF16(t *testing.T) {
 		t.Fatal(err)
 	}
 	dotRepeat := regexp.MustCompile(`\.\{(\d+),(\d+)\}`)
-	seen := 0
+	seen, seenBulk := 0, 0
 	for _, path := range []string{"/email/send", "/email/send-bulk"} {
 		for name, p := range doc.Paths[path]["post"].RequestBody.Content["application/json"].Schema.Properties {
-			max := p.MaxLength
-			if m := dotRepeat.FindStringSubmatch(p.Pattern); m != nil {
+			max, pattern := p.bounds()
+			if m := dotRepeat.FindStringSubmatch(pattern); m != nil {
 				hi, _ := strconv.Atoi(m[2])
 				max = hi + 2 // the \S on each side of the repeat
 			}
@@ -281,6 +296,22 @@ func TestEveryBoundedSendFieldCountsUTF16(t *testing.T) {
 				continue
 			}
 			seen++
+			if path == "/email/send-bulk" {
+				// reprint637: send-bulk's bounded field is replyTo, checked by its own helper
+				if name != "replyTo" {
+					t.Errorf("%s %s is bounded by the spec (%d units) and has no UTF-16 length check here", path, name, max)
+					continue
+				}
+				seenBulk++
+				fits, over := strings.Repeat("\U0001F600", max/2), strings.Repeat("\U0001F600", max/2+1)
+				if err := CheckEmailSendBulkReplyTo(fits); err != nil {
+					t.Errorf("send-bulk replyTo: %d units refused: %v", max, err)
+				}
+				if err := CheckEmailSendBulkReplyTo(over); err == nil {
+					t.Errorf("send-bulk replyTo: %d units accepted", max+2)
+				}
+				continue
+			}
 			c, ok := lengthSetters[name]
 			if path != "/email/send" || !ok {
 				t.Errorf("%s %s is bounded by the spec (%d units) and has no UTF-16 length check here", path, name, max)
@@ -298,7 +329,10 @@ func TestEveryBoundedSendFieldCountsUTF16(t *testing.T) {
 			}
 		}
 	}
-	if seen < len(lengthSetters) {
+	if seenBulk != 1 {
+		t.Errorf("spec shows %d bounded send-bulk fields, want 1 (replyTo)", seenBulk)
+	}
+	if seen-seenBulk < len(lengthSetters) {
 		t.Errorf("spec shows %d bounded send fields, the setters cover %d: a bound was dropped or the scan is blind", seen, len(lengthSetters))
 	}
 }

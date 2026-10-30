@@ -12,16 +12,31 @@ import (
 )
 
 func newDialerGetCallIdMediaCmd(flags *rootFlags) *cobra.Command {
+	var flagDownload bool
+	var flagSid string
+	var flagType string
 
 	cmd := &cobra.Command{
 		Use:         "get-call-id-media <id>",
-		Aliases:     []string{"get"},
 		Short:       "Get dialer call id media",
 		Example:     "  conduyt-crm-pp-cli dialer get-call-id-media 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "dialer.get-call-id-media", "pp:method": "GET", "pp:path": "/dialer/call/{id}/media", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if cmd.Flags().Changed("type") {
+				allowedType := []string{"recording", "voicemail"}
+				validType := false
+				for _, v := range allowedType {
+					if flagType == v {
+						validType = true
+						break
+					}
+				}
+				if !validType {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagType, "type", allowedType)
+				}
 			}
 			path := "/dialer/call/{id}/media"
 			if len(args) < 1 || args[0] == "" {
@@ -32,55 +47,40 @@ func newDialerGetCallIdMediaCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			headerOverrides := map[string]string{
+				"Accept":                           "application/octet-stream",
+				"X-Printing-Press-Binary-Response": "true",
+			}
 			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
+			if flagDownload != false {
+				params["download"] = formatCLIParamValue(flagDownload)
+			}
+			if flagSid != "" {
+				params["sid"] = formatCLIParamValue(flagSid)
+			}
+			if flagType != "" {
+				params["type"] = formatCLIParamValue(flagType)
+			}
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, headerOverrides, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
-			// Print provenance to stderr for human-facing output only.
-			// Machine-format flags (--json, --csv, --compact, --quiet, --plain,
-			// --select) and piped stdout suppress this line; the JSON envelope
-			// already carries meta.source for those consumers.
-			// SYNC: keep this gate aligned with command_promoted.go.tmpl.
-			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var countItems []json.RawMessage
-				_ = json.Unmarshal(data, &countItems)
-				printProvenance(cmd, len(countItems), prov)
+			_ = json.Valid
+			_ = os.Stderr
+			_ = prov
+			if flags.quiet {
+				return nil
 			}
-			// For JSON output, wrap with provenance envelope before passing through flags.
-			// --select wins over --compact when both are set; --compact only runs when
-			// no explicit fields were requested. Explicit format flags (--csv, --quiet,
-			// --plain) opt out of the auto-JSON path so piped consumers that asked for
-			// a non-JSON format reach the standard pipeline below.
-			if flags.asJSON || (!isTerminal(cmd.OutOrStdout()) && !flags.csv && !flags.quiet && !flags.plain) {
-				filtered := data
-				if flags.selectFields != "" {
-					filtered = filterFields(filtered, flags.selectFields)
-				} else if flags.compact {
-					filtered = compactFields(filtered)
-				}
-				wrapped, wrapErr := wrapWithProvenance(filtered, prov)
-				if wrapErr != nil {
-					return wrapErr
-				}
-				return printOutput(cmd.OutOrStdout(), wrapped, true)
+			if flags.asJSON || flags.csv || flags.compact || flags.plain || flags.selectFields != "" {
+				return fmt.Errorf("binary response cannot be rendered as structured output; redirect stdout or use --deliver file:<path>")
 			}
-			// For all other output modes (table, csv, plain, quiet), use the standard pipeline
-			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var items []map[string]any
-				if json.Unmarshal(data, &items) == nil && len(items) > 0 {
-					if err := printAutoTable(cmd.OutOrStdout(), items); err != nil {
-						return err
-					}
-					if len(items) >= 25 {
-						fmt.Fprintf(os.Stderr, "\nShowing %d results. To narrow: add --limit, --json --select, or filter flags.\n", len(items))
-					}
-					return nil
-				}
-			}
-			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
+			_, err = cmd.OutOrStdout().Write(data)
+			return err
 		},
 	}
+	cmd.Flags().BoolVar(&flagDownload, "download", false, "boolean — 1 or true (case-insensitive): answer with Content-Disposition")
+	cmd.Flags().StringVar(&flagSid, "sid", "", "#419: one recording of a call that has several (a `recordings[].")
+	cmd.Flags().StringVar(&flagType, "type", "", "Which media of the call: recording (default) or voicemail. (one of: recording, voicemail)")
 
 	return cmd
 }

@@ -15,7 +15,7 @@ func newUsersGetMeCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "get-me",
-		Short:       "List users me",
+		Short:       "Returns the same response as GET /auth/me — this route re-exports that handler, so the two are identical, byte for byte",
 		Example:     "  conduyt-crm-pp-cli users get-me",
 		Annotations: map[string]string{"pp:endpoint": "users.get-me", "pp:method": "GET", "pp:path": "/users/me", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {

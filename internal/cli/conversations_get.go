@@ -12,6 +12,11 @@ import (
 )
 
 func newConversationsGetCmd(flags *rootFlags) *cobra.Command {
+	var flagAround string
+	var flagChannel string
+	var flagCursor string
+	var flagPerPage int
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get <contactId>",
@@ -31,8 +36,12 @@ func newConversationsGetCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "conversations", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "conversations", path, map[string]string{
+				"around":   formatCLIParamValue(flagAround),
+				"channel":  formatCLIParamValue(flagChannel),
+				"cursor":   formatCLIParamValue(flagCursor),
+				"per_page": formatCLIParamValue(flagPerPage),
+			}, nil, flagAll, "cursor", "cursor", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -80,6 +89,11 @@ func newConversationsGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagAround, "around", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagChannel, "channel", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

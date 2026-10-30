@@ -14,27 +14,19 @@ import (
 
 func newAiChatCmd(flags *rootFlags) *cobra.Command {
 	var bodyContext string
-	var bodyMessage string
+	var bodyMessages string
+	var bodySectionId string
+	var bodySectionType string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:     "chat",
-		Aliases: []string{"create"},
-		Short:   "AI chat assistant",
-		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli ai chat --message example-value",
+		Use:         "chat",
+		Aliases:     []string{"create"},
+		Short:       "AI chat assistant",
+		Example:     "  conduyt-crm-pp-cli ai chat",
 		Annotations: map[string]string{"pp:endpoint": "ai.chat", "pp:method": "POST", "pp:path": "/ai/chat"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("message") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "message")
-				}
 			}
 			path := "/ai/chat"
 			c, err := flags.newClient()
@@ -63,8 +55,24 @@ func newAiChatCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["context"] = parsedContext
 				}
-				if bodyMessage != "" {
-					bodyMap["message"] = bodyMessage
+				if bodyMessages != "" {
+					var parsedMessages any
+					if err := json.Unmarshal([]byte(bodyMessages), &parsedMessages); err != nil {
+						return fmt.Errorf("parsing --messages JSON: %w", err)
+					}
+					bodyMap["messages"] = parsedMessages
+				}
+				{
+					nestedSection := map[string]any{}
+					if bodySectionId != "" {
+						nestedSection["id"] = bodySectionId
+					}
+					if bodySectionType != "" {
+						nestedSection["type"] = bodySectionType
+					}
+					if len(nestedSection) > 0 {
+						bodyMap["section"] = nestedSection
+					}
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -211,7 +219,9 @@ func newAiChatCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyContext, "context", "", "Context")
-	cmd.Flags().StringVar(&bodyMessage, "message", "", "Message")
+	cmd.Flags().StringVar(&bodyMessages, "messages", "", "The conversation so far, oldest first: 1 to 20 messages, each with a role and non-empty content.")
+	cmd.Flags().StringVar(&bodySectionId, "section-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySectionType, "section-type", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

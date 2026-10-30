@@ -12,6 +12,14 @@ import (
 )
 
 func newPlaybookEnrollmentsGetCmd(flags *rootFlags) *cobra.Command {
+	var flagContactId string
+	var flagCursor string
+	var flagHistory bool
+	var flagLimit int
+	var flagOffset string
+	var flagPlaybookId string
+	var flagStatus string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get",
@@ -25,8 +33,15 @@ func newPlaybookEnrollmentsGetCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "playbook-enrollments", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "playbook-enrollments", path, map[string]string{
+				"contactId":  formatCLIParamValue(flagContactId),
+				"cursor":     formatCLIParamValue(flagCursor),
+				"history":    formatCLIParamValue(flagHistory),
+				"limit":      formatCLIParamValue(flagLimit),
+				"offset":     formatCLIParamValue(flagOffset),
+				"playbookId": formatCLIParamValue(flagPlaybookId),
+				"status":     formatCLIParamValue(flagStatus),
+			}, nil, flagAll, "cursor", "cursor", "limit", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -74,6 +89,14 @@ func newPlaybookEnrollmentsGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagHistory, "history", false, "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 0, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOffset, "offset", "0", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPlaybookId, "playbook-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

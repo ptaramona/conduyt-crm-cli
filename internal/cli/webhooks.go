@@ -22,6 +22,7 @@ func newWebhooksCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newWebhooksGetCmd(flags))
 	cmd.AddCommand(newWebhooksInboundContactCmd(flags))
 	cmd.AddCommand(newWebhooksInboundDealCmd(flags))
+	cmd.AddCommand(newWebhooksInboundFormSubmissionCmd(flags))
 	cmd.AddCommand(newWebhooksListCmd(flags))
 	cmd.AddCommand(newWebhooksListDeliveriesCmd(flags))
 	cmd.AddCommand(newWebhooksListEndpointsCmd(flags))

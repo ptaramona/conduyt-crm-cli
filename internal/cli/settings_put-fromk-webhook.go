@@ -13,15 +13,26 @@ import (
 )
 
 func newSettingsPutFromkWebhookCmd(flags *rootFlags) *cobra.Command {
+	var bodySecret string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:         "put-fromk-webhook",
-		Short:       "Update settings fromk webhook",
-		Example:     "  conduyt-crm-pp-cli settings put-fromk-webhook",
+		Use:   "put-fromk-webhook",
+		Short: "Update settings fromk webhook",
+		// TODO: replace placeholder example values before relying on this for live dogfood.
+		Example:     "  conduyt-crm-pp-cli settings put-fromk-webhook --secret example-value",
 		Annotations: map[string]string{"pp:endpoint": "settings.put-fromk-webhook", "pp:method": "PUT", "pp:path": "/settings/fromk/webhook"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("secret") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "secret")
+				}
 			}
 			path := "/settings/fromk/webhook"
 			c, err := flags.newClient()
@@ -43,6 +54,9 @@ func newSettingsPutFromkWebhookCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodySecret != "" {
+					bodyMap["secret"] = bodySecret
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +201,7 @@ func newSettingsPutFromkWebhookCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodySecret, "secret", "", "Secret")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

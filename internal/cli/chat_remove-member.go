@@ -6,15 +6,13 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newChatRemoveMemberCmd(flags *rootFlags) *cobra.Command {
-	var bodyUserId string
-	var stdinBody bool
+	var flagUserId string
 
 	cmd := &cobra.Command{
 		Use:         "remove-member <id>",
@@ -22,19 +20,8 @@ func newChatRemoveMemberCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli chat remove-member 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "chat.remove-member", "pp:method": "DELETE", "pp:path": "/chat/channels/{id}/members"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if len(args) == 0 {
 				return cmd.Help()
-			}
-			if !stdinBody {
-				if !cmd.Flags().Changed("user-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "user-id")
-				}
 			}
 			path := "/chat/channels/{id}/members"
 			if len(args) < 1 || args[0] == "" {
@@ -45,25 +32,11 @@ func newChatRemoveMemberCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			var body any
-			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return fmt.Errorf("reading stdin: %w", err)
-				}
-				var jsonBody map[string]any
-				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
-					return fmt.Errorf("parsing stdin JSON: %w", err)
-				}
-				body = jsonBody
-			} else {
-				bodyMap := map[string]any{}
-				body = bodyMap
-				if bodyUserId != "" {
-					bodyMap["userId"] = bodyUserId
-				}
+			params := map[string]string{}
+			if flagUserId != "" {
+				params["userId"] = formatCLIParamValue(flagUserId)
 			}
-			data, statusCode, err := c.DeleteWithBody(cmd.Context(), path, body)
+			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
 			if err != nil {
 				return classifyDeleteError(err, flags)
 			}
@@ -203,8 +176,7 @@ func newChatRemoveMemberCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "User id")
-	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "Query parameter read by this route.")
 
 	return cmd
 }

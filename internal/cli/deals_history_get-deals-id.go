@@ -12,6 +12,11 @@ import (
 )
 
 func newDealsHistoryGetDealsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagLimit int
+	var flagOrder string
+	var flagPage string
+	var flagPerPage int
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-deals-id <id>",
@@ -32,8 +37,12 @@ func newDealsHistoryGetDealsIdCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "history", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "history", path, map[string]string{
+				"limit":    formatCLIParamValue(flagLimit),
+				"order":    formatCLIParamValue(flagOrder),
+				"page":     formatCLIParamValue(flagPage),
+				"per_page": formatCLIParamValue(flagPerPage),
+			}, nil, flagAll, "page", "page", "limit", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -81,6 +90,11 @@ func newDealsHistoryGetDealsIdCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().IntVar(&flagLimit, "limit", 0, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOrder, "order", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 0, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

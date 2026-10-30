@@ -13,6 +13,22 @@ import (
 )
 
 func newDialerPatchCallIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyAppointmentAt string
+	var bodyAppointmentDurationMinutes string
+	var bodyAudioWarningActive string
+	var bodyAudioWarningCleared string
+	var bodyAudioWarningName string
+	var bodyAudioWarningNonce string
+	var bodyAudioWarningSecondsIntoCall string
+	var bodyAudioWarningSeq string
+	var bodyCallbackAt string
+	var bodyDisposition string
+	var bodyDuration string
+	var bodyNotes string
+	var bodyProviderCallRef string
+	var bodyStatus string
+	var bodyVoicemailDeletedAt string
+	var bodyVoicemailReadAt string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +67,60 @@ func newDialerPatchCallIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAppointmentAt != "" {
+					bodyMap["appointmentAt"] = bodyAppointmentAt
+				}
+				if bodyAppointmentDurationMinutes != "" {
+					bodyMap["appointmentDurationMinutes"] = bodyAppointmentDurationMinutes
+				}
+				{
+					nestedAudioWarning := map[string]any{}
+					if bodyAudioWarningActive != "" {
+						nestedAudioWarning["active"] = bodyAudioWarningActive
+					}
+					if bodyAudioWarningCleared != "" {
+						nestedAudioWarning["cleared"] = bodyAudioWarningCleared
+					}
+					if bodyAudioWarningName != "" {
+						nestedAudioWarning["name"] = bodyAudioWarningName
+					}
+					if bodyAudioWarningNonce != "" {
+						nestedAudioWarning["nonce"] = bodyAudioWarningNonce
+					}
+					if bodyAudioWarningSecondsIntoCall != "" {
+						nestedAudioWarning["secondsIntoCall"] = bodyAudioWarningSecondsIntoCall
+					}
+					if bodyAudioWarningSeq != "" {
+						nestedAudioWarning["seq"] = bodyAudioWarningSeq
+					}
+					if len(nestedAudioWarning) > 0 {
+						bodyMap["audioWarning"] = nestedAudioWarning
+					}
+				}
+				if bodyCallbackAt != "" {
+					bodyMap["callbackAt"] = bodyCallbackAt
+				}
+				if bodyDisposition != "" {
+					bodyMap["disposition"] = bodyDisposition
+				}
+				if bodyDuration != "" {
+					bodyMap["duration"] = bodyDuration
+				}
+				if bodyNotes != "" {
+					bodyMap["notes"] = bodyNotes
+				}
+				if bodyProviderCallRef != "" {
+					bodyMap["providerCallRef"] = bodyProviderCallRef
+				}
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
+				}
+				if bodyVoicemailDeletedAt != "" {
+					bodyMap["voicemailDeletedAt"] = bodyVoicemailDeletedAt
+				}
+				if bodyVoicemailReadAt != "" {
+					bodyMap["voicemailReadAt"] = bodyVoicemailReadAt
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +265,22 @@ func newDialerPatchCallIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAppointmentAt, "appointment-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAppointmentDurationMinutes, "appointment-duration-minutes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAudioWarningActive, "audio-warning-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAudioWarningCleared, "audio-warning-cleared", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAudioWarningName, "audio-warning-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAudioWarningNonce, "audio-warning-nonce", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAudioWarningSecondsIntoCall, "audio-warning-seconds-into-call", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAudioWarningSeq, "audio-warning-seq", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCallbackAt, "callback-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDisposition, "disposition", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDuration, "duration", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyNotes, "notes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyProviderCallRef, "provider-call-ref", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyVoicemailDeletedAt, "voicemail-deleted-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyVoicemailReadAt, "voicemail-read-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

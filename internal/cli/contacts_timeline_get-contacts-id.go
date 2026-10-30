@@ -12,6 +12,11 @@ import (
 )
 
 func newContactsTimelineGetContactsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagCursor string
+	var flagLimit int
+	var flagPerPage int
+	var flagSummary bool
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-contacts-id <id>",
@@ -32,8 +37,12 @@ func newContactsTimelineGetContactsIdCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "timeline", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "timeline", path, map[string]string{
+				"cursor":   formatCLIParamValue(flagCursor),
+				"limit":    formatCLIParamValue(flagLimit),
+				"per_page": formatCLIParamValue(flagPerPage),
+				"summary":  formatCLIParamValue(flagSummary),
+			}, nil, flagAll, "cursor", "cursor", "limit", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -81,6 +90,11 @@ func newContactsTimelineGetContactsIdCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 0, "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 0, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagSummary, "summary", false, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

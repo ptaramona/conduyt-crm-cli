@@ -13,15 +13,37 @@ import (
 )
 
 func newSettingsPutProjectBlueVoiceCmd(flags *rootFlags) *cobra.Command {
+	var bodyAccountSid string
+	var bodyApiKeySecret string
+	var bodyApiKeySid string
+	var bodyTwimlAppSid string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "put-project-blue-voice",
 		Short:       "Update settings project-blue voice",
-		Example:     "  conduyt-crm-pp-cli settings put-project-blue-voice",
+		Example:     "  conduyt-crm-pp-cli settings put-project-blue-voice --account-sid 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "settings.put-project-blue-voice", "pp:method": "PUT", "pp:path": "/settings/project-blue/voice"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("account-sid") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "account-sid")
+				}
+				if !cmd.Flags().Changed("api-key-secret") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "api-key-secret")
+				}
+				if !cmd.Flags().Changed("api-key-sid") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "api-key-sid")
+				}
+				if !cmd.Flags().Changed("twiml-app-sid") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "twiml-app-sid")
+				}
 			}
 			path := "/settings/project-blue/voice"
 			c, err := flags.newClient()
@@ -43,6 +65,18 @@ func newSettingsPutProjectBlueVoiceCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAccountSid != "" {
+					bodyMap["accountSid"] = bodyAccountSid
+				}
+				if bodyApiKeySecret != "" {
+					bodyMap["apiKeySecret"] = bodyApiKeySecret
+				}
+				if bodyApiKeySid != "" {
+					bodyMap["apiKeySid"] = bodyApiKeySid
+				}
+				if bodyTwimlAppSid != "" {
+					bodyMap["twimlAppSid"] = bodyTwimlAppSid
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +221,10 @@ func newSettingsPutProjectBlueVoiceCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAccountSid, "account-sid", "", "AC followed by 32 hex characters; otherwise a 400.")
+	cmd.Flags().StringVar(&bodyApiKeySecret, "api-key-secret", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodyApiKeySid, "api-key-sid", "", "SK followed by 32 hex characters; otherwise a 400.")
+	cmd.Flags().StringVar(&bodyTwimlAppSid, "twiml-app-sid", "", "AP followed by 32 hex characters; otherwise a 400.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

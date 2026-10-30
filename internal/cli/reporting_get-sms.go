@@ -12,6 +12,9 @@ import (
 )
 
 func newReportingGetSmsCmd(flags *rootFlags) *cobra.Command {
+	var flagDeferLists bool
+	var flagSection string
+	var flagSmartListId string
 
 	cmd := &cobra.Command{
 		Use:         "get-sms",
@@ -25,6 +28,15 @@ func newReportingGetSmsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDeferLists != false {
+				params["deferLists"] = formatCLIParamValue(flagDeferLists)
+			}
+			if flagSection != "" {
+				params["section"] = formatCLIParamValue(flagSection)
+			}
+			if flagSmartListId != "" {
+				params["smartListId"] = formatCLIParamValue(flagSmartListId)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reporting", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +85,9 @@ func newReportingGetSmsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagDeferLists, "defer-lists", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSection, "section", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSmartListId, "smart-list-id", "", "Query parameter read by this route.")
 
 	return cmd
 }

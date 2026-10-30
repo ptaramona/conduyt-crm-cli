@@ -20,6 +20,8 @@ func newSmsProvidersCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newSmsProvidersGetCmd(flags))
 	cmd.AddCommand(newSmsProvidersGetHealthCmd(flags))
 	cmd.AddCommand(newSmsProvidersGetIdCmd(flags))
+	cmd.AddCommand(newSmsProvidersGetOptionsCmd(flags))
+	cmd.AddCommand(newSmsProvidersGetTemplateOptionsCmd(flags))
 	cmd.AddCommand(newSmsProvidersPatchIdCmd(flags))
 	cmd.AddCommand(newSmsProvidersPostCmd(flags))
 	cmd.AddCommand(newSmsProvidersTestCmd(flags))

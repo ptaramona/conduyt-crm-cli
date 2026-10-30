@@ -12,11 +12,16 @@ import (
 )
 
 func newPipelinesStagesDeletePipelineCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagExpectedSettingsRevision string
+	var flagExpectedSettingsRevision2 string
+	var flagMoveTo string
+	var flagSandbox bool
 
 	cmd := &cobra.Command{
 		Use:         "delete-pipeline <id> <stageId>",
 		Aliases:     []string{"delete"},
-		Short:       "Delete a pipeline stage",
+		Short:       "Soft delete: the stage row is kept (so deal history, activities, audit rows and reports keep its name)",
 		Example:     "  conduyt-crm-pp-cli pipelines stages delete-pipeline 550e8400-e29b-41d4-a716-446655440000 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "stages.delete-pipeline", "pp:method": "DELETE", "pp:path": "/pipelines/{id}/stages/{stageId}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -37,6 +42,21 @@ func newPipelinesStagesDeletePipelineCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagExpectedSettingsRevision != "" {
+				params["expected_settings_revision"] = formatCLIParamValue(flagExpectedSettingsRevision)
+			}
+			if flagExpectedSettingsRevision2 != "" {
+				params["expectedSettingsRevision"] = formatCLIParamValue(flagExpectedSettingsRevision2)
+			}
+			if flagMoveTo != "" {
+				params["move_to"] = formatCLIParamValue(flagMoveTo)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
 			if err != nil {
 				return classifyDeleteError(err, flags)
@@ -177,6 +197,11 @@ func newPipelinesStagesDeletePipelineCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().StringVar(&flagExpectedSettingsRevision, "expected-settings-revision", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagExpectedSettingsRevision2, "expected-settings-revision-2", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagMoveTo, "move-to", "", "Move the stage's live deals to this stage (same pipeline, not a system holding stage, same won / lost setting)")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 
 	return cmd
 }

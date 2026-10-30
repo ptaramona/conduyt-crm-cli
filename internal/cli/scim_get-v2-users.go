@@ -12,6 +12,9 @@ import (
 )
 
 func newScimGetV2UsersCmd(flags *rootFlags) *cobra.Command {
+	var flagCount string
+	var flagFilter string
+	var flagStartIndex string
 
 	cmd := &cobra.Command{
 		Use:         "get-v2-users",
@@ -26,6 +29,15 @@ func newScimGetV2UsersCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagCount != "" {
+				params["count"] = formatCLIParamValue(flagCount)
+			}
+			if flagFilter != "" {
+				params["filter"] = formatCLIParamValue(flagFilter)
+			}
+			if flagStartIndex != "" {
+				params["startIndex"] = formatCLIParamValue(flagStartIndex)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "scim", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -74,6 +86,9 @@ func newScimGetV2UsersCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCount, "count", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagFilter, "filter", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStartIndex, "start-index", "", "Query parameter read by this route.")
 
 	return cmd
 }

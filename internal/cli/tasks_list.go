@@ -12,16 +12,23 @@ import (
 )
 
 func newTasksListCmd(flags *rootFlags) *cobra.Command {
+	var flagAssignedTo string
+	var flagAssignedTo2 string
+	var flagContactId string
+	var flagContactId2 string
+	var flagDealId string
+	var flagDealId2 string
+	var flagDueFrom string
+	var flagDueTo string
+	var flagOrder string
+	var flagOverdue string
 	var flagPage string
 	var flagPerPage int
-	var flagSearch string
-	var flagStatus string
 	var flagPriority string
-	var flagAssignedTo string
-	var flagContactId string
-	var flagDealId string
+	var flagSearch string
 	var flagSort string
-	var flagOrder string
+	var flagStatus string
+	var flagTab string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -30,17 +37,30 @@ func newTasksListCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli tasks list",
 		Annotations: map[string]string{"pp:endpoint": "tasks.list", "pp:method": "GET", "pp:path": "/tasks", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Changed("status") {
-				allowedStatus := []string{"todo", "in_progress", "done"}
-				validStatus := false
-				for _, v := range allowedStatus {
-					if flagStatus == v {
-						validStatus = true
+			if cmd.Flags().Changed("order") {
+				allowedOrder := []string{"asc", "desc"}
+				validOrder := false
+				for _, v := range allowedOrder {
+					if flagOrder == v {
+						validOrder = true
 						break
 					}
 				}
-				if !validStatus {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagStatus, "status", allowedStatus)
+				if !validOrder {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagOrder, "order", allowedOrder)
+				}
+			}
+			if cmd.Flags().Changed("overdue") {
+				allowedOverdue := []string{"true", "false"}
+				validOverdue := false
+				for _, v := range allowedOverdue {
+					if flagOverdue == v {
+						validOverdue = true
+						break
+					}
+				}
+				if !validOverdue {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagOverdue, "overdue", allowedOverdue)
 				}
 			}
 			if cmd.Flags().Changed("priority") {
@@ -69,17 +89,30 @@ func newTasksListCmd(flags *rootFlags) *cobra.Command {
 					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagSort, "sort", allowedSort)
 				}
 			}
-			if cmd.Flags().Changed("order") {
-				allowedOrder := []string{"asc", "desc"}
-				validOrder := false
-				for _, v := range allowedOrder {
-					if flagOrder == v {
-						validOrder = true
+			if cmd.Flags().Changed("status") {
+				allowedStatus := []string{"todo", "in_progress", "done"}
+				validStatus := false
+				for _, v := range allowedStatus {
+					if flagStatus == v {
+						validStatus = true
 						break
 					}
 				}
-				if !validOrder {
-					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagOrder, "order", allowedOrder)
+				if !validStatus {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagStatus, "status", allowedStatus)
+				}
+			}
+			if cmd.Flags().Changed("tab") {
+				allowedTab := []string{"my_tasks", "all", "completed"}
+				validTab := false
+				for _, v := range allowedTab {
+					if flagTab == v {
+						validTab = true
+						break
+					}
+				}
+				if !validTab {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagTab, "tab", allowedTab)
 				}
 			}
 			path := "/tasks"
@@ -88,16 +121,23 @@ func newTasksListCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "tasks", path, map[string]string{
+				"assigned_to": formatCLIParamValue(flagAssignedTo),
+				"assignedTo":  formatCLIParamValue(flagAssignedTo2),
+				"contact_id":  formatCLIParamValue(flagContactId),
+				"contactId":   formatCLIParamValue(flagContactId2),
+				"deal_id":     formatCLIParamValue(flagDealId),
+				"dealId":      formatCLIParamValue(flagDealId2),
+				"dueFrom":     formatCLIParamValue(flagDueFrom),
+				"dueTo":       formatCLIParamValue(flagDueTo),
+				"order":       formatCLIParamValue(flagOrder),
+				"overdue":     formatCLIParamValue(flagOverdue),
 				"page":        formatCLIParamValue(flagPage),
 				"per_page":    formatCLIParamValue(flagPerPage),
-				"search":      formatCLIParamValue(flagSearch),
-				"status":      formatCLIParamValue(flagStatus),
 				"priority":    formatCLIParamValue(flagPriority),
-				"assigned_to": formatCLIParamValue(flagAssignedTo),
-				"contact_id":  formatCLIParamValue(flagContactId),
-				"deal_id":     formatCLIParamValue(flagDealId),
+				"search":      formatCLIParamValue(flagSearch),
 				"sort":        formatCLIParamValue(flagSort),
-				"order":       formatCLIParamValue(flagOrder),
+				"status":      formatCLIParamValue(flagStatus),
+				"tab":         formatCLIParamValue(flagTab),
 			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -146,16 +186,23 @@ func newTasksListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagAssignedTo2, "assigned-to-2", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagContactId2, "contact-id-2", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDealId, "deal-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDealId2, "deal-id-2", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDueFrom, "due-from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDueTo, "due-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOrder, "order", "desc", "Query parameter read by this route. (one of: asc, desc)")
+	cmd.Flags().StringVar(&flagOverdue, "overdue", "", "Query parameter read by this route. (one of: true, false)")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagPriority, "priority", "", "Query parameter read by this route. (one of: low, medium, high, urgent)")
 	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
-	cmd.Flags().StringVar(&flagStatus, "status", "", "Status (one of: todo, in_progress, done)")
-	cmd.Flags().StringVar(&flagPriority, "priority", "", "Priority (one of: low, medium, high, urgent)")
-	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Assigned to")
-	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&flagDealId, "deal-id", "", "Deal id")
-	cmd.Flags().StringVar(&flagSort, "sort", "createdAt", "Sort (one of: createdAt, updatedAt, dueDate, priority, title, status)")
-	cmd.Flags().StringVar(&flagOrder, "order", "desc", "Order (one of: asc, desc)")
+	cmd.Flags().StringVar(&flagSort, "sort", "createdAt", "Query parameter read by this route. (one of: createdAt, updatedAt, dueDate, priority, title, status)")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route. (one of: todo, in_progress, done)")
+	cmd.Flags().StringVar(&flagTab, "tab", "", "Query parameter read by this route. (one of: my_tasks, all, completed)")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

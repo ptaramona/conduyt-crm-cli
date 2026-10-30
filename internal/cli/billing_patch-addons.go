@@ -13,6 +13,9 @@ import (
 )
 
 func newBillingPatchAddonsCmd(flags *rootFlags) *cobra.Command {
+	var bodyExpectedQuantity string
+	var bodyQuantity string
+	var bodySubscriptionId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -44,6 +47,15 @@ func newBillingPatchAddonsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyExpectedQuantity != "" {
+					bodyMap["expectedQuantity"] = bodyExpectedQuantity
+				}
+				if bodyQuantity != "" {
+					bodyMap["quantity"] = bodyQuantity
+				}
+				if bodySubscriptionId != "" {
+					bodyMap["subscriptionId"] = bodySubscriptionId
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +200,9 @@ func newBillingPatchAddonsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyExpectedQuantity, "expected-quantity", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyQuantity, "quantity", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySubscriptionId, "subscription-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

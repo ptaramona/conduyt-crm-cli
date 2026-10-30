@@ -13,6 +13,64 @@ import (
 )
 
 func newWebhooksInboundContactCmd(flags *rootFlags) *cobra.Command {
+	var bodyAddressLine1 string
+	var bodyAddressLine2 string
+	var bodyAssignedTo string
+	var bodyAttributionClickIdsDclid string
+	var bodyAttributionClickIdsFbclid string
+	var bodyAttributionClickIdsGclid string
+	var bodyAttributionClickIdsLiFatId string
+	var bodyAttributionClickIdsMsclkid string
+	var bodyAttributionClickIdsTtclid string
+	var bodyAttributionClickIdsUtmCampaign string
+	var bodyAttributionClickIdsUtmContent string
+	var bodyAttributionClickIdsUtmMedium string
+	var bodyAttributionClickIdsUtmSource string
+	var bodyAttributionClickIdsUtmTerm string
+	var bodyAttributionDclid string
+	var bodyAttributionFbclid string
+	var bodyAttributionGclid string
+	var bodyAttributionLandingUrl string
+	var bodyAttributionLiFatId string
+	var bodyAttributionMsclkid string
+	var bodyAttributionPageTitle string
+	var bodyAttributionReferrer string
+	var bodyAttributionTtclid string
+	var bodyAttributionUtmCampaign string
+	var bodyAttributionUtmContent string
+	var bodyAttributionUtmMedium string
+	var bodyAttributionUtmSource string
+	var bodyAttributionUtmTerm string
+	var bodyCity string
+	var bodyCompany string
+	var bodyCountry string
+	var bodyCustomFields string
+	var bodyDclid string
+	var bodyDedupe string
+	var bodyEmail string
+	var bodyEventId string
+	var bodyFbclid string
+	var bodyFirstName string
+	var bodyGclid string
+	var bodyIntakeDeal bool
+	var bodyJobTitle string
+	var bodyLandingUrl string
+	var bodyLastName string
+	var bodyLiFatId string
+	var bodyMsclkid string
+	var bodyPhone string
+	var bodyReferrer string
+	var bodySkipRouting string
+	var bodySource string
+	var bodyState string
+	var bodyTags string
+	var bodyTtclid string
+	var bodyUtmCampaign string
+	var bodyUtmContent string
+	var bodyUtmMedium string
+	var bodyUtmSource string
+	var bodyUtmTerm string
+	var bodyZip string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +101,192 @@ func newWebhooksInboundContactCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAddressLine1 != "" {
+					bodyMap["addressLine1"] = bodyAddressLine1
+				}
+				if bodyAddressLine2 != "" {
+					bodyMap["addressLine2"] = bodyAddressLine2
+				}
+				if bodyAssignedTo != "" {
+					bodyMap["assignedTo"] = bodyAssignedTo
+				}
+				{
+					nestedAttribution := map[string]any{}
+					{
+						nestedAttributionClickIds := map[string]any{}
+						if bodyAttributionClickIdsDclid != "" {
+							nestedAttributionClickIds["dclid"] = bodyAttributionClickIdsDclid
+						}
+						if bodyAttributionClickIdsFbclid != "" {
+							nestedAttributionClickIds["fbclid"] = bodyAttributionClickIdsFbclid
+						}
+						if bodyAttributionClickIdsGclid != "" {
+							nestedAttributionClickIds["gclid"] = bodyAttributionClickIdsGclid
+						}
+						if bodyAttributionClickIdsLiFatId != "" {
+							nestedAttributionClickIds["li_fat_id"] = bodyAttributionClickIdsLiFatId
+						}
+						if bodyAttributionClickIdsMsclkid != "" {
+							nestedAttributionClickIds["msclkid"] = bodyAttributionClickIdsMsclkid
+						}
+						if bodyAttributionClickIdsTtclid != "" {
+							nestedAttributionClickIds["ttclid"] = bodyAttributionClickIdsTtclid
+						}
+						if bodyAttributionClickIdsUtmCampaign != "" {
+							nestedAttributionClickIds["utm_campaign"] = bodyAttributionClickIdsUtmCampaign
+						}
+						if bodyAttributionClickIdsUtmContent != "" {
+							nestedAttributionClickIds["utm_content"] = bodyAttributionClickIdsUtmContent
+						}
+						if bodyAttributionClickIdsUtmMedium != "" {
+							nestedAttributionClickIds["utm_medium"] = bodyAttributionClickIdsUtmMedium
+						}
+						if bodyAttributionClickIdsUtmSource != "" {
+							nestedAttributionClickIds["utm_source"] = bodyAttributionClickIdsUtmSource
+						}
+						if bodyAttributionClickIdsUtmTerm != "" {
+							nestedAttributionClickIds["utm_term"] = bodyAttributionClickIdsUtmTerm
+						}
+						if len(nestedAttributionClickIds) > 0 {
+							nestedAttribution["clickIds"] = nestedAttributionClickIds
+						}
+					}
+					if bodyAttributionDclid != "" {
+						nestedAttribution["dclid"] = bodyAttributionDclid
+					}
+					if bodyAttributionFbclid != "" {
+						nestedAttribution["fbclid"] = bodyAttributionFbclid
+					}
+					if bodyAttributionGclid != "" {
+						nestedAttribution["gclid"] = bodyAttributionGclid
+					}
+					if bodyAttributionLandingUrl != "" {
+						nestedAttribution["landingUrl"] = bodyAttributionLandingUrl
+					}
+					if bodyAttributionLiFatId != "" {
+						nestedAttribution["li_fat_id"] = bodyAttributionLiFatId
+					}
+					if bodyAttributionMsclkid != "" {
+						nestedAttribution["msclkid"] = bodyAttributionMsclkid
+					}
+					if bodyAttributionPageTitle != "" {
+						nestedAttribution["pageTitle"] = bodyAttributionPageTitle
+					}
+					if bodyAttributionReferrer != "" {
+						nestedAttribution["referrer"] = bodyAttributionReferrer
+					}
+					if bodyAttributionTtclid != "" {
+						nestedAttribution["ttclid"] = bodyAttributionTtclid
+					}
+					if bodyAttributionUtmCampaign != "" {
+						nestedAttribution["utm_campaign"] = bodyAttributionUtmCampaign
+					}
+					if bodyAttributionUtmContent != "" {
+						nestedAttribution["utm_content"] = bodyAttributionUtmContent
+					}
+					if bodyAttributionUtmMedium != "" {
+						nestedAttribution["utm_medium"] = bodyAttributionUtmMedium
+					}
+					if bodyAttributionUtmSource != "" {
+						nestedAttribution["utm_source"] = bodyAttributionUtmSource
+					}
+					if bodyAttributionUtmTerm != "" {
+						nestedAttribution["utm_term"] = bodyAttributionUtmTerm
+					}
+					if len(nestedAttribution) > 0 {
+						bodyMap["attribution"] = nestedAttribution
+					}
+				}
+				if bodyCity != "" {
+					bodyMap["city"] = bodyCity
+				}
+				if bodyCompany != "" {
+					bodyMap["company"] = bodyCompany
+				}
+				if bodyCountry != "" {
+					bodyMap["country"] = bodyCountry
+				}
+				if bodyCustomFields != "" {
+					bodyMap["customFields"] = bodyCustomFields
+				}
+				if bodyDclid != "" {
+					bodyMap["dclid"] = bodyDclid
+				}
+				if bodyDedupe != "" {
+					bodyMap["dedupe"] = bodyDedupe
+				}
+				if bodyEmail != "" {
+					bodyMap["email"] = bodyEmail
+				}
+				if bodyEventId != "" {
+					bodyMap["eventId"] = bodyEventId
+				}
+				if bodyFbclid != "" {
+					bodyMap["fbclid"] = bodyFbclid
+				}
+				if bodyFirstName != "" {
+					bodyMap["firstName"] = bodyFirstName
+				}
+				if bodyGclid != "" {
+					bodyMap["gclid"] = bodyGclid
+				}
+				if cmd.Flags().Changed("intake-deal") {
+					bodyMap["intakeDeal"] = bodyIntakeDeal
+				}
+				if bodyJobTitle != "" {
+					bodyMap["jobTitle"] = bodyJobTitle
+				}
+				if bodyLandingUrl != "" {
+					bodyMap["landingUrl"] = bodyLandingUrl
+				}
+				if bodyLastName != "" {
+					bodyMap["lastName"] = bodyLastName
+				}
+				if bodyLiFatId != "" {
+					bodyMap["li_fat_id"] = bodyLiFatId
+				}
+				if bodyMsclkid != "" {
+					bodyMap["msclkid"] = bodyMsclkid
+				}
+				if bodyPhone != "" {
+					bodyMap["phone"] = bodyPhone
+				}
+				if bodyReferrer != "" {
+					bodyMap["referrer"] = bodyReferrer
+				}
+				if bodySkipRouting != "" {
+					bodyMap["skipRouting"] = bodySkipRouting
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
+				}
+				if bodyState != "" {
+					bodyMap["state"] = bodyState
+				}
+				if bodyTags != "" {
+					bodyMap["tags"] = bodyTags
+				}
+				if bodyTtclid != "" {
+					bodyMap["ttclid"] = bodyTtclid
+				}
+				if bodyUtmCampaign != "" {
+					bodyMap["utm_campaign"] = bodyUtmCampaign
+				}
+				if bodyUtmContent != "" {
+					bodyMap["utm_content"] = bodyUtmContent
+				}
+				if bodyUtmMedium != "" {
+					bodyMap["utm_medium"] = bodyUtmMedium
+				}
+				if bodyUtmSource != "" {
+					bodyMap["utm_source"] = bodyUtmSource
+				}
+				if bodyUtmTerm != "" {
+					bodyMap["utm_term"] = bodyUtmTerm
+				}
+				if bodyZip != "" {
+					bodyMap["zip"] = bodyZip
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +431,64 @@ func newWebhooksInboundContactCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAddressLine1, "address-line1", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAddressLine2, "address-line2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsDclid, "attribution-click-ids-dclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsFbclid, "attribution-click-ids-fbclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsGclid, "attribution-click-ids-gclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsLiFatId, "attribution-click-ids-li-fat-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsMsclkid, "attribution-click-ids-msclkid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsTtclid, "attribution-click-ids-ttclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsUtmCampaign, "attribution-click-ids-utm-campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsUtmContent, "attribution-click-ids-utm-content", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsUtmMedium, "attribution-click-ids-utm-medium", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsUtmSource, "attribution-click-ids-utm-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionClickIdsUtmTerm, "attribution-click-ids-utm-term", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionDclid, "attribution-dclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionFbclid, "attribution-fbclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionGclid, "attribution-gclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionLandingUrl, "attribution-landing-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionLiFatId, "attribution-li-fat-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionMsclkid, "attribution-msclkid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionPageTitle, "attribution-page-title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionReferrer, "attribution-referrer", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionTtclid, "attribution-ttclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmCampaign, "attribution-utm-campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmContent, "attribution-utm-content", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmMedium, "attribution-utm-medium", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmSource, "attribution-utm-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmTerm, "attribution-utm-term", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCity, "city", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCompany, "company", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCountry, "country", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDclid, "dclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDedupe, "dedupe", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEmail, "email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEventId, "event-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFbclid, "fbclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGclid, "gclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&bodyIntakeDeal, "intake-deal", false, "Optional. Send false to skip the account's intake deal (intakeDeals setting) for this contact; absent keeps the default.")
+	cmd.Flags().StringVar(&bodyJobTitle, "job-title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLandingUrl, "landing-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLiFatId, "li-fat-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMsclkid, "msclkid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReferrer, "referrer", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySkipRouting, "skip-routing", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyState, "state", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTags, "tags", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTtclid, "ttclid", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUtmCampaign, "utm-campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUtmContent, "utm-content", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUtmMedium, "utm-medium", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUtmSource, "utm-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUtmTerm, "utm-term", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyZip, "zip", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

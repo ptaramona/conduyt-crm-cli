@@ -100,9 +100,16 @@ other key is refused locally and nothing is sent.`,
 					bodyMap["subjectEdited"] = bodySubjectEdited
 				}
 				if cmd.Flags().Changed("reply-to") {
+					// reprint637: the public send-bulk body now declares the replyTo pattern; refused locally like `email send`
+					if err := cliutil.CheckEmailSendBulkReplyTo(bodyReplyTo); err != nil {
+						return usageErr(err)
+					}
 					bodyMap["replyTo"] = bodyReplyTo
 				}
 				if cmd.Flags().Changed("send-domain-id") {
+					if err := cliutil.CheckEmailSendBulkSendDomainID(bodySendDomainId); err != nil {
+						return usageErr(err)
+					}
 					bodyMap["sendDomainId"] = bodySendDomainId
 				}
 			}

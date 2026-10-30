@@ -20,7 +20,10 @@ func newPipelinesCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newPipelinesDeleteCmd(flags))
 	cmd.AddCommand(newPipelinesGetCmd(flags))
 	cmd.AddCommand(newPipelinesListCmd(flags))
+	cmd.AddCommand(newPipelinesReorderCmd(flags))
 	cmd.AddCommand(newPipelinesUpdateCmd(flags))
+	cmd.AddCommand(newPipelinesArchiveCmd(flags))
+	cmd.AddCommand(newPipelinesRestoreCmd(flags))
 	cmd.AddCommand(newPipelinesStagesCmd(flags))
 	return cmd
 }

@@ -13,6 +13,10 @@ import (
 )
 
 func newTasksPutAssignmentRulesCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyRules string
+	var bodyUpdatedAt string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -21,7 +25,16 @@ func newTasksPutAssignmentRulesCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli tasks put-assignment-rules",
 		Annotations: map[string]string{"pp:endpoint": "tasks.put-assignment-rules", "pp:method": "PUT", "pp:path": "/tasks/assignment-rules"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("rules") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "rules")
+				}
 			}
 			path := "/tasks/assignment-rules"
 			c, err := flags.newClient()
@@ -29,6 +42,12 @@ func newTasksPutAssignmentRulesCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +62,16 @@ func newTasksPutAssignmentRulesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyRules != "" {
+					var parsedRules any
+					if err := json.Unmarshal([]byte(bodyRules), &parsedRules); err != nil {
+						return fmt.Errorf("parsing --rules JSON: %w", err)
+					}
+					bodyMap["rules"] = parsedRules
+				}
+				if bodyUpdatedAt != "" {
+					bodyMap["updatedAt"] = bodyUpdatedAt
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +216,10 @@ func newTasksPutAssignmentRulesCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyRules, "rules", "", "Rules")
+	cmd.Flags().StringVar(&bodyUpdatedAt, "updated-at", "", "The pattern above is the server's rule (Zod's ISO date-time check).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

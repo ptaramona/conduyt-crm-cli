@@ -128,6 +128,11 @@ func appendRepeatableArrayQueryParam(path, name string, occurrences []string) (s
 	return path + separator + query.Encode(), nil
 }
 
+func looksLikeJSONComposite(input string) bool {
+	input = strings.TrimSpace(input)
+	return strings.HasPrefix(input, "{") || strings.HasPrefix(input, "[")
+}
+
 // noColor is set by the --no-color flag
 var noColor bool
 

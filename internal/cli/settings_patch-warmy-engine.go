@@ -13,6 +13,15 @@ import (
 )
 
 func newSettingsPatchWarmyEngineCmd(flags *rootFlags) *cobra.Command {
+	var bodyDisqualifyThreshold string
+	var bodyEnabled string
+	var bodyFormatRatio string
+	var bodyN8nWebhookUrl string
+	var bodyPoolFloor string
+	var bodyPoolTarget string
+	var bodyQualifyThreshold string
+	var bodyWarmupMinQualified string
+	var bodyWarmupMode string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +52,33 @@ func newSettingsPatchWarmyEngineCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDisqualifyThreshold != "" {
+					bodyMap["disqualifyThreshold"] = bodyDisqualifyThreshold
+				}
+				if bodyEnabled != "" {
+					bodyMap["enabled"] = bodyEnabled
+				}
+				if bodyFormatRatio != "" {
+					bodyMap["formatRatio"] = bodyFormatRatio
+				}
+				if bodyN8nWebhookUrl != "" {
+					bodyMap["n8nWebhookUrl"] = bodyN8nWebhookUrl
+				}
+				if bodyPoolFloor != "" {
+					bodyMap["poolFloor"] = bodyPoolFloor
+				}
+				if bodyPoolTarget != "" {
+					bodyMap["poolTarget"] = bodyPoolTarget
+				}
+				if bodyQualifyThreshold != "" {
+					bodyMap["qualifyThreshold"] = bodyQualifyThreshold
+				}
+				if bodyWarmupMinQualified != "" {
+					bodyMap["warmupMinQualified"] = bodyWarmupMinQualified
+				}
+				if bodyWarmupMode != "" {
+					bodyMap["warmupMode"] = bodyWarmupMode
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +223,15 @@ func newSettingsPatchWarmyEngineCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDisqualifyThreshold, "disqualify-threshold", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEnabled, "enabled", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFormatRatio, "format-ratio", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyN8nWebhookUrl, "n8n-webhook-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPoolFloor, "pool-floor", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPoolTarget, "pool-target", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyQualifyThreshold, "qualify-threshold", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyWarmupMinQualified, "warmup-min-qualified", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyWarmupMode, "warmup-mode", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

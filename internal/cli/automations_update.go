@@ -14,11 +14,16 @@ import (
 
 func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 	var bodyActions string
+	var bodyActiveRunPolicy string
+	var bodyConfirmTriggerEventChange bool
 	var bodyCooldownDays int
 	var bodyDescription string
 	var bodyExecutionTimezone string
 	var bodyExecutionWindowEnd int
 	var bodyExecutionWindowStart int
+	var bodyExpectedConfigRevision string
+	var bodyFolderId string
+	var bodyGraphNodes string
 	var bodyGraphVersion int
 	var bodyIsActive bool
 	var bodyKind string
@@ -29,7 +34,9 @@ func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 	var bodySchedule string
 	var bodyScheduleTimezone string
 	var bodyStopOnResponse bool
-	var bodyTriggerConditions string
+	var bodyTriggerConditionsRequireSignature string
+	var bodyTriggerConditionsWebhookId string
+	var bodyTriggerConditionsWebhookSecret string
 	var bodyTriggerEvent string
 	var stdinBody bool
 
@@ -81,7 +88,21 @@ func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 				bodyMap := map[string]any{}
 				body = bodyMap
 				if bodyActions != "" {
-					bodyMap["actions"] = bodyActions
+					if looksLikeJSONComposite(bodyActions) {
+						var parsedActions any
+						if err := json.Unmarshal([]byte(bodyActions), &parsedActions); err != nil {
+							return fmt.Errorf("parsing --actions JSON: %w", err)
+						}
+						bodyMap["actions"] = parsedActions
+					} else {
+						bodyMap["actions"] = bodyActions
+					}
+				}
+				if bodyActiveRunPolicy != "" {
+					bodyMap["activeRunPolicy"] = bodyActiveRunPolicy
+				}
+				if cmd.Flags().Changed("confirm-trigger-event-change") {
+					bodyMap["confirmTriggerEventChange"] = bodyConfirmTriggerEventChange
 				}
 				if bodyCooldownDays != 0 {
 					bodyMap["cooldownDays"] = bodyCooldownDays
@@ -97,6 +118,21 @@ func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyExecutionWindowStart != 0 {
 					bodyMap["executionWindowStart"] = bodyExecutionWindowStart
+				}
+				if bodyExpectedConfigRevision != "" {
+					bodyMap["expectedConfigRevision"] = bodyExpectedConfigRevision
+				}
+				if bodyFolderId != "" {
+					bodyMap["folderId"] = bodyFolderId
+				}
+				{
+					nestedGraph := map[string]any{}
+					if bodyGraphNodes != "" {
+						nestedGraph["nodes"] = bodyGraphNodes
+					}
+					if len(nestedGraph) > 0 {
+						bodyMap["graph"] = nestedGraph
+					}
 				}
 				if bodyGraphVersion != 0 {
 					bodyMap["graphVersion"] = bodyGraphVersion
@@ -128,12 +164,20 @@ func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("stop-on-response") {
 					bodyMap["stopOnResponse"] = bodyStopOnResponse
 				}
-				if bodyTriggerConditions != "" {
-					var parsedTriggerConditions any
-					if err := json.Unmarshal([]byte(bodyTriggerConditions), &parsedTriggerConditions); err != nil {
-						return fmt.Errorf("parsing --trigger-conditions JSON: %w", err)
+				{
+					nestedTriggerConditions := map[string]any{}
+					if bodyTriggerConditionsRequireSignature != "" {
+						nestedTriggerConditions["requireSignature"] = bodyTriggerConditionsRequireSignature
 					}
-					bodyMap["triggerConditions"] = parsedTriggerConditions
+					if bodyTriggerConditionsWebhookId != "" {
+						nestedTriggerConditions["webhookId"] = bodyTriggerConditionsWebhookId
+					}
+					if bodyTriggerConditionsWebhookSecret != "" {
+						nestedTriggerConditions["webhookSecret"] = bodyTriggerConditionsWebhookSecret
+					}
+					if len(nestedTriggerConditions) > 0 {
+						bodyMap["triggerConditions"] = nestedTriggerConditions
+					}
 				}
 				if bodyTriggerEvent != "" {
 					bodyMap["triggerEvent"] = bodyTriggerEvent
@@ -283,11 +327,16 @@ func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyActions, "actions", "", "Linear array of actions (v1) or graph object (v2)")
+	cmd.Flags().StringVar(&bodyActiveRunPolicy, "active-run-policy", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&bodyConfirmTriggerEventChange, "confirm-trigger-event-change", false, "Confirms a change of `triggerEvent` on a live (published, active or run)")
 	cmd.Flags().IntVar(&bodyCooldownDays, "cooldown-days", 0, "Cooldown days")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
 	cmd.Flags().StringVar(&bodyExecutionTimezone, "execution-timezone", "", "Execution timezone")
 	cmd.Flags().IntVar(&bodyExecutionWindowEnd, "execution-window-end", 0, "Hour (0-23) to stop executing")
 	cmd.Flags().IntVar(&bodyExecutionWindowStart, "execution-window-start", 0, "Hour (0-23) to start executing")
+	cmd.Flags().StringVar(&bodyExpectedConfigRevision, "expected-config-revision", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFolderId, "folder-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGraphNodes, "graph-nodes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().IntVar(&bodyGraphVersion, "graph-version", 1, "Graph version")
 	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
 	cmd.Flags().StringVar(&bodyKind, "kind", "n8n", "Kind")
@@ -298,7 +347,9 @@ func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodySchedule, "schedule", "", "Cron expression (5-field, UTC) for scheduled automations")
 	cmd.Flags().StringVar(&bodyScheduleTimezone, "schedule-timezone", "", "Schedule timezone")
 	cmd.Flags().BoolVar(&bodyStopOnResponse, "stop-on-response", false, "Stop on response")
-	cmd.Flags().StringVar(&bodyTriggerConditions, "trigger-conditions", "", "Trigger conditions")
+	cmd.Flags().StringVar(&bodyTriggerConditionsRequireSignature, "trigger-conditions-require-signature", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsWebhookId, "trigger-conditions-webhook-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTriggerConditionsWebhookSecret, "trigger-conditions-webhook-secret", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyTriggerEvent, "trigger-event", "", "Event that triggers this automation (e.g., contact.created, deal.stage_changed)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

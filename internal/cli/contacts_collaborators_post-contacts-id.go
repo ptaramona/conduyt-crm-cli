@@ -13,19 +13,32 @@ import (
 )
 
 func newContactsCollaboratorsPostContactsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyExpectedRevision int
+	var bodyUserId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-contacts-id <id>",
 		Aliases:     []string{"create"},
-		Short:       "Create / invoke contacts id collaborators",
-		Example:     "  conduyt-crm-pp-cli contacts collaborators post-contacts-id 550e8400-e29b-41d4-a716-446655440000",
+		Short:       "Add a collaborator to a contact",
+		Example:     "  conduyt-crm-pp-cli contacts collaborators post-contacts-id 550e8400-e29b-41d4-a716-446655440000 --user-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "collaborators.post-contacts-id", "pp:method": "POST", "pp:path": "/contacts/{id}/collaborators"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("user-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "user-id")
+				}
 			}
 			path := "/contacts/{id}/collaborators"
 			if len(args) < 1 || args[0] == "" {
@@ -37,6 +50,12 @@ func newContactsCollaboratorsPostContactsIdCmd(flags *rootFlags) *cobra.Command 
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +70,12 @@ func newContactsCollaboratorsPostContactsIdCmd(flags *rootFlags) *cobra.Command 
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyExpectedRevision != 0 {
+					bodyMap["expectedRevision"] = bodyExpectedRevision
+				}
+				if bodyUserId != "" {
+					bodyMap["userId"] = bodyUserId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +220,10 @@ func newContactsCollaboratorsPostContactsIdCmd(flags *rootFlags) *cobra.Command 
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().IntVar(&bodyExpectedRevision, "expected-revision", 0, "Optional optimistic-concurrency pin: the contact's `revision` as the caller last read it (GET /contacts/{id}, the list")
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "The team member to add.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

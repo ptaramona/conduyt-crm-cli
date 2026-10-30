@@ -12,6 +12,10 @@ import (
 )
 
 func newBookingPagesWaitlistGetBookingPagesIdCmd(flags *rootFlags) *cobra.Command {
+	var flagPage string
+	var flagPerPage int
+	var flagStatus string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-booking-pages-id <id>",
@@ -32,8 +36,11 @@ func newBookingPagesWaitlistGetBookingPagesIdCmd(flags *rootFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "waitlist", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "waitlist", path, map[string]string{
+				"page":     formatCLIParamValue(flagPage),
+				"per_page": formatCLIParamValue(flagPerPage),
+				"status":   formatCLIParamValue(flagStatus),
+			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -81,6 +88,10 @@ func newBookingPagesWaitlistGetBookingPagesIdCmd(flags *rootFlags) *cobra.Comman
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

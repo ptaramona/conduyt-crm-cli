@@ -18,7 +18,7 @@ func newSavedFiltersPatchIdCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "patch-id <id>",
 		Aliases:     []string{"update"},
-		Short:       "Update saved-filters id",
+		Short:       "Saved filters are personal Smart Views now: edit the migrated view with PATCH /api/v1/smart-views/",
 		Example:     "  conduyt-crm-pp-cli saved-filters patch-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "saved-filters.patch-id", "pp:method": "PATCH", "pp:path": "/saved-filters/{id}"},
 		RunE: func(cmd *cobra.Command, args []string) error {

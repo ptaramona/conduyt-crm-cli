@@ -12,10 +12,15 @@ import (
 )
 
 func newActivitiesListCmd(flags *rootFlags) *cobra.Command {
+	var flagContactId string
+	var flagCountMode string
+	var flagCursor string
+	var flagDealId string
+	var flagFromDate string
 	var flagPage string
 	var flagPerPage int
-	var flagContactId string
-	var flagDealId string
+	var flagSearch string
+	var flagToDate string
 	var flagType string
 	var flagAll bool
 
@@ -25,18 +30,36 @@ func newActivitiesListCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli activities list",
 		Annotations: map[string]string{"pp:endpoint": "activities.list", "pp:method": "GET", "pp:path": "/activities", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("count-mode") {
+				allowedCountMode := []string{"exact", "capped"}
+				validCountMode := false
+				for _, v := range allowedCountMode {
+					if flagCountMode == v {
+						validCountMode = true
+						break
+					}
+				}
+				if !validCountMode {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagCountMode, "count-mode", allowedCountMode)
+				}
+			}
 			path := "/activities"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "activities", path, map[string]string{
+				"contact_id": formatCLIParamValue(flagContactId),
+				"count_mode": formatCLIParamValue(flagCountMode),
+				"cursor":     formatCLIParamValue(flagCursor),
+				"deal_id":    formatCLIParamValue(flagDealId),
+				"fromDate":   formatCLIParamValue(flagFromDate),
 				"page":       formatCLIParamValue(flagPage),
 				"per_page":   formatCLIParamValue(flagPerPage),
-				"contact_id": formatCLIParamValue(flagContactId),
-				"deal_id":    formatCLIParamValue(flagDealId),
+				"search":     formatCLIParamValue(flagSearch),
+				"toDate":     formatCLIParamValue(flagToDate),
 				"type":       formatCLIParamValue(flagType),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+			}, nil, flagAll, "cursor", "cursor", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -84,11 +107,16 @@ func newActivitiesListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagCountMode, "count-mode", "exact", "exact (default) counts every matching activity. capped stops counting at 1,000: meta. (one of: exact, capped)")
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDealId, "deal-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagFromDate, "from-date", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
-	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&flagDealId, "deal-id", "", "Deal id")
-	cmd.Flags().StringVar(&flagType, "type", "", "Type")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagToDate, "to-date", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagType, "type", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

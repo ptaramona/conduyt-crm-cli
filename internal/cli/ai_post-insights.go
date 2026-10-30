@@ -9,19 +9,51 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newAiPostInsightsCmd(flags *rootFlags) *cobra.Command {
+	var bodyDashboardId string
+	var bodyDashboardName string
+	var bodyFiltersAssignedTo string
+	var bodyFiltersDateRangeFrom string
+	var bodyFiltersDateRangeTo string
+	var bodyFiltersPeriod string
+	var bodyFiltersPipelineId string
+	var bodyFiltersProvider string
+	var bodyFiltersSmartListId string
+	var bodyFiltersSources string
+	var bodyFiltersUserId string
+	var bodyPage string
+	var bodyPerPage int
+	var bodyQuery string
+	var bodyReportId string
+	var bodyReportName string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-insights",
 		Short:       "Create / invoke ai insights",
-		Example:     "  conduyt-crm-pp-cli ai post-insights",
+		Example:     "  conduyt-crm-pp-cli ai post-insights --query sms_drip_status",
 		Annotations: map[string]string{"pp:endpoint": "ai.post-insights", "pp:method": "POST", "pp:path": "/ai/insights"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("filters-date-range-from") && nestedFlagGroupChanged(cmd, "filters-date-range") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "filters-date-range-from")
+				}
+				if !cmd.Flags().Changed("filters-date-range-to") && nestedFlagGroupChanged(cmd, "filters-date-range") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "filters-date-range-to")
+				}
+				if !cmd.Flags().Changed("query") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "query")
+				}
 			}
 			path := "/ai/insights"
 			c, err := flags.newClient()
@@ -43,6 +75,86 @@ func newAiPostInsightsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				{
+					nestedDashboard := map[string]any{}
+					if bodyDashboardId != "" {
+						nestedDashboard["id"] = bodyDashboardId
+					}
+					if bodyDashboardName != "" {
+						nestedDashboard["name"] = bodyDashboardName
+					}
+					if len(nestedDashboard) > 0 {
+						bodyMap["dashboard"] = nestedDashboard
+					}
+				}
+				{
+					nestedFilters := map[string]any{}
+					if bodyFiltersAssignedTo != "" {
+						parsedFiltersAssignedTo, parseErr := cliutil.ParseStringList(bodyFiltersAssignedTo)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --filters-assigned-to list: %w", parseErr)
+						}
+						nestedFilters["assignedTo"] = parsedFiltersAssignedTo
+					}
+					{
+						nestedFiltersDateRange := map[string]any{}
+						if bodyFiltersDateRangeFrom != "" {
+							nestedFiltersDateRange["from"] = bodyFiltersDateRangeFrom
+						}
+						if bodyFiltersDateRangeTo != "" {
+							nestedFiltersDateRange["to"] = bodyFiltersDateRangeTo
+						}
+						if len(nestedFiltersDateRange) > 0 {
+							nestedFilters["dateRange"] = nestedFiltersDateRange
+						}
+					}
+					if bodyFiltersPeriod != "" {
+						nestedFilters["period"] = bodyFiltersPeriod
+					}
+					if bodyFiltersPipelineId != "" {
+						nestedFilters["pipelineId"] = bodyFiltersPipelineId
+					}
+					if bodyFiltersProvider != "" {
+						nestedFilters["provider"] = bodyFiltersProvider
+					}
+					if bodyFiltersSmartListId != "" {
+						nestedFilters["smartListId"] = bodyFiltersSmartListId
+					}
+					if bodyFiltersSources != "" {
+						parsedFiltersSources, parseErr := cliutil.ParseStringList(bodyFiltersSources)
+						if parseErr != nil {
+							return fmt.Errorf("parsing --filters-sources list: %w", parseErr)
+						}
+						nestedFilters["sources"] = parsedFiltersSources
+					}
+					if bodyFiltersUserId != "" {
+						nestedFilters["userId"] = bodyFiltersUserId
+					}
+					if len(nestedFilters) > 0 {
+						bodyMap["filters"] = nestedFilters
+					}
+				}
+				if bodyPage != "" {
+					bodyMap["page"] = bodyPage
+				}
+				if bodyPerPage != 0 {
+					bodyMap["perPage"] = bodyPerPage
+				}
+				if bodyQuery != "" {
+					bodyMap["query"] = bodyQuery
+				}
+				{
+					nestedReport := map[string]any{}
+					if bodyReportId != "" {
+						nestedReport["id"] = bodyReportId
+					}
+					if bodyReportName != "" {
+						nestedReport["name"] = bodyReportName
+					}
+					if len(nestedReport) > 0 {
+						bodyMap["report"] = nestedReport
+					}
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +299,22 @@ func newAiPostInsightsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDashboardId, "dashboard-id", "", "Id")
+	cmd.Flags().StringVar(&bodyDashboardName, "dashboard-name", "", "Name")
+	cmd.Flags().StringVar(&bodyFiltersAssignedTo, "filters-assigned-to", "", "Assigned to")
+	cmd.Flags().StringVar(&bodyFiltersDateRangeFrom, "filters-date-range-from", "", "From")
+	cmd.Flags().StringVar(&bodyFiltersDateRangeTo, "filters-date-range-to", "", "To")
+	cmd.Flags().StringVar(&bodyFiltersPeriod, "filters-period", "", "Period")
+	cmd.Flags().StringVar(&bodyFiltersPipelineId, "filters-pipeline-id", "", "Pipeline id")
+	cmd.Flags().StringVar(&bodyFiltersProvider, "filters-provider", "", "Provider")
+	cmd.Flags().StringVar(&bodyFiltersSmartListId, "filters-smart-list-id", "", "Smart list id")
+	cmd.Flags().StringVar(&bodyFiltersSources, "filters-sources", "", "Sources")
+	cmd.Flags().StringVar(&bodyFiltersUserId, "filters-user-id", "", "User id")
+	cmd.Flags().StringVar(&bodyPage, "page", "", "Page")
+	cmd.Flags().IntVar(&bodyPerPage, "per-page", 0, "Per page")
+	cmd.Flags().StringVar(&bodyQuery, "query", "", "Query")
+	cmd.Flags().StringVar(&bodyReportId, "report-id", "", "Id")
+	cmd.Flags().StringVar(&bodyReportName, "report-name", "", "Name")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

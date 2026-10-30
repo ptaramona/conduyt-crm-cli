@@ -2078,8 +2078,10 @@ func (k *secretSink) addURLValue(value string) {
 // test fails when a spec path has a sensitive-looking parameter (or "code")
 // that is not listed here.
 var sensitivePathParams = map[string][]string{
-	"/public/screen-share/{code}":  {"code"}, // public screen-share access code
-	"/screen-share/session/{code}": {"code"}, // screen-share session code
+	"/public/screen-share/{code}":       {"code"},  // public screen-share access code
+	"/screen-share/session/{code}":      {"code"},  // screen-share session code
+	"/public/screen-share/{code}/state": {"code"},  // public screen-share access code (reprint637: new public path)
+	"/webhooks/inbound/forms/{token}":   {"token"}, // inbound form webhook token (reprint637: new public path)
 }
 
 // sensitivePathValues returns the secret path-parameter values of a concrete path.

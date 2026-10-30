@@ -13,6 +13,10 @@ import (
 )
 
 func newStatusMetadataPostImportCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyItems string
+	var bodyMode string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -21,7 +25,16 @@ func newStatusMetadataPostImportCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli status-metadata post-import",
 		Annotations: map[string]string{"pp:endpoint": "status-metadata.post-import", "pp:method": "POST", "pp:path": "/status-metadata/import"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("items") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "items")
+				}
 			}
 			path := "/status-metadata/import"
 			c, err := flags.newClient()
@@ -29,6 +42,12 @@ func newStatusMetadataPostImportCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +62,16 @@ func newStatusMetadataPostImportCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyItems != "" {
+					var parsedItems any
+					if err := json.Unmarshal([]byte(bodyItems), &parsedItems); err != nil {
+						return fmt.Errorf("parsing --items JSON: %w", err)
+					}
+					bodyMap["items"] = parsedItems
+				}
+				if bodyMode != "" {
+					bodyMap["mode"] = bodyMode
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +216,10 @@ func newStatusMetadataPostImportCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyItems, "items", "", "Items")
+	cmd.Flags().StringVar(&bodyMode, "mode", "merge", "Mode")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

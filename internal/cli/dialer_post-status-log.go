@@ -13,15 +13,26 @@ import (
 )
 
 func newDialerPostStatusLogCmd(flags *rootFlags) *cobra.Command {
+	var bodyStatus string
+	var bodyStatusCode string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-status-log",
 		Short:       "Create / invoke dialer status-log",
-		Example:     "  conduyt-crm-pp-cli dialer post-status-log",
+		Example:     "  conduyt-crm-pp-cli dialer post-status-log --status available",
 		Annotations: map[string]string{"pp:endpoint": "dialer.post-status-log", "pp:method": "POST", "pp:path": "/dialer/status-log"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("status") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "status")
+				}
 			}
 			path := "/dialer/status-log"
 			c, err := flags.newClient()
@@ -43,6 +54,12 @@ func newDialerPostStatusLogCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
+				}
+				if bodyStatusCode != "" {
+					bodyMap["statusCode"] = bodyStatusCode
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +204,8 @@ func newDialerPostStatusLogCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Status")
+	cmd.Flags().StringVar(&bodyStatusCode, "status-code", "", "Must belong to status (lunch, meeting and training are break codes); it does not apply to active or wrapup")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

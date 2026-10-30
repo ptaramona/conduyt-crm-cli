@@ -12,16 +12,27 @@ import (
 )
 
 func newBookingPagesAvailabilityGetBookingPageCmd(flags *rootFlags) *cobra.Command {
+	var flagDate string
+	var flagDuration int
 
 	cmd := &cobra.Command{
 		Use:         "get-booking-page <id>",
 		Aliases:     []string{"get"},
 		Short:       "Get availability for a booking page",
-		Example:     "  conduyt-crm-pp-cli booking-pages availability get-booking-page 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli booking-pages availability get-booking-page 550e8400-e29b-41d4-a716-446655440000 --date 2026-01-15",
 		Annotations: map[string]string{"pp:endpoint": "availability.get-booking-page", "pp:method": "GET", "pp:path": "/booking-pages/{id}/availability", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("date") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "date")
 			}
 			path := "/booking-pages/{id}/availability"
 			if len(args) < 1 || args[0] == "" {
@@ -33,6 +44,12 @@ func newBookingPagesAvailabilityGetBookingPageCmd(flags *rootFlags) *cobra.Comma
 				return err
 			}
 			params := map[string]string{}
+			if flagDate != "" {
+				params["date"] = formatCLIParamValue(flagDate)
+			}
+			if flagDuration != 0 {
+				params["duration"] = formatCLIParamValue(flagDuration)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "availability", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -81,6 +98,8 @@ func newBookingPagesAvailabilityGetBookingPageCmd(flags *rootFlags) *cobra.Comma
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagDate, "date", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagDuration, "duration", 0, "Query parameter read by this route.")
 
 	return cmd
 }

@@ -20,6 +20,7 @@ func newBulkCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newBulkEditContactsCmd(flags))
 	cmd.AddCommand(newBulkEditDealsCmd(flags))
 	cmd.AddCommand(newBulkGetStatusCmd(flags))
+	cmd.AddCommand(newBulkPostContactsDeleteMatchingCmd(flags))
 	cmd.AddCommand(newBulkPostContactsDncCmd(flags))
 	cmd.AddCommand(newBulkPostContactsUntagCmd(flags))
 	cmd.AddCommand(newBulkTagContactsCmd(flags))

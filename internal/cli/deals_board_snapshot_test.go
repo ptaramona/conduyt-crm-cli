@@ -145,8 +145,11 @@ func TestDealsBoardSnapshotRefusalsSendNothing(t *testing.T) {
 		"over 5000 rows":    {[]string{"--board-snapshot", "--pipeline", bsPipe, "--board-columns", bsS1 + ":1000," + bsS2 + ":1000," + fiftyStages(4, ":1000")}, "6000 rows"},
 		"51 columns":        {[]string{"--board-snapshot", "--pipeline", bsPipe, "--board-columns", fiftyStages(51, "")}, "at most 50 columns"},
 		"default over 5000": {[]string{"--board-snapshot", "--pipeline", bsPipe, "--per-page", "101", "--board-columns", fiftyStages(50, "")}, "5050 rows"},
-		"rows-only flag":    {bsArgs("--rows-only"), "unknown flag"},
-		"summary flag":      {bsArgs("--summary"), "unknown flag"},
+		"rows-only flag":    {bsArgs("--rows-only", "true"), "cannot be combined with --rows-only"},
+		"summary flag":      {bsArgs("--summary", "true"), "cannot be combined with --summary"},
+		"stage-id alias":    {bsArgs("--stage-id", bsS2), "cannot be combined with --stage-id"},
+		"health flag":       {bsArgs("--health", "stale"), "cannot be combined with --health"},
+		"search filter":     {bsArgs("--search", "acme"), "cannot be combined with --search"},
 	}
 	for name, tc := range cases {
 		r := runDealsList(t, 200, bsSnap, true, false, tc.args...)

@@ -14,11 +14,22 @@ import (
 )
 
 func newLeadRoutingCreateRuleCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAssigneeGroupId string
 	var bodyAssigneeIds string
+	var bodyAssigneeSelection string
+	var bodyClaimWindowMinutes string
+	var bodyDailyLeadCap string
 	var bodyIsActive bool
+	var bodyMethod string
 	var bodyName string
+	var bodyRedistributeAfterDays string
+	var bodyShiftAware bool
+	var bodySortOrder int
 	var bodySourceFilter string
 	var bodyTagFilter string
+	var bodyTerritoryFilter string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -35,9 +46,6 @@ func newLeadRoutingCreateRuleCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("assignee-ids") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "assignee-ids")
-				}
 				if !cmd.Flags().Changed("name") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "name")
 				}
@@ -48,6 +56,12 @@ func newLeadRoutingCreateRuleCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -62,6 +76,9 @@ func newLeadRoutingCreateRuleCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAssigneeGroupId != "" {
+					bodyMap["assigneeGroupId"] = bodyAssigneeGroupId
+				}
 				if bodyAssigneeIds != "" {
 					parsedAssigneeIds, parseErr := cliutil.ParseStringList(bodyAssigneeIds)
 					if parseErr != nil {
@@ -69,11 +86,32 @@ func newLeadRoutingCreateRuleCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["assigneeIds"] = parsedAssigneeIds
 				}
+				if bodyAssigneeSelection != "" {
+					bodyMap["assigneeSelection"] = bodyAssigneeSelection
+				}
+				if bodyClaimWindowMinutes != "" {
+					bodyMap["claimWindowMinutes"] = bodyClaimWindowMinutes
+				}
+				if bodyDailyLeadCap != "" {
+					bodyMap["dailyLeadCap"] = bodyDailyLeadCap
+				}
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
 				}
+				if bodyMethod != "" {
+					bodyMap["method"] = bodyMethod
+				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
+				}
+				if bodyRedistributeAfterDays != "" {
+					bodyMap["redistributeAfterDays"] = bodyRedistributeAfterDays
+				}
+				if cmd.Flags().Changed("shift-aware") {
+					bodyMap["shiftAware"] = bodyShiftAware
+				}
+				if bodySortOrder != 0 {
+					bodyMap["sortOrder"] = bodySortOrder
 				}
 				if bodySourceFilter != "" {
 					parsedSourceFilter, parseErr := cliutil.ParseStringList(bodySourceFilter)
@@ -88,6 +126,13 @@ func newLeadRoutingCreateRuleCmd(flags *rootFlags) *cobra.Command {
 						return fmt.Errorf("parsing --tag-filter list: %w", parseErr)
 					}
 					bodyMap["tagFilter"] = parsedTagFilter
+				}
+				if bodyTerritoryFilter != "" {
+					parsedTerritoryFilter, parseErr := cliutil.ParseStringList(bodyTerritoryFilter)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --territory-filter list: %w", parseErr)
+					}
+					bodyMap["territoryFilter"] = parsedTerritoryFilter
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -233,11 +278,22 @@ func newLeadRoutingCreateRuleCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyAssigneeIds, "assignee-ids", "", "Assignee ids")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAssigneeGroupId, "assignee-group-id", "", "Assignee group id")
+	cmd.Flags().StringVar(&bodyAssigneeIds, "assignee-ids", "[]", "Assignee ids")
+	cmd.Flags().StringVar(&bodyAssigneeSelection, "assignee-selection", "round_robin", "Assignee selection")
+	cmd.Flags().StringVar(&bodyClaimWindowMinutes, "claim-window-minutes", "", "Claim window minutes")
+	cmd.Flags().StringVar(&bodyDailyLeadCap, "daily-lead-cap", "", "Daily lead cap")
 	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
-	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
-	cmd.Flags().StringVar(&bodySourceFilter, "source-filter", "", "Source filter")
-	cmd.Flags().StringVar(&bodyTagFilter, "tag-filter", "", "Tag filter")
+	cmd.Flags().StringVar(&bodyMethod, "method", "round_robin", "Method")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodyRedistributeAfterDays, "redistribute-after-days", "", "Redistribute after days")
+	cmd.Flags().BoolVar(&bodyShiftAware, "shift-aware", false, "Shift aware")
+	cmd.Flags().IntVar(&bodySortOrder, "sort-order", 0, "Sort order")
+	cmd.Flags().StringVar(&bodySourceFilter, "source-filter", "[]", "Source filter")
+	cmd.Flags().StringVar(&bodyTagFilter, "tag-filter", "[]", "Tag filter")
+	cmd.Flags().StringVar(&bodyTerritoryFilter, "territory-filter", "[]", "Territory filter")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

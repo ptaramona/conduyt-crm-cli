@@ -13,25 +13,21 @@ import (
 )
 
 func newAiEnrichContactCmd(flags *rootFlags) *cobra.Command {
-	var bodyContactId string
+	var bodyCompany string
+	var bodyEmail string
+	var bodyFirstName string
+	var bodyJobTitle string
+	var bodyLastName string
+	var bodyPhone string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "enrich-contact",
 		Short:       "AI-powered contact data enrichment",
-		Example:     "  conduyt-crm-pp-cli ai enrich-contact --contact-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli ai enrich-contact",
 		Annotations: map[string]string{"pp:endpoint": "ai.enrich-contact", "pp:method": "POST", "pp:path": "/ai/enrich-contact"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
-				}
 			}
 			path := "/ai/enrich-contact"
 			c, err := flags.newClient()
@@ -53,8 +49,23 @@ func newAiEnrichContactCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContactId != "" {
-					bodyMap["contactId"] = bodyContactId
+				if bodyCompany != "" {
+					bodyMap["company"] = bodyCompany
+				}
+				if bodyEmail != "" {
+					bodyMap["email"] = bodyEmail
+				}
+				if bodyFirstName != "" {
+					bodyMap["firstName"] = bodyFirstName
+				}
+				if bodyJobTitle != "" {
+					bodyMap["jobTitle"] = bodyJobTitle
+				}
+				if bodyLastName != "" {
+					bodyMap["lastName"] = bodyLastName
+				}
+				if bodyPhone != "" {
+					bodyMap["phone"] = bodyPhone
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -200,7 +211,12 @@ func newAiEnrichContactCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodyCompany, "company", "", "Company")
+	cmd.Flags().StringVar(&bodyEmail, "email", "", "The pattern above is the server's rule (Zod's email check). It accepts a domain label that ends in a hyphen (a@b-.")
+	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name")
+	cmd.Flags().StringVar(&bodyJobTitle, "job-title", "", "Job title")
+	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
+	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

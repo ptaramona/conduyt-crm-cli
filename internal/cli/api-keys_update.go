@@ -14,12 +14,16 @@ import (
 )
 
 func newApiKeysUpdateCmd(flags *rootFlags) *cobra.Command {
+	var bodyCascadeConfirmKeys string
+	var bodyCascadeConfirmed string
+	var bodyExpectedScopes string
 	var bodyExpiresAt string
 	var bodyIpAllowlist string
 	var bodyName string
 	var bodyRateLimit int
 	var bodyScopes string
 	var bodyTier string
+	var bodyUnrestricted string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -57,6 +61,15 @@ func newApiKeysUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCascadeConfirmKeys != "" {
+					bodyMap["cascadeConfirmKeys"] = bodyCascadeConfirmKeys
+				}
+				if bodyCascadeConfirmed != "" {
+					bodyMap["cascadeConfirmed"] = bodyCascadeConfirmed
+				}
+				if bodyExpectedScopes != "" {
+					bodyMap["expectedScopes"] = bodyExpectedScopes
+				}
 				if bodyExpiresAt != "" {
 					bodyMap["expiresAt"] = bodyExpiresAt
 				}
@@ -82,6 +95,9 @@ func newApiKeysUpdateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyTier != "" {
 					bodyMap["tier"] = bodyTier
+				}
+				if bodyUnrestricted != "" {
+					bodyMap["unrestricted"] = bodyUnrestricted
 				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
@@ -227,12 +243,16 @@ func newApiKeysUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyCascadeConfirmKeys, "cascade-confirm-keys", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCascadeConfirmed, "cascade-confirmed", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedScopes, "expected-scopes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyExpiresAt, "expires-at", "", "Expires at")
 	cmd.Flags().StringVar(&bodyIpAllowlist, "ip-allowlist", "", "Ip allowlist")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().IntVar(&bodyRateLimit, "rate-limit", 0, "Rate limit")
 	cmd.Flags().StringVar(&bodyScopes, "scopes", "", "Scopes")
 	cmd.Flags().StringVar(&bodyTier, "tier", "", "Tier")
+	cmd.Flags().StringVar(&bodyUnrestricted, "unrestricted", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

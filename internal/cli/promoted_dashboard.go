@@ -12,11 +12,12 @@ import (
 )
 
 func newDashboardPromotedCmd(flags *rootFlags) *cobra.Command {
+	var flagFresh string
 
 	cmd := &cobra.Command{
 		Use:         "dashboard",
-		Short:       "Get dashboard summary metrics",
-		Long:        "Get dashboard summary metrics",
+		Short:       "The counts and totals are cached per server instance for 60 seconds per account, role and visibility scope",
+		Long:        "The counts and totals are cached per server instance for 60 seconds per account, role and visibility scope",
 		Example:     "  conduyt-crm-pp-cli dashboard",
 		Annotations: map[string]string{"pp:endpoint": "dashboard.get", "pp:method": "GET", "pp:path": "/dashboard", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -27,6 +28,9 @@ func newDashboardPromotedCmd(flags *rootFlags) *cobra.Command {
 
 			path := "/dashboard"
 			params := map[string]string{}
+			if flagFresh != "" {
+				params["fresh"] = formatCLIParamValue(flagFresh)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dashboard", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -77,6 +81,7 @@ func newDashboardPromotedCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagFresh, "fresh", "", "1 (or true) recomputes the dashboard now instead of answering from the 60-second cache, and stores the result.")
 
 	// Wire sibling endpoints and sub-resources as subcommands
 

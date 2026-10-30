@@ -13,6 +13,8 @@ import (
 )
 
 func newConfirmPostCmd(flags *rootFlags) *cobra.Command {
+	var bodyAction string
+	var bodyResourceId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -44,6 +46,12 @@ func newConfirmPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAction != "" {
+					bodyMap["action"] = bodyAction
+				}
+				if bodyResourceId != "" {
+					bodyMap["resourceId"] = bodyResourceId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +196,8 @@ func newConfirmPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAction, "action", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyResourceId, "resource-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

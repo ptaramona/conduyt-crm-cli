@@ -13,6 +13,9 @@ import (
 )
 
 func newImportsPostUploadUrlCmd(flags *rootFlags) *cobra.Command {
+	var bodyFileName string
+	var bodyFileSize string
+	var bodyObjectType string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +46,15 @@ func newImportsPostUploadUrlCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyFileName != "" {
+					bodyMap["fileName"] = bodyFileName
+				}
+				if bodyFileSize != "" {
+					bodyMap["fileSize"] = bodyFileSize
+				}
+				if bodyObjectType != "" {
+					bodyMap["objectType"] = bodyObjectType
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +199,9 @@ func newImportsPostUploadUrlCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyFileName, "file-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFileSize, "file-size", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyObjectType, "object-type", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

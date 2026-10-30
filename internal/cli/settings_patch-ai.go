@@ -13,6 +13,10 @@ import (
 )
 
 func newSettingsPatchAiCmd(flags *rootFlags) *cobra.Command {
+	var bodyBusinessDescription string
+	var bodyQualificationRules string
+	var bodyStageMoveRules string
+	var bodyTone string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +47,18 @@ func newSettingsPatchAiCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBusinessDescription != "" {
+					bodyMap["businessDescription"] = bodyBusinessDescription
+				}
+				if bodyQualificationRules != "" {
+					bodyMap["qualificationRules"] = bodyQualificationRules
+				}
+				if bodyStageMoveRules != "" {
+					bodyMap["stageMoveRules"] = bodyStageMoveRules
+				}
+				if bodyTone != "" {
+					bodyMap["tone"] = bodyTone
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +203,10 @@ func newSettingsPatchAiCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyBusinessDescription, "business-description", "", "Business description")
+	cmd.Flags().StringVar(&bodyQualificationRules, "qualification-rules", "", "Qualification rules")
+	cmd.Flags().StringVar(&bodyStageMoveRules, "stage-move-rules", "", "Stage move rules")
+	cmd.Flags().StringVar(&bodyTone, "tone", "", "Tone")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,6 +13,7 @@ import (
 )
 
 func newSettingsPatchDormancyCmd(flags *rootFlags) *cobra.Command {
+	var bodyDormancyDays int
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -21,7 +22,16 @@ func newSettingsPatchDormancyCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli settings patch-dormancy",
 		Annotations: map[string]string{"pp:endpoint": "settings.patch-dormancy", "pp:method": "PATCH", "pp:path": "/settings/dormancy"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("dormancy-days") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "dormancy-days")
+				}
 			}
 			path := "/settings/dormancy"
 			c, err := flags.newClient()
@@ -43,6 +53,9 @@ func newSettingsPatchDormancyCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDormancyDays != 0 {
+					bodyMap["dormancyDays"] = bodyDormancyDays
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +200,7 @@ func newSettingsPatchDormancyCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().IntVar(&bodyDormancyDays, "dormancy-days", 0, "Dormancy days")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

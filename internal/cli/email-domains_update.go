@@ -13,6 +13,9 @@ import (
 )
 
 func newEmailDomainsUpdateCmd(flags *rootFlags) *cobra.Command {
+	var bodyDomainId string
+	var bodyFromAddress string
+	var bodyFromName string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +46,15 @@ func newEmailDomainsUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDomainId != "" {
+					bodyMap["domainId"] = bodyDomainId
+				}
+				if bodyFromAddress != "" {
+					bodyMap["fromAddress"] = bodyFromAddress
+				}
+				if bodyFromName != "" {
+					bodyMap["fromName"] = bodyFromName
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +199,9 @@ func newEmailDomainsUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDomainId, "domain-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFromAddress, "from-address", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFromName, "from-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

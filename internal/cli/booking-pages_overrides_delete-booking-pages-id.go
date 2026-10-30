@@ -12,16 +12,29 @@ import (
 )
 
 func newBookingPagesOverridesDeleteBookingPagesIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDate string
+	var flagDryRun bool
+	var flagSandbox bool
+	var flagUserId string
 
 	cmd := &cobra.Command{
 		Use:         "delete-booking-pages-id <id>",
 		Aliases:     []string{"delete"},
 		Short:       "Delete booking-pages id overrides",
-		Example:     "  conduyt-crm-pp-cli booking-pages overrides delete-booking-pages-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli booking-pages overrides delete-booking-pages-id 550e8400-e29b-41d4-a716-446655440000 --date 2026-01-15",
 		Annotations: map[string]string{"pp:endpoint": "overrides.delete-booking-pages-id", "pp:method": "DELETE", "pp:path": "/booking-pages/{id}/overrides"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("date") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "date")
 			}
 			path := "/booking-pages/{id}/overrides"
 			if len(args) < 1 || args[0] == "" {
@@ -33,6 +46,18 @@ func newBookingPagesOverridesDeleteBookingPagesIdCmd(flags *rootFlags) *cobra.Co
 				return err
 			}
 			params := map[string]string{}
+			if flagDate != "" {
+				params["date"] = formatCLIParamValue(flagDate)
+			}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
+			if flagUserId != "" {
+				params["userId"] = formatCLIParamValue(flagUserId)
+			}
 			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
 			if err != nil {
 				return classifyDeleteError(err, flags)
@@ -173,6 +198,10 @@ func newBookingPagesOverridesDeleteBookingPagesIdCmd(flags *rootFlags) *cobra.Co
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagDate, "date", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "Query parameter read by this route.")
 
 	return cmd
 }

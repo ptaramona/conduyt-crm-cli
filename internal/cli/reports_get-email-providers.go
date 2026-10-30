@@ -12,6 +12,7 @@ import (
 )
 
 func newReportsGetEmailProvidersCmd(flags *rootFlags) *cobra.Command {
+	var flagDays int
 
 	cmd := &cobra.Command{
 		Use:         "get-email-providers",
@@ -25,6 +26,9 @@ func newReportsGetEmailProvidersCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDays != 0 {
+				params["days"] = formatCLIParamValue(flagDays)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +77,7 @@ func newReportsGetEmailProvidersCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().IntVar(&flagDays, "days", 0, "Query parameter read by this route.")
 
 	return cmd
 }

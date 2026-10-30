@@ -13,7 +13,8 @@ import (
 )
 
 func newWorkflowsTestWorkflowCmd(flags *rootFlags) *cobra.Command {
-	var bodyContactId string
+	var bodySampleDataContactId string
+	var bodySampleDataDealId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -52,8 +53,17 @@ func newWorkflowsTestWorkflowCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContactId != "" {
-					bodyMap["contactId"] = bodyContactId
+				{
+					nestedSampleData := map[string]any{}
+					if bodySampleDataContactId != "" {
+						nestedSampleData["contactId"] = bodySampleDataContactId
+					}
+					if bodySampleDataDealId != "" {
+						nestedSampleData["dealId"] = bodySampleDataDealId
+					}
+					if len(nestedSampleData) > 0 {
+						bodyMap["sampleData"] = nestedSampleData
+					}
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -199,7 +209,8 @@ func newWorkflowsTestWorkflowCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodySampleDataContactId, "sample-data-contact-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySampleDataDealId, "sample-data-deal-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

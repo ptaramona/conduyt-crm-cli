@@ -15,10 +15,12 @@ import (
 func newCallsCreateRecordCmd(flags *rootFlags) *cobra.Command {
 	var bodyContactId string
 	var bodyDirection string
+	var bodyDisposition string
 	var bodyDuration int
 	var bodyFromNumber string
 	var bodyNotes string
-	var bodyRecordingUrl string
+	var bodySource string
+	var bodyStatus string
 	var bodyToNumber string
 	var stdinBody bool
 
@@ -72,6 +74,9 @@ func newCallsCreateRecordCmd(flags *rootFlags) *cobra.Command {
 				if bodyDirection != "" {
 					bodyMap["direction"] = bodyDirection
 				}
+				if bodyDisposition != "" {
+					bodyMap["disposition"] = bodyDisposition
+				}
 				if bodyDuration != 0 {
 					bodyMap["duration"] = bodyDuration
 				}
@@ -81,8 +86,11 @@ func newCallsCreateRecordCmd(flags *rootFlags) *cobra.Command {
 				if bodyNotes != "" {
 					bodyMap["notes"] = bodyNotes
 				}
-				if bodyRecordingUrl != "" {
-					bodyMap["recordingUrl"] = bodyRecordingUrl
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
+				}
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
 				}
 				if bodyToNumber != "" {
 					bodyMap["toNumber"] = bodyToNumber
@@ -233,10 +241,12 @@ func newCallsCreateRecordCmd(flags *rootFlags) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
 	cmd.Flags().StringVar(&bodyDirection, "direction", "", "Direction")
+	cmd.Flags().StringVar(&bodyDisposition, "disposition", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().IntVar(&bodyDuration, "duration", 0, "Duration")
 	cmd.Flags().StringVar(&bodyFromNumber, "from-number", "", "From number")
 	cmd.Flags().StringVar(&bodyNotes, "notes", "", "Notes")
-	cmd.Flags().StringVar(&bodyRecordingUrl, "recording-url", "", "Recording url")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyToNumber, "to-number", "", "To number")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

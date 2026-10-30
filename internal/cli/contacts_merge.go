@@ -13,8 +13,19 @@ import (
 )
 
 func newContactsMergeCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyConfirmImpact string
+	var bodyDryRun2 string
+	var bodyExpectedCounts string
+	var bodyExpectedGuardCounts string
+	var bodyExpectedIdentifiersIntoPrimaryEmail string
+	var bodyExpectedIdentifiersIntoPrimaryPhone string
+	var bodyExpectedIdentifiersIntoSlots string
+	var bodyExpectedIdentifiersUnstored string
+	var bodyPartial bool
 	var bodyPrimaryId string
-	var bodySecondaryId string
+	var bodySecondaryIds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -33,9 +44,6 @@ func newContactsMergeCmd(flags *rootFlags) *cobra.Command {
 				if !cmd.Flags().Changed("primary-id") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "primary-id")
 				}
-				if !cmd.Flags().Changed("secondary-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "secondary-id")
-				}
 			}
 			path := "/contacts/merge"
 			c, err := flags.newClient()
@@ -43,6 +51,12 @@ func newContactsMergeCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -57,11 +71,54 @@ func newContactsMergeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyConfirmImpact != "" {
+					bodyMap["confirmImpact"] = bodyConfirmImpact
+				}
+				if bodyDryRun2 != "" {
+					bodyMap["dryRun"] = bodyDryRun2
+				}
+				if bodyExpectedCounts != "" {
+					bodyMap["expectedCounts"] = bodyExpectedCounts
+				}
+				if bodyExpectedGuardCounts != "" {
+					bodyMap["expectedGuardCounts"] = bodyExpectedGuardCounts
+				}
+				{
+					nestedExpectedIdentifiers := map[string]any{}
+					{
+						nestedExpectedIdentifiersIntoPrimary := map[string]any{}
+						if bodyExpectedIdentifiersIntoPrimaryEmail != "" {
+							nestedExpectedIdentifiersIntoPrimary["email"] = bodyExpectedIdentifiersIntoPrimaryEmail
+						}
+						if bodyExpectedIdentifiersIntoPrimaryPhone != "" {
+							nestedExpectedIdentifiersIntoPrimary["phone"] = bodyExpectedIdentifiersIntoPrimaryPhone
+						}
+						if len(nestedExpectedIdentifiersIntoPrimary) > 0 {
+							nestedExpectedIdentifiers["intoPrimary"] = nestedExpectedIdentifiersIntoPrimary
+						}
+					}
+					if bodyExpectedIdentifiersIntoSlots != "" {
+						nestedExpectedIdentifiers["intoSlots"] = bodyExpectedIdentifiersIntoSlots
+					}
+					if bodyExpectedIdentifiersUnstored != "" {
+						var parsedExpectedIdentifiersUnstored any
+						if err := json.Unmarshal([]byte(bodyExpectedIdentifiersUnstored), &parsedExpectedIdentifiersUnstored); err != nil {
+							return fmt.Errorf("parsing --expected-identifiers-unstored JSON: %w", err)
+						}
+						nestedExpectedIdentifiers["unstored"] = parsedExpectedIdentifiersUnstored
+					}
+					if len(nestedExpectedIdentifiers) > 0 {
+						bodyMap["expectedIdentifiers"] = nestedExpectedIdentifiers
+					}
+				}
+				if cmd.Flags().Changed("partial") {
+					bodyMap["partial"] = bodyPartial
+				}
 				if bodyPrimaryId != "" {
 					bodyMap["primaryId"] = bodyPrimaryId
 				}
-				if bodySecondaryId != "" {
-					bodyMap["secondaryId"] = bodySecondaryId
+				if bodySecondaryIds != "" {
+					bodyMap["secondaryIds"] = bodySecondaryIds
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -207,8 +264,19 @@ func newContactsMergeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyConfirmImpact, "confirm-impact", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDryRun2, "dry-run-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedCounts, "expected-counts", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedGuardCounts, "expected-guard-counts", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedIdentifiersIntoPrimaryEmail, "expected-identifiers-into-primary-email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedIdentifiersIntoPrimaryPhone, "expected-identifiers-into-primary-phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedIdentifiersIntoSlots, "expected-identifiers-into-slots", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedIdentifiersUnstored, "expected-identifiers-unstored", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&bodyPartial, "partial", false, "Acknowledges merging PART of a duplicate group larger than the duplicates route's contact cap (1,000).")
 	cmd.Flags().StringVar(&bodyPrimaryId, "primary-id", "", "Contact to keep")
-	cmd.Flags().StringVar(&bodySecondaryId, "secondary-id", "", "Contact to merge into primary (will be deleted)")
+	cmd.Flags().StringVar(&bodySecondaryIds, "secondary-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

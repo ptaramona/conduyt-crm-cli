@@ -13,14 +13,27 @@ import (
 )
 
 func newDealsUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAppointmentAt string
 	var bodyAssignedTo string
+	var bodyCheckOrigin string
+	var bodyCloseDate string
+	var bodyCompanyId string
 	var bodyContactId string
 	var bodyCurrency string
 	var bodyCustomFields string
 	var bodyExpectedCloseDate string
+	var bodyExpectedStageId string
+	var bodyExpectedUpdatedAt string
+	var bodyKeepPreviousOwnerAsCollaborator bool
 	var bodyLostReason string
+	var bodyPipelineId string
 	var bodyPriority string
+	var bodyProbability string
+	var bodyProducts string
 	var bodySortOrder int
+	var bodySource string
 	var bodyStageId string
 	var bodyStatus string
 	var bodyTitle string
@@ -48,6 +61,12 @@ func newDealsUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -62,8 +81,20 @@ func newDealsUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAppointmentAt != "" {
+					bodyMap["appointmentAt"] = bodyAppointmentAt
+				}
 				if bodyAssignedTo != "" {
 					bodyMap["assignedTo"] = bodyAssignedTo
+				}
+				if bodyCheckOrigin != "" {
+					bodyMap["checkOrigin"] = bodyCheckOrigin
+				}
+				if bodyCloseDate != "" {
+					bodyMap["closeDate"] = bodyCloseDate
+				}
+				if bodyCompanyId != "" {
+					bodyMap["companyId"] = bodyCompanyId
 				}
 				if bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
@@ -81,14 +112,39 @@ func newDealsUpdateCmd(flags *rootFlags) *cobra.Command {
 				if bodyExpectedCloseDate != "" {
 					bodyMap["expectedCloseDate"] = bodyExpectedCloseDate
 				}
+				if bodyExpectedStageId != "" {
+					bodyMap["expectedStageId"] = bodyExpectedStageId
+				}
+				if bodyExpectedUpdatedAt != "" {
+					bodyMap["expectedUpdatedAt"] = bodyExpectedUpdatedAt
+				}
+				if cmd.Flags().Changed("keep-previous-owner-as-collaborator") {
+					bodyMap["keepPreviousOwnerAsCollaborator"] = bodyKeepPreviousOwnerAsCollaborator
+				}
 				if bodyLostReason != "" {
 					bodyMap["lostReason"] = bodyLostReason
+				}
+				if bodyPipelineId != "" {
+					bodyMap["pipelineId"] = bodyPipelineId
 				}
 				if bodyPriority != "" {
 					bodyMap["priority"] = bodyPriority
 				}
+				if bodyProbability != "" {
+					bodyMap["probability"] = bodyProbability
+				}
+				if bodyProducts != "" {
+					var parsedProducts any
+					if err := json.Unmarshal([]byte(bodyProducts), &parsedProducts); err != nil {
+						return fmt.Errorf("parsing --products JSON: %w", err)
+					}
+					bodyMap["products"] = parsedProducts
+				}
 				if bodySortOrder != 0 {
 					bodyMap["sortOrder"] = bodySortOrder
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
 				}
 				if bodyStageId != "" {
 					bodyMap["stageId"] = bodyStageId
@@ -246,18 +302,31 @@ func newDealsUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
-	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&bodyCurrency, "currency", "", "Currency")
-	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Custom fields")
-	cmd.Flags().StringVar(&bodyExpectedCloseDate, "expected-close-date", "", "Expected close date")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAppointmentAt, "appointment-at", "", "Appointment date/time for THIS deal (ISO 8601 with offset), pushed by the external booking/AI layer.")
+	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "An empty string is read as null before validation (it clears the field).")
+	cmd.Flags().StringVar(&bodyCheckOrigin, "check-origin", "", "Pipeline health quick fix: the health check this edit fixes.")
+	cmd.Flags().StringVar(&bodyCloseDate, "close-date", "", "A real calendar date (YYYY-MM-DD) or ISO 8601 date-time; anything else is a 400.")
+	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Company id")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "An empty string is read as null before validation (it clears the field).")
+	cmd.Flags().StringVar(&bodyCurrency, "currency", "", "ISO 4217 currency code (e.g. GBP). Omitting it leaves the existing deal currency unchanged.")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Patch semantics per key: the keys sent replace those keys (send null to clear one)")
+	cmd.Flags().StringVar(&bodyExpectedCloseDate, "expected-close-date", "", "An empty string is read as null before validation (it clears the field).")
+	cmd.Flags().StringVar(&bodyExpectedStageId, "expected-stage-id", "", "The stage the caller's move was chosen against: refused with 409 (nothing written) when the deal is no longer in it.")
+	cmd.Flags().StringVar(&bodyExpectedUpdatedAt, "expected-updated-at", "", "Optional optimistic-concurrency pin: the deal's `updatedAt` as the caller last read it.")
+	cmd.Flags().BoolVar(&bodyKeepPreviousOwnerAsCollaborator, "keep-previous-owner-as-collaborator", false, "With assignedTo set to another user")
 	cmd.Flags().StringVar(&bodyLostReason, "lost-reason", "", "Lost reason")
+	cmd.Flags().StringVar(&bodyPipelineId, "pipeline-id", "", "Pipeline id")
 	cmd.Flags().StringVar(&bodyPriority, "priority", "", "Priority")
+	cmd.Flags().StringVar(&bodyProbability, "probability", "", "Win probability as a 0–1 fraction (e.g. 0.75 = 75%), not a percentage")
+	cmd.Flags().StringVar(&bodyProducts, "products", "", "Products")
 	cmd.Flags().IntVar(&bodySortOrder, "sort-order", 0, "Kanban column sort position")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Lead source of THIS opportunity (e.g.")
 	cmd.Flags().StringVar(&bodyStageId, "stage-id", "", "Stage id")
 	cmd.Flags().StringVar(&bodyStatus, "status", "", "Status")
 	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")
-	cmd.Flags().StringVar(&bodyValue, "value", "", "Value")
+	cmd.Flags().StringVar(&bodyValue, "value", "", "After rounding to 2 decimals the absolute value is at most 9999999999.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

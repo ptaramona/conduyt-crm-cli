@@ -13,29 +13,19 @@ import (
 )
 
 func newTagsMergeCmd(flags *rootFlags) *cobra.Command {
-	var bodySourceId string
-	var bodyTargetId string
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodySourceTagId string
+	var bodyTargetTagId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "merge",
 		Short:       "Merge two tags",
-		Example:     "  conduyt-crm-pp-cli tags merge --source-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli tags merge",
 		Annotations: map[string]string{"pp:endpoint": "tags.merge", "pp:method": "POST", "pp:path": "/tags/merge"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("source-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "source-id")
-				}
-				if !cmd.Flags().Changed("target-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "target-id")
-				}
 			}
 			path := "/tags/merge"
 			c, err := flags.newClient()
@@ -43,6 +33,12 @@ func newTagsMergeCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -57,11 +53,11 @@ func newTagsMergeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodySourceId != "" {
-					bodyMap["sourceId"] = bodySourceId
+				if bodySourceTagId != "" {
+					bodyMap["sourceTagId"] = bodySourceTagId
 				}
-				if bodyTargetId != "" {
-					bodyMap["targetId"] = bodyTargetId
+				if bodyTargetTagId != "" {
+					bodyMap["targetTagId"] = bodyTargetTagId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -207,8 +203,10 @@ func newTagsMergeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodySourceId, "source-id", "", "Tag to merge from (will be deleted)")
-	cmd.Flags().StringVar(&bodyTargetId, "target-id", "", "Tag to merge into (will be kept)")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodySourceTagId, "source-tag-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTargetTagId, "target-tag-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

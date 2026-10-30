@@ -12,8 +12,12 @@ import (
 )
 
 func newEmailsListSequencesCmd(flags *rootFlags) *cobra.Command {
+	var flagArchived bool
+	var flagIsActive string
 	var flagPage string
-	var flagPerPage int
+	var flagPerPage string
+	var flagType string
+	var flagView string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -22,15 +26,32 @@ func newEmailsListSequencesCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli emails list-sequences",
 		Annotations: map[string]string{"pp:endpoint": "emails.list-sequences", "pp:method": "GET", "pp:path": "/emails/sequences", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("type") {
+				allowedType := []string{"email", "sms"}
+				validType := false
+				for _, v := range allowedType {
+					if flagType == v {
+						validType = true
+						break
+					}
+				}
+				if !validType {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagType, "type", allowedType)
+				}
+			}
 			path := "/emails/sequences"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "emails", path, map[string]string{
-				"page":     formatCLIParamValue(flagPage),
-				"per_page": formatCLIParamValue(flagPerPage),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+				"archived":  formatCLIParamValue(flagArchived),
+				"is_active": formatCLIParamValue(flagIsActive),
+				"page":      formatCLIParamValue(flagPage),
+				"per_page":  formatCLIParamValue(flagPerPage),
+				"type":      formatCLIParamValue(flagType),
+				"view":      formatCLIParamValue(flagView),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -78,8 +99,12 @@ func newEmailsListSequencesCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagArchived, "archived", false, "true lists archived sequences only (they are left out otherwise).")
+	cmd.Flags().StringVar(&flagIsActive, "is-active", "", "Pass true or false to list only sequences that are On, or Off.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 200, default 50), or the word all: every sequence of the filters in one query.")
+	cmd.Flags().StringVar(&flagType, "type", "", "Only sequences of this channel. (one of: email, sms)")
+	cmd.Flags().StringVar(&flagView, "view", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

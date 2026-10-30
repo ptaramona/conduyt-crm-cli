@@ -6,12 +6,15 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newChatRemoveReactionCmd(flags *rootFlags) *cobra.Command {
+	var bodyEmoji string
+	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "remove-reaction <id> <messageId>",
@@ -21,6 +24,8 @@ func newChatRemoveReactionCmd(flags *rootFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if !stdinBody {
 			}
 			path := "/chat/channels/{id}/messages/{messageId}/reactions"
 			if len(args) < 1 || args[0] == "" {
@@ -35,8 +40,25 @@ func newChatRemoveReactionCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
+			var body any
+			if stdinBody {
+				stdinData, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				var jsonBody map[string]any
+				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
+					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				body = jsonBody
+			} else {
+				bodyMap := map[string]any{}
+				body = bodyMap
+				if bodyEmoji != "" {
+					bodyMap["emoji"] = bodyEmoji
+				}
+			}
+			data, statusCode, err := c.DeleteWithBody(cmd.Context(), path, body)
 			if err != nil {
 				return classifyDeleteError(err, flags)
 			}
@@ -176,6 +198,8 @@ func newChatRemoveReactionCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyEmoji, "emoji", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
 }

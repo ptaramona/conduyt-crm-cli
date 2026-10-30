@@ -6,13 +6,18 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"strconv"
 
 	"github.com/ptaramona/conduyt-crm-cli/internal/client"
 	"github.com/spf13/cobra"
 )
 
 func newScreenShareDeleteSessionCodeCmd(flags *rootFlags) *cobra.Command {
+	var bodyMarksDrew int
+	var bodyMarksPointed string
+	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:     "delete-session-code <code>",
@@ -22,8 +27,22 @@ func newScreenShareDeleteSessionCodeCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli screen-share delete-session-code example-value",
 		Annotations: map[string]string{"pp:endpoint": "screen-share.delete-session-code", "pp:method": "DELETE", "pp:path": "/screen-share/session/{code}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if !stdinBody {
+				if !cmd.Flags().Changed("marks-drew") && nestedFlagGroupChanged(cmd, "marks") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "marks-drew")
+				}
+				if !cmd.Flags().Changed("marks-pointed") && nestedFlagGroupChanged(cmd, "marks") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "marks-pointed")
+				}
 			}
 			path := "/screen-share/session/{code}"
 			if len(args) < 1 || args[0] == "" {
@@ -34,8 +53,38 @@ func newScreenShareDeleteSessionCodeCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
+			var body any
+			if stdinBody {
+				stdinData, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				var jsonBody map[string]any
+				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
+					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				body = jsonBody
+			} else {
+				bodyMap := map[string]any{}
+				body = bodyMap
+				{
+					nestedMarks := map[string]any{}
+					if cmd.Flags().Changed("marks-drew") || bodyMarksDrew != 0 { // PATCH(nested-required-flags-637): 0 is a valid count
+						nestedMarks["drew"] = bodyMarksDrew
+					}
+					if bodyMarksPointed != "" {
+						parsedMarksPointed, err := strconv.ParseBool(bodyMarksPointed)
+						if err != nil {
+							return fmt.Errorf("parsing --marks-pointed as bool: %w", err)
+						}
+						nestedMarks["pointed"] = parsedMarksPointed
+					}
+					if len(nestedMarks) > 0 {
+						bodyMap["marks"] = nestedMarks
+					}
+				}
+			}
+			data, statusCode, err := c.DeleteWithBody(cmd.Context(), path, body)
 			if err != nil {
 				return classifyDeleteError(err, flags)
 			}
@@ -175,6 +224,9 @@ func newScreenShareDeleteSessionCodeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().IntVar(&bodyMarksDrew, "marks-drew", 0, "Drew")
+	cmd.Flags().StringVar(&bodyMarksPointed, "marks-pointed", "", "Pointed")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
 }

@@ -10,11 +10,12 @@ import (
 func newConversationsComplianceCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "compliance",
-		Short:       "Get compliance for conversations",
+		Short:       "Get and create compliance for conversations",
 		Annotations: map[string]string{"mcp:read-only": "true", "pp:typed-exit-codes": "0,2"},
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
 	cmd.AddCommand(newConversationsComplianceGetConversationsContactIdCmd(flags))
+	cmd.AddCommand(newConversationsCompliancePostConversationsContactIdCmd(flags))
 	return cmd
 }

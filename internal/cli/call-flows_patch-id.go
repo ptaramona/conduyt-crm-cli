@@ -13,6 +13,12 @@ import (
 )
 
 func newCallFlowsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyCreateContacts string
+	var bodyDraftGraphEntryId string
+	var bodyDraftGraphNodes string
+	var bodyExpectedDraftRevision string
+	var bodyName string
+	var bodyPhoneNumber string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -50,6 +56,34 @@ func newCallFlowsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCreateContacts != "" {
+					bodyMap["createContacts"] = bodyCreateContacts
+				}
+				{
+					nestedDraftGraph := map[string]any{}
+					if bodyDraftGraphEntryId != "" {
+						nestedDraftGraph["entryId"] = bodyDraftGraphEntryId
+					}
+					if bodyDraftGraphNodes != "" {
+						var parsedDraftGraphNodes any
+						if err := json.Unmarshal([]byte(bodyDraftGraphNodes), &parsedDraftGraphNodes); err != nil {
+							return fmt.Errorf("parsing --draft-graph-nodes JSON: %w", err)
+						}
+						nestedDraftGraph["nodes"] = parsedDraftGraphNodes
+					}
+					if len(nestedDraftGraph) > 0 {
+						bodyMap["draftGraph"] = nestedDraftGraph
+					}
+				}
+				if bodyExpectedDraftRevision != "" {
+					bodyMap["expectedDraftRevision"] = bodyExpectedDraftRevision
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyPhoneNumber != "" {
+					bodyMap["phoneNumber"] = bodyPhoneNumber
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +228,12 @@ func newCallFlowsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyCreateContacts, "create-contacts", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDraftGraphEntryId, "draft-graph-entry-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDraftGraphNodes, "draft-graph-nodes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedDraftRevision, "expected-draft-revision", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPhoneNumber, "phone-number", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

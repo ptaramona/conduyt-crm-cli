@@ -13,6 +13,9 @@ import (
 )
 
 func newDialerPostCallEligibilityCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactId string
+	var bodyDncOverride bool
+	var bodyTo string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +46,15 @@ func newDialerPostCallEligibilityCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if cmd.Flags().Changed("dnc-override") {
+					bodyMap["dncOverride"] = bodyDncOverride
+				}
+				if bodyTo != "" {
+					bodyMap["to"] = bodyTo
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +199,9 @@ func newDialerPostCallEligibilityCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().BoolVar(&bodyDncOverride, "dnc-override", false, "Dnc override")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "To")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

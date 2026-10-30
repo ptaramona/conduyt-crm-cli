@@ -13,6 +13,9 @@ import (
 )
 
 func newGroupsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyColor string
+	var bodyName string
+	var bodySortOrder string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +54,15 @@ func newGroupsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyColor != "" {
+					bodyMap["color"] = bodyColor
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodySortOrder != "" {
+					bodyMap["sortOrder"] = bodySortOrder
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +207,9 @@ func newGroupsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyColor, "color", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySortOrder, "sort-order", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

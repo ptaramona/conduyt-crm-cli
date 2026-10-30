@@ -6,12 +6,19 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newCustomFieldsDeleteCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyConfirmImpact string
+	var bodyExpectedDependencyCount string
+	var bodyExpectedValueCount string
+	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "delete <id>",
@@ -21,6 +28,8 @@ func newCustomFieldsDeleteCmd(flags *rootFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if !stdinBody {
 			}
 			path := "/custom-fields/{id}"
 			if len(args) < 1 || args[0] == "" {
@@ -32,7 +41,37 @@ func newCustomFieldsDeleteCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
-			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
+			var body any
+			if stdinBody {
+				stdinData, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				var jsonBody map[string]any
+				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
+					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				body = jsonBody
+			} else {
+				bodyMap := map[string]any{}
+				body = bodyMap
+				if bodyConfirmImpact != "" {
+					bodyMap["confirmImpact"] = bodyConfirmImpact
+				}
+				if bodyExpectedDependencyCount != "" {
+					bodyMap["expectedDependencyCount"] = bodyExpectedDependencyCount
+				}
+				if bodyExpectedValueCount != "" {
+					bodyMap["expectedValueCount"] = bodyExpectedValueCount
+				}
+			}
+			data, statusCode, err := c.DeleteWithParamsAndBody(cmd.Context(), path, params, body)
 			if err != nil {
 				return classifyDeleteError(err, flags)
 			}
@@ -172,6 +211,12 @@ func newCustomFieldsDeleteCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyConfirmImpact, "confirm-impact", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedDependencyCount, "expected-dependency-count", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExpectedValueCount, "expected-value-count", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
 }

@@ -9,10 +9,67 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newBookingPagesUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAvailabilityRules string
+	var bodyBrandName string
+	var bodyBufferAfter int
+	var bodyBufferBefore int
+	var bodyCampaign string
+	var bodyColor string
+	var bodyCustomQuestions string
+	var bodyDescription string
+	var bodyDistributionMethod string
+	var bodyDocumentsEnabled bool
+	var bodyDocumentsPageUrl string
+	var bodyDurationMinutes int
+	var bodyDurationOptions string
+	var bodyEmbedAllowedOrigins string
+	var bodyEmbedEnabled bool
+	var bodyEnableIcalFeed bool
+	var bodyEventType string
+	var bodyFieldMappings string
+	var bodyFormFields string
+	var bodyGdprEnabled bool
+	var bodyGdprLinkUrl string
+	var bodyGdprText string
+	var bodyHideBranding bool
+	var bodyHostGroupId string
+	var bodyHostPriorities string
+	var bodyHostUserIds string
+	var bodyHyrosTag string
+	var bodyIsActive bool
+	var bodyLeadSource string
+	var bodyLocation string
+	var bodyLogoUrl string
+	var bodyMaxAdvanceDays int
+	var bodyMaxAttendees int
+	var bodyMaxBookingsPerDay int
+	var bodyMinimumNotice int
+	var bodyMorningOfReminderEnabled bool
+	var bodyPaymentAmount int
+	var bodyPaymentCurrency string
+	var bodyPaymentEnabled bool
+	var bodyRedirectUrl string
+	var bodyReminders string
+	var bodyRequirePhone bool
+	var bodyReviewsBadges string
+	var bodyReviewsTestimonials string
+	var bodySlug string
+	var bodyStripePriceId string
+	var bodyStripeProductId string
+	var bodyTemplate string
+	var bodyThankYouMessage string
+	var bodyTitle string
+	var bodyUserId string
+	var bodyVideoHostEmail string
+	var bodyVideoProvider string
+	var bodyWaitlistEnabled bool
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -36,6 +93,12 @@ func newBookingPagesUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -50,6 +113,218 @@ func newBookingPagesUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAvailabilityRules != "" {
+					var parsedAvailabilityRules any
+					if err := json.Unmarshal([]byte(bodyAvailabilityRules), &parsedAvailabilityRules); err != nil {
+						return fmt.Errorf("parsing --availability-rules JSON: %w", err)
+					}
+					bodyMap["availabilityRules"] = parsedAvailabilityRules
+				}
+				if bodyBrandName != "" {
+					bodyMap["brandName"] = bodyBrandName
+				}
+				if bodyBufferAfter != 0 {
+					bodyMap["bufferAfter"] = bodyBufferAfter
+				}
+				if bodyBufferBefore != 0 {
+					bodyMap["bufferBefore"] = bodyBufferBefore
+				}
+				if bodyCampaign != "" {
+					bodyMap["campaign"] = bodyCampaign
+				}
+				if bodyColor != "" {
+					bodyMap["color"] = bodyColor
+				}
+				if bodyCustomQuestions != "" {
+					var parsedCustomQuestions any
+					if err := json.Unmarshal([]byte(bodyCustomQuestions), &parsedCustomQuestions); err != nil {
+						return fmt.Errorf("parsing --custom-questions JSON: %w", err)
+					}
+					bodyMap["customQuestions"] = parsedCustomQuestions
+				}
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyDistributionMethod != "" {
+					bodyMap["distributionMethod"] = bodyDistributionMethod
+				}
+				if cmd.Flags().Changed("documents-enabled") {
+					bodyMap["documentsEnabled"] = bodyDocumentsEnabled
+				}
+				if bodyDocumentsPageUrl != "" {
+					bodyMap["documentsPageUrl"] = bodyDocumentsPageUrl
+				}
+				if bodyDurationMinutes != 0 {
+					bodyMap["durationMinutes"] = bodyDurationMinutes
+				}
+				if bodyDurationOptions != "" {
+					var parsedDurationOptions any
+					if err := json.Unmarshal([]byte(bodyDurationOptions), &parsedDurationOptions); err != nil {
+						return fmt.Errorf("parsing --duration-options JSON: %w", err)
+					}
+					bodyMap["durationOptions"] = parsedDurationOptions
+				}
+				if bodyEmbedAllowedOrigins != "" {
+					parsedEmbedAllowedOrigins, parseErr := cliutil.ParseStringList(bodyEmbedAllowedOrigins)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --embed-allowed-origins list: %w", parseErr)
+					}
+					bodyMap["embedAllowedOrigins"] = parsedEmbedAllowedOrigins
+				}
+				if cmd.Flags().Changed("embed-enabled") {
+					bodyMap["embedEnabled"] = bodyEmbedEnabled
+				}
+				if cmd.Flags().Changed("enable-ical-feed") {
+					bodyMap["enableIcalFeed"] = bodyEnableIcalFeed
+				}
+				if bodyEventType != "" {
+					bodyMap["eventType"] = bodyEventType
+				}
+				if bodyFieldMappings != "" {
+					var parsedFieldMappings any
+					if err := json.Unmarshal([]byte(bodyFieldMappings), &parsedFieldMappings); err != nil {
+						return fmt.Errorf("parsing --field-mappings JSON: %w", err)
+					}
+					bodyMap["fieldMappings"] = parsedFieldMappings
+				}
+				if bodyFormFields != "" {
+					var parsedFormFields any
+					if err := json.Unmarshal([]byte(bodyFormFields), &parsedFormFields); err != nil {
+						return fmt.Errorf("parsing --form-fields JSON: %w", err)
+					}
+					bodyMap["formFields"] = parsedFormFields
+				}
+				if cmd.Flags().Changed("gdpr-enabled") {
+					bodyMap["gdprEnabled"] = bodyGdprEnabled
+				}
+				if bodyGdprLinkUrl != "" {
+					bodyMap["gdprLinkUrl"] = bodyGdprLinkUrl
+				}
+				if bodyGdprText != "" {
+					bodyMap["gdprText"] = bodyGdprText
+				}
+				if cmd.Flags().Changed("hide-branding") {
+					bodyMap["hideBranding"] = bodyHideBranding
+				}
+				if bodyHostGroupId != "" {
+					bodyMap["hostGroupId"] = bodyHostGroupId
+				}
+				if bodyHostPriorities != "" {
+					var parsedHostPriorities any
+					if err := json.Unmarshal([]byte(bodyHostPriorities), &parsedHostPriorities); err != nil {
+						return fmt.Errorf("parsing --host-priorities JSON: %w", err)
+					}
+					bodyMap["hostPriorities"] = parsedHostPriorities
+				}
+				if bodyHostUserIds != "" {
+					parsedHostUserIds, parseErr := cliutil.ParseStringList(bodyHostUserIds)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --host-user-ids list: %w", parseErr)
+					}
+					bodyMap["hostUserIds"] = parsedHostUserIds
+				}
+				if bodyHyrosTag != "" {
+					bodyMap["hyrosTag"] = bodyHyrosTag
+				}
+				if cmd.Flags().Changed("is-active") {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyLeadSource != "" {
+					bodyMap["leadSource"] = bodyLeadSource
+				}
+				if bodyLocation != "" {
+					bodyMap["location"] = bodyLocation
+				}
+				if bodyLogoUrl != "" {
+					bodyMap["logoUrl"] = bodyLogoUrl
+				}
+				if bodyMaxAdvanceDays != 0 {
+					bodyMap["maxAdvanceDays"] = bodyMaxAdvanceDays
+				}
+				if bodyMaxAttendees != 0 {
+					bodyMap["maxAttendees"] = bodyMaxAttendees
+				}
+				if bodyMaxBookingsPerDay != 0 {
+					bodyMap["maxBookingsPerDay"] = bodyMaxBookingsPerDay
+				}
+				if bodyMinimumNotice != 0 {
+					bodyMap["minimumNotice"] = bodyMinimumNotice
+				}
+				if cmd.Flags().Changed("morning-of-reminder-enabled") {
+					bodyMap["morningOfReminderEnabled"] = bodyMorningOfReminderEnabled
+				}
+				if bodyPaymentAmount != 0 {
+					bodyMap["paymentAmount"] = bodyPaymentAmount
+				}
+				if bodyPaymentCurrency != "" {
+					bodyMap["paymentCurrency"] = bodyPaymentCurrency
+				}
+				if cmd.Flags().Changed("payment-enabled") {
+					bodyMap["paymentEnabled"] = bodyPaymentEnabled
+				}
+				if bodyRedirectUrl != "" {
+					bodyMap["redirectUrl"] = bodyRedirectUrl
+				}
+				if bodyReminders != "" {
+					var parsedReminders any
+					if err := json.Unmarshal([]byte(bodyReminders), &parsedReminders); err != nil {
+						return fmt.Errorf("parsing --reminders JSON: %w", err)
+					}
+					bodyMap["reminders"] = parsedReminders
+				}
+				if cmd.Flags().Changed("require-phone") {
+					bodyMap["requirePhone"] = bodyRequirePhone
+				}
+				{
+					nestedReviews := map[string]any{}
+					if bodyReviewsBadges != "" {
+						var parsedReviewsBadges any
+						if err := json.Unmarshal([]byte(bodyReviewsBadges), &parsedReviewsBadges); err != nil {
+							return fmt.Errorf("parsing --reviews-badges JSON: %w", err)
+						}
+						nestedReviews["badges"] = parsedReviewsBadges
+					}
+					if bodyReviewsTestimonials != "" {
+						var parsedReviewsTestimonials any
+						if err := json.Unmarshal([]byte(bodyReviewsTestimonials), &parsedReviewsTestimonials); err != nil {
+							return fmt.Errorf("parsing --reviews-testimonials JSON: %w", err)
+						}
+						nestedReviews["testimonials"] = parsedReviewsTestimonials
+					}
+					if len(nestedReviews) > 0 {
+						bodyMap["reviews"] = nestedReviews
+					}
+				}
+				if bodySlug != "" {
+					bodyMap["slug"] = bodySlug
+				}
+				if bodyStripePriceId != "" {
+					bodyMap["stripePriceId"] = bodyStripePriceId
+				}
+				if bodyStripeProductId != "" {
+					bodyMap["stripeProductId"] = bodyStripeProductId
+				}
+				if bodyTemplate != "" {
+					bodyMap["template"] = bodyTemplate
+				}
+				if bodyThankYouMessage != "" {
+					bodyMap["thankYouMessage"] = bodyThankYouMessage
+				}
+				if bodyTitle != "" {
+					bodyMap["title"] = bodyTitle
+				}
+				if bodyUserId != "" {
+					bodyMap["userId"] = bodyUserId
+				}
+				if bodyVideoHostEmail != "" {
+					bodyMap["videoHostEmail"] = bodyVideoHostEmail
+				}
+				if bodyVideoProvider != "" {
+					bodyMap["videoProvider"] = bodyVideoProvider
+				}
+				if cmd.Flags().Changed("waitlist-enabled") {
+					bodyMap["waitlistEnabled"] = bodyWaitlistEnabled
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +469,62 @@ func newBookingPagesUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAvailabilityRules, "availability-rules", "", "Availability windows overriding the host's global rules; null or an empty list uses the global rules.")
+	cmd.Flags().StringVar(&bodyBrandName, "brand-name", "", "Brand name")
+	cmd.Flags().IntVar(&bodyBufferAfter, "buffer-after", 0, "Minutes after each booking; clamped.")
+	cmd.Flags().IntVar(&bodyBufferBefore, "buffer-before", 0, "Minutes before each booking; clamped.")
+	cmd.Flags().StringVar(&bodyCampaign, "campaign", "", "Campaign")
+	cmd.Flags().StringVar(&bodyColor, "color", "", "A hex colour.")
+	cmd.Flags().StringVar(&bodyCustomQuestions, "custom-questions", "", "The booking form's extra questions; an entry without a label or a known type is dropped; an empty list clears them.")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
+	cmd.Flags().StringVar(&bodyDistributionMethod, "distribution-method", "", "Distribution method")
+	cmd.Flags().BoolVar(&bodyDocumentsEnabled, "documents-enabled", false, "Turns the documents step on or off for this page's bookings.")
+	cmd.Flags().StringVar(&bodyDocumentsPageUrl, "documents-page-url", "", "The https page on the customer's site that hosts the upload step")
+	cmd.Flags().IntVar(&bodyDurationMinutes, "duration-minutes", 0, "Duration minutes")
+	cmd.Flags().StringVar(&bodyDurationOptions, "duration-options", "", "Selectable durations; entries with no label or outside 5 to 480 minutes are dropped; empty or null clears.")
+	cmd.Flags().StringVar(&bodyEmbedAllowedOrigins, "embed-allowed-origins", "", "Embed allowed origins")
+	cmd.Flags().BoolVar(&bodyEmbedEnabled, "embed-enabled", false, "Embed enabled")
+	cmd.Flags().BoolVar(&bodyEnableIcalFeed, "enable-ical-feed", false, "true issues a new iCal feed token, false revokes it.")
+	cmd.Flags().StringVar(&bodyEventType, "event-type", "", "Event type")
+	cmd.Flags().StringVar(&bodyFieldMappings, "field-mappings", "", "Form field to contact field mappings; an invalid entry is dropped, and a list with no valid entry (or null) clears them.")
+	cmd.Flags().StringVar(&bodyFormFields, "form-fields", "", "The standard form fields; an invalid entry is dropped, and a list with no valid entry (or null)")
+	cmd.Flags().BoolVar(&bodyGdprEnabled, "gdpr-enabled", false, "Gdpr enabled")
+	cmd.Flags().StringVar(&bodyGdprLinkUrl, "gdpr-link-url", "", "Gdpr link url")
+	cmd.Flags().StringVar(&bodyGdprText, "gdpr-text", "", "Gdpr text")
+	cmd.Flags().BoolVar(&bodyHideBranding, "hide-branding", false, "Hide branding")
+	cmd.Flags().StringVar(&bodyHostGroupId, "host-group-id", "", "Host group id")
+	cmd.Flags().StringVar(&bodyHostPriorities, "host-priorities", "", "Host user id to priority; an invalid map clears to the default.")
+	cmd.Flags().StringVar(&bodyHostUserIds, "host-user-ids", "", "Users on this account who can host; anything else is refused with 400.")
+	cmd.Flags().StringVar(&bodyHyrosTag, "hyros-tag", "", "Hyros tag")
+	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "Is active")
+	cmd.Flags().StringVar(&bodyLeadSource, "lead-source", "", "Lead source")
+	cmd.Flags().StringVar(&bodyLocation, "location", "", "Location")
+	cmd.Flags().StringVar(&bodyLogoUrl, "logo-url", "", "Logo url")
+	cmd.Flags().IntVar(&bodyMaxAdvanceDays, "max-advance-days", 0, "How many days ahead bookings open; clamped; an invalid value keeps the current one.")
+	cmd.Flags().IntVar(&bodyMaxAttendees, "max-attendees", 0, "Max attendees")
+	cmd.Flags().IntVar(&bodyMaxBookingsPerDay, "max-bookings-per-day", 0, "Max bookings per day")
+	cmd.Flags().IntVar(&bodyMinimumNotice, "minimum-notice", 0, "Minutes of notice required; an invalid value keeps the current one.")
+	cmd.Flags().BoolVar(&bodyMorningOfReminderEnabled, "morning-of-reminder-enabled", false, "Turns the 9 AM (prospect-local) morning-of email on or off for this page's bookings")
+	cmd.Flags().IntVar(&bodyPaymentAmount, "payment-amount", 0, "Amount in cents.")
+	cmd.Flags().StringVar(&bodyPaymentCurrency, "payment-currency", "", "An unknown currency is stored as usd.")
+	cmd.Flags().BoolVar(&bodyPaymentEnabled, "payment-enabled", false, "Accepted but payment checkout is not implemented yet")
+	cmd.Flags().StringVar(&bodyRedirectUrl, "redirect-url", "", "Redirect url")
+	cmd.Flags().StringVar(&bodyReminders, "reminders", "", "Reminders")
+	cmd.Flags().BoolVar(&bodyRequirePhone, "require-phone", false, "Require phone")
+	cmd.Flags().StringVar(&bodyReviewsBadges, "reviews-badges", "", "Badges")
+	cmd.Flags().StringVar(&bodyReviewsTestimonials, "reviews-testimonials", "", "Testimonials")
+	cmd.Flags().StringVar(&bodySlug, "slug", "", "Normalised; a slug another page uses is refused with 409.")
+	cmd.Flags().StringVar(&bodyStripePriceId, "stripe-price-id", "", "Stripe price id")
+	cmd.Flags().StringVar(&bodyStripeProductId, "stripe-product-id", "", "Stripe product id")
+	cmd.Flags().StringVar(&bodyTemplate, "template", "", "null for the default page, 'bda' for the BDA template; anything else is refused with 400.")
+	cmd.Flags().StringVar(&bodyThankYouMessage, "thank-you-message", "", "Thank you message")
+	cmd.Flags().StringVar(&bodyTitle, "title", "", "Ignored when blank.")
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "The page owner; must be an active member of the account.")
+	cmd.Flags().StringVar(&bodyVideoHostEmail, "video-host-email", "", "Video host email")
+	cmd.Flags().StringVar(&bodyVideoProvider, "video-provider", "", "zoom, or null / empty for none.")
+	cmd.Flags().BoolVar(&bodyWaitlistEnabled, "waitlist-enabled", false, "Waitlist enabled")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,6 +13,14 @@ import (
 )
 
 func newSmsProvidersPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyColor string
+	var bodyFieldMapping string
+	var bodyIsActive bool
+	var bodyMode string
+	var bodyName string
+	var bodyResponseConditions string
+	var bodyWebhookHeaders string
+	var bodyWebhookUrl string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +59,46 @@ func newSmsProvidersPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyColor != "" {
+					bodyMap["color"] = bodyColor
+				}
+				if bodyFieldMapping != "" {
+					if looksLikeJSONComposite(bodyFieldMapping) {
+						var parsedFieldMapping any
+						if err := json.Unmarshal([]byte(bodyFieldMapping), &parsedFieldMapping); err != nil {
+							return fmt.Errorf("parsing --field-mapping JSON: %w", err)
+						}
+						bodyMap["fieldMapping"] = parsedFieldMapping
+					} else {
+						bodyMap["fieldMapping"] = bodyFieldMapping
+					}
+				}
+				if cmd.Flags().Changed("is-active") {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyMode != "" {
+					bodyMap["mode"] = bodyMode
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyResponseConditions != "" {
+					bodyMap["responseConditions"] = bodyResponseConditions
+				}
+				if bodyWebhookHeaders != "" {
+					if looksLikeJSONComposite(bodyWebhookHeaders) {
+						var parsedWebhookHeaders any
+						if err := json.Unmarshal([]byte(bodyWebhookHeaders), &parsedWebhookHeaders); err != nil {
+							return fmt.Errorf("parsing --webhook-headers JSON: %w", err)
+						}
+						bodyMap["webhookHeaders"] = parsedWebhookHeaders
+					} else {
+						bodyMap["webhookHeaders"] = bodyWebhookHeaders
+					}
+				}
+				if bodyWebhookUrl != "" {
+					bodyMap["webhookUrl"] = bodyWebhookUrl
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +243,14 @@ func newSmsProvidersPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyColor, "color", "", "Color")
+	cmd.Flags().StringVar(&bodyFieldMapping, "field-mapping", "", "Field mapping")
+	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "Is active")
+	cmd.Flags().StringVar(&bodyMode, "mode", "", "Mode")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodyResponseConditions, "response-conditions", "", "Response conditions")
+	cmd.Flags().StringVar(&bodyWebhookHeaders, "webhook-headers", "", "Webhook headers")
+	cmd.Flags().StringVar(&bodyWebhookUrl, "webhook-url", "", "Webhook url")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

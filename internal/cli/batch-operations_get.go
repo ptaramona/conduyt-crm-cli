@@ -12,6 +12,11 @@ import (
 )
 
 func newBatchOperationsGetCmd(flags *rootFlags) *cobra.Command {
+	var flagCreatedBy string
+	var flagLimit int
+	var flagPage string
+	var flagStatus string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get",
@@ -25,8 +30,12 @@ func newBatchOperationsGetCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "batch-operations", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "batch-operations", path, map[string]string{
+				"createdBy": formatCLIParamValue(flagCreatedBy),
+				"limit":     formatCLIParamValue(flagLimit),
+				"page":      formatCLIParamValue(flagPage),
+				"status":    formatCLIParamValue(flagStatus),
+			}, nil, flagAll, "page", "page", "limit", 20, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -74,6 +83,11 @@ func newBatchOperationsGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCreatedBy, "created-by", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 20, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

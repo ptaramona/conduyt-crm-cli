@@ -9,22 +9,49 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newReportsPostCustomIdSubscriptionsCmd(flags *rootFlags) *cobra.Command {
+	var bodyCadence string
+	var bodyEnabled bool
+	var bodyFormats string
+	var bodyHourLocal int
+	var bodyMinuteLocal int
+	var bodyMonthday int
+	var bodyName string
+	var bodyRangeMode string
+	var bodyRecipients string
+	var bodyTimezone string
+	var bodyWeekday int
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-custom-id-subscriptions <id>",
 		Short:       "Create / invoke reports custom id subscriptions",
-		Example:     "  conduyt-crm-pp-cli reports post-custom-id-subscriptions 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli reports post-custom-id-subscriptions 550e8400-e29b-41d4-a716-446655440000 --cadence daily",
 		Annotations: map[string]string{"pp:endpoint": "reports.post-custom-id-subscriptions", "pp:method": "POST", "pp:path": "/reports/custom/{id}/subscriptions"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("cadence") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "cadence")
+				}
+				if !cmd.Flags().Changed("formats") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "formats")
+				}
+				if !cmd.Flags().Changed("recipients") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "recipients")
+				}
 			}
 			path := "/reports/custom/{id}/subscriptions"
 			if len(args) < 1 || args[0] == "" {
@@ -50,6 +77,47 @@ func newReportsPostCustomIdSubscriptionsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCadence != "" {
+					bodyMap["cadence"] = bodyCadence
+				}
+				if cmd.Flags().Changed("enabled") {
+					bodyMap["enabled"] = bodyEnabled
+				}
+				if bodyFormats != "" {
+					parsedFormats, parseErr := cliutil.ParseStringList(bodyFormats)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --formats list: %w", parseErr)
+					}
+					bodyMap["formats"] = parsedFormats
+				}
+				if bodyHourLocal != 0 {
+					bodyMap["hourLocal"] = bodyHourLocal
+				}
+				if bodyMinuteLocal != 0 {
+					bodyMap["minuteLocal"] = bodyMinuteLocal
+				}
+				if bodyMonthday != 0 {
+					bodyMap["monthday"] = bodyMonthday
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyRangeMode != "" {
+					bodyMap["rangeMode"] = bodyRangeMode
+				}
+				if bodyRecipients != "" {
+					var parsedRecipients any
+					if err := json.Unmarshal([]byte(bodyRecipients), &parsedRecipients); err != nil {
+						return fmt.Errorf("parsing --recipients JSON: %w", err)
+					}
+					bodyMap["recipients"] = parsedRecipients
+				}
+				if bodyTimezone != "" {
+					bodyMap["timezone"] = bodyTimezone
+				}
+				if bodyWeekday != 0 {
+					bodyMap["weekday"] = bodyWeekday
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +262,17 @@ func newReportsPostCustomIdSubscriptionsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyCadence, "cadence", "", "Cadence")
+	cmd.Flags().BoolVar(&bodyEnabled, "enabled", true, "Enabled")
+	cmd.Flags().StringVar(&bodyFormats, "formats", "", "Formats")
+	cmd.Flags().IntVar(&bodyHourLocal, "hour-local", 7, "Hour local")
+	cmd.Flags().IntVar(&bodyMinuteLocal, "minute-local", 0, "Minute local")
+	cmd.Flags().IntVar(&bodyMonthday, "monthday", 0, "Monthday")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodyRangeMode, "range-mode", "as_saved", "Range mode")
+	cmd.Flags().StringVar(&bodyRecipients, "recipients", "", "Recipients")
+	cmd.Flags().StringVar(&bodyTimezone, "timezone", "", "Must be a time zone the server recognises (IANA, e.g. America/New_York); otherwise a 400.")
+	cmd.Flags().IntVar(&bodyWeekday, "weekday", 0, "Weekday")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

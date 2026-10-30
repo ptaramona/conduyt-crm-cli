@@ -9,17 +9,19 @@ import (
 	"io"
 	"os"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newCustomFieldsCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyEntityType string
 	var bodyFieldKey string
 	var bodyFieldType string
 	var bodyIsRequired bool
 	var bodyLabel string
 	var bodyOptions string
+	var bodySection string
 	var bodySortOrder int
 	var stdinBody bool
 
@@ -55,6 +57,12 @@ func newCustomFieldsCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -85,11 +93,18 @@ func newCustomFieldsCreateCmd(flags *rootFlags) *cobra.Command {
 					bodyMap["label"] = bodyLabel
 				}
 				if bodyOptions != "" {
-					parsedOptions, parseErr := cliutil.ParseStringList(bodyOptions)
-					if parseErr != nil {
-						return fmt.Errorf("parsing --options list: %w", parseErr)
+					if looksLikeJSONComposite(bodyOptions) {
+						var parsedOptions any
+						if err := json.Unmarshal([]byte(bodyOptions), &parsedOptions); err != nil {
+							return fmt.Errorf("parsing --options JSON: %w", err)
+						}
+						bodyMap["options"] = parsedOptions
+					} else {
+						bodyMap["options"] = bodyOptions
 					}
-					bodyMap["options"] = parsedOptions
+				}
+				if bodySection != "" {
+					bodyMap["section"] = bodySection
 				}
 				if bodySortOrder != 0 {
 					bodyMap["sortOrder"] = bodySortOrder
@@ -238,12 +253,15 @@ func newCustomFieldsCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyEntityType, "entity-type", "", "Entity type")
-	cmd.Flags().StringVar(&bodyFieldKey, "field-key", "", "Machine-readable key (e.g., 'industry_vertical')")
+	cmd.Flags().StringVar(&bodyFieldKey, "field-key", "", "Machine-readable key (e.g.")
 	cmd.Flags().StringVar(&bodyFieldType, "field-type", "", "Field type")
 	cmd.Flags().BoolVar(&bodyIsRequired, "is-required", false, "Is required")
-	cmd.Flags().StringVar(&bodyLabel, "label", "", "Human-readable label (e.g., 'Industry Vertical')")
-	cmd.Flags().StringVar(&bodyOptions, "options", "", "Options for select/multiselect fields")
+	cmd.Flags().StringVar(&bodyLabel, "label", "", "Human-readable label (e.g.")
+	cmd.Flags().StringVar(&bodyOptions, "options", "", "Options for select/multiselect fields A select or multiselect field needs at least one option value; otherwise a 422.")
+	cmd.Flags().StringVar(&bodySection, "section", "", "Section")
 	cmd.Flags().IntVar(&bodySortOrder, "sort-order", 0, "Sort order")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

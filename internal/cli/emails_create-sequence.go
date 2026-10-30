@@ -13,15 +13,30 @@ import (
 )
 
 func newEmailsCreateSequenceCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAllowAutomationEnroll bool
+	var bodyAllowReenroll bool
+	var bodyAutoUnenrollOnBounce bool
+	var bodyAutoUnenrollOnDealClosed bool
+	var bodyAutoUnenrollOnMeeting bool
+	var bodyAutoUnenrollOnReply bool
+	var bodyAutoUnenrollOnUnsubscribe bool
 	var bodyDescription string
+	var bodyIsActive bool
 	var bodyName string
+	var bodySendEndHour int
+	var bodySendStartHour int
+	var bodySenderUserId string
 	var bodySteps string
+	var bodyType string
+	var bodyWeekdaysOnly bool
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "create-sequence",
 		Aliases:     []string{"create"},
-		Short:       "Create an email sequence",
+		Short:       "One model for Email and SMS sequences.",
 		Example:     "  conduyt-crm-pp-cli emails create-sequence --name example-resource",
 		Annotations: map[string]string{"pp:endpoint": "emails.create-sequence", "pp:method": "POST", "pp:path": "/emails/sequences"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -45,6 +60,12 @@ func newEmailsCreateSequenceCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -59,11 +80,44 @@ func newEmailsCreateSequenceCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("allow-automation-enroll") {
+					bodyMap["allowAutomationEnroll"] = bodyAllowAutomationEnroll
+				}
+				if cmd.Flags().Changed("allow-reenroll") {
+					bodyMap["allowReenroll"] = bodyAllowReenroll
+				}
+				if cmd.Flags().Changed("auto-unenroll-on-bounce") {
+					bodyMap["autoUnenrollOnBounce"] = bodyAutoUnenrollOnBounce
+				}
+				if cmd.Flags().Changed("auto-unenroll-on-deal-closed") {
+					bodyMap["autoUnenrollOnDealClosed"] = bodyAutoUnenrollOnDealClosed
+				}
+				if cmd.Flags().Changed("auto-unenroll-on-meeting") {
+					bodyMap["autoUnenrollOnMeeting"] = bodyAutoUnenrollOnMeeting
+				}
+				if cmd.Flags().Changed("auto-unenroll-on-reply") {
+					bodyMap["autoUnenrollOnReply"] = bodyAutoUnenrollOnReply
+				}
+				if cmd.Flags().Changed("auto-unenroll-on-unsubscribe") {
+					bodyMap["autoUnenrollOnUnsubscribe"] = bodyAutoUnenrollOnUnsubscribe
+				}
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
+				if cmd.Flags().Changed("is-active") {
+					bodyMap["isActive"] = bodyIsActive
+				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
+				}
+				if bodySendEndHour != 0 {
+					bodyMap["sendEndHour"] = bodySendEndHour
+				}
+				if bodySendStartHour != 0 {
+					bodyMap["sendStartHour"] = bodySendStartHour
+				}
+				if bodySenderUserId != "" {
+					bodyMap["senderUserId"] = bodySenderUserId
 				}
 				if bodySteps != "" {
 					var parsedSteps any
@@ -71,6 +125,12 @@ func newEmailsCreateSequenceCmd(flags *rootFlags) *cobra.Command {
 						return fmt.Errorf("parsing --steps JSON: %w", err)
 					}
 					bodyMap["steps"] = parsedSteps
+				}
+				if bodyType != "" {
+					bodyMap["type"] = bodyType
+				}
+				if cmd.Flags().Changed("weekdays-only") {
+					bodyMap["weekdaysOnly"] = bodyWeekdaysOnly
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -216,9 +276,24 @@ func newEmailsCreateSequenceCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().BoolVar(&bodyAllowAutomationEnroll, "allow-automation-enroll", true, "Let the automation action enroll_in_sequence put contacts in.")
+	cmd.Flags().BoolVar(&bodyAllowReenroll, "allow-reenroll", false, "Let a contact go through it again once their earlier run ENDED (replied, meeting booked, deal closed, removed")
+	cmd.Flags().BoolVar(&bodyAutoUnenrollOnBounce, "auto-unenroll-on-bounce", true, "Email only. Stop the run on a hard bounce (a soft bounce waits and retries).")
+	cmd.Flags().BoolVar(&bodyAutoUnenrollOnDealClosed, "auto-unenroll-on-deal-closed", true, "Stop the contact's run when any of their deals closes, won or lost (any stage of a closed kind, custom stages included).")
+	cmd.Flags().BoolVar(&bodyAutoUnenrollOnMeeting, "auto-unenroll-on-meeting", true, "Stop the run when a meeting is booked through any Conduyt calendar.")
+	cmd.Flags().BoolVar(&bodyAutoUnenrollOnReply, "auto-unenroll-on-reply", true, "Stop the contact's run when they reply to any message of the sequence.")
+	cmd.Flags().BoolVar(&bodyAutoUnenrollOnUnsubscribe, "auto-unenroll-on-unsubscribe", true, "Stop the run when the contact opts out (unsubscribe, or STOP for SMS).")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
+	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "On or Off. Off keeps every run where it is; the steps resume when turned On.")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
-	cmd.Flags().StringVar(&bodySteps, "steps", "", "Steps")
+	cmd.Flags().IntVar(&bodySendEndHour, "send-end-hour", 17, "End of the send window, exclusive (local). A step due outside the window waits for the next opening.")
+	cmd.Flags().IntVar(&bodySendStartHour, "send-start-hour", 9, "First hour of the send window (local).")
+	cmd.Flags().StringVar(&bodySenderUserId, "sender-user-id", "", "The team member the messages are from (must be an active member).")
+	cmd.Flags().StringVar(&bodySteps, "steps", "", "In order. Every step names a template of the sequence's type; the first step's wait is 0.")
+	cmd.Flags().StringVar(&bodyType, "type", "email", "The channel. Immutable after creation.")
+	cmd.Flags().BoolVar(&bodyWeekdaysOnly, "weekdays-only", true, "Send only Monday to Friday, in the contact's time zone (else the workspace's).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

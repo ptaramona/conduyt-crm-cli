@@ -236,7 +236,7 @@ func newNotificationsCreateCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyMessage, "message", "", "Message")
-	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Capped at 50 top-level keys and 10KB")
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Capped at 50 top-level keys and 10KB At most 50 keys and 10240 bytes as UTF-8 JSON; otherwise a 400.")
 	cmd.Flags().BoolVar(&bodyPush, "push", false, "Set false to skip web-push fan-out")
 	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")
 	cmd.Flags().StringVar(&bodyType, "type", "", "Notification type. Built-in types are documented in the API catalog; custom integration types are allowed.")

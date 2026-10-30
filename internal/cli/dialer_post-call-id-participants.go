@@ -13,6 +13,8 @@ import (
 )
 
 func newDialerPostCallIdParticipantsCmd(flags *rootFlags) *cobra.Command {
+	var bodyConsult string
+	var bodyTo string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -50,6 +52,12 @@ func newDialerPostCallIdParticipantsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyConsult != "" {
+					bodyMap["consult"] = bodyConsult
+				}
+				if bodyTo != "" {
+					bodyMap["to"] = bodyTo
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +202,8 @@ func newDialerPostCallIdParticipantsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyConsult, "consult", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

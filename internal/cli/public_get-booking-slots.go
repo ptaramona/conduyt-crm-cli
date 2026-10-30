@@ -13,16 +13,27 @@ import (
 
 func newPublicGetBookingSlotsCmd(flags *rootFlags) *cobra.Command {
 	var flagDate string
+	var flagDuration int
+	var flagHost string
 
 	cmd := &cobra.Command{
 		Use:   "get-booking-slots <slug>",
 		Short: "Get available time slots for a booking page",
 		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli public get-booking-slots example-value",
+		Example:     "  conduyt-crm-pp-cli public get-booking-slots example-value --date 2026-01-15",
 		Annotations: map[string]string{"pp:endpoint": "public.get-booking-slots", "pp:method": "GET", "pp:path": "/public/booking/{slug}/slots", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("date") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "date")
 			}
 			path := "/public/booking/{slug}/slots"
 			if len(args) < 1 || args[0] == "" {
@@ -36,6 +47,12 @@ func newPublicGetBookingSlotsCmd(flags *rootFlags) *cobra.Command {
 			params := map[string]string{}
 			if flagDate != "" {
 				params["date"] = formatCLIParamValue(flagDate)
+			}
+			if flagDuration != 0 {
+				params["duration"] = formatCLIParamValue(flagDuration)
+			}
+			if flagHost != "" {
+				params["host"] = formatCLIParamValue(flagHost)
 			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "public", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
@@ -85,7 +102,9 @@ func newPublicGetBookingSlotsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagDate, "date", "", "Date to check availability for")
+	cmd.Flags().StringVar(&flagDate, "date", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagDuration, "duration", 0, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagHost, "host", "", "Query parameter read by this route.")
 
 	return cmd
 }

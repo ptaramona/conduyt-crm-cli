@@ -13,6 +13,9 @@ import (
 )
 
 func newDialerPostCallIdTransferCmd(flags *rootFlags) *cobra.Command {
+	var bodyDncOverride string
+	var bodyTo string
+	var bodyType string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -50,6 +53,15 @@ func newDialerPostCallIdTransferCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDncOverride != "" {
+					bodyMap["dncOverride"] = bodyDncOverride
+				}
+				if bodyTo != "" {
+					bodyMap["to"] = bodyTo
+				}
+				if bodyType != "" {
+					bodyMap["type"] = bodyType
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +206,9 @@ func newDialerPostCallIdTransferCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDncOverride, "dnc-override", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyType, "type", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,6 +13,14 @@ import (
 )
 
 func newUsersPatchMeCmd(flags *rootFlags) *cobra.Command {
+	var bodyBirthdayDay string
+	var bodyBirthdayMonth string
+	var bodyCurrentPassword string
+	var bodyFirstName string
+	var bodyLastName string
+	var bodyNewPassword string
+	var bodyPhone string
+	var bodyRingtone string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +51,30 @@ func newUsersPatchMeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBirthdayDay != "" {
+					bodyMap["birthdayDay"] = bodyBirthdayDay
+				}
+				if bodyBirthdayMonth != "" {
+					bodyMap["birthdayMonth"] = bodyBirthdayMonth
+				}
+				if bodyCurrentPassword != "" {
+					bodyMap["currentPassword"] = bodyCurrentPassword
+				}
+				if bodyFirstName != "" {
+					bodyMap["firstName"] = bodyFirstName
+				}
+				if bodyLastName != "" {
+					bodyMap["lastName"] = bodyLastName
+				}
+				if bodyNewPassword != "" {
+					bodyMap["newPassword"] = bodyNewPassword
+				}
+				if bodyPhone != "" {
+					bodyMap["phone"] = bodyPhone
+				}
+				if bodyRingtone != "" {
+					bodyMap["ringtone"] = bodyRingtone
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +219,14 @@ func newUsersPatchMeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyBirthdayDay, "birthday-day", "", "Birthday day")
+	cmd.Flags().StringVar(&bodyBirthdayMonth, "birthday-month", "", "Birthday month")
+	cmd.Flags().StringVar(&bodyCurrentPassword, "current-password", "", "Required (non-empty) whenever newPassword is sent; otherwise a 400.")
+	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "Must not contain a link (a URL or web address); otherwise a 400.")
+	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Must not contain a link (a URL or web address); otherwise a 400.")
+	cmd.Flags().StringVar(&bodyNewPassword, "new-password", "", "Required (non-empty) whenever currentPassword is sent; it must meet the password policy; otherwise a 400.")
+	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
+	cmd.Flags().StringVar(&bodyRingtone, "ringtone", "", "The incoming ring this person hears: one of classic, soft-bell, marimba, digital-pulse, rising-chime, office-trill")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

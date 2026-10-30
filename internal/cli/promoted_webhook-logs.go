@@ -12,8 +12,11 @@ import (
 )
 
 func newWebhookLogsPromotedCmd(flags *rootFlags) *cobra.Command {
+	var flagContactId string
+	var flagEnrollmentId string
+	var flagLimit int
 	var flagPage string
-	var flagPerPage int
+	var flagStatus string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -30,9 +33,12 @@ func newWebhookLogsPromotedCmd(flags *rootFlags) *cobra.Command {
 
 			path := "/webhook-logs"
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "webhook-logs", path, map[string]string{
-				"page":     formatCLIParamValue(flagPage),
-				"per_page": formatCLIParamValue(flagPerPage),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+				"contactId":    formatCLIParamValue(flagContactId),
+				"enrollmentId": formatCLIParamValue(flagEnrollmentId),
+				"limit":        formatCLIParamValue(flagLimit),
+				"page":         formatCLIParamValue(flagPage),
+				"status":       formatCLIParamValue(flagStatus),
+			}, nil, flagAll, "page", "page", "limit", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -82,11 +88,19 @@ func newWebhookLogsPromotedCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagEnrollmentId, "enrollment-id", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 50, "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
-	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	// Wire sibling endpoints and sub-resources as subcommands
+	{
+		sub := newWebhookLogsCancelCmd(flags)
+		sub.Hidden = false // unhide: the raw parent is hidden but these are useful under the promoted command
+		cmd.AddCommand(sub)
+	}
 
 	return cmd
 }

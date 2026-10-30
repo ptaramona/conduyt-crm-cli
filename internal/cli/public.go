@@ -16,6 +16,7 @@ func newPublicCmd(flags *rootFlags) *cobra.Command {
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
+	cmd.AddCommand(newPublicBindBookingDocumentsCmd(flags))
 	cmd.AddCommand(newPublicBookAppointmentCmd(flags))
 	cmd.AddCommand(newPublicGetBookingPageCmd(flags))
 	cmd.AddCommand(newPublicGetBookingRoutingSlugCmd(flags))
@@ -27,10 +28,12 @@ func newPublicCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newPublicGetBookingSlugIcalCmd(flags))
 	cmd.AddCommand(newPublicGetBrandingAccountIdIconCmd(flags))
 	cmd.AddCommand(newPublicGetScreenShareCodeCmd(flags))
+	cmd.AddCommand(newPublicMintBookingDocumentUploadCmd(flags))
 	cmd.AddCommand(newPublicPostBookingRoutingSlugCmd(flags))
 	cmd.AddCommand(newPublicPostBookingSlugWaitlistCmd(flags))
 	cmd.AddCommand(newPublicPostContactCmd(flags))
 	cmd.AddCommand(newPublicPostScreenShareCodeCmd(flags))
+	cmd.AddCommand(newPublicPostScreenShareCodeStateCmd(flags))
 	cmd.AddCommand(newPublicPostSubscribeCmd(flags))
 	return cmd
 }

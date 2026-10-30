@@ -13,15 +13,25 @@ import (
 )
 
 func newSettingsPatchLeadVisibilityCmd(flags *rootFlags) *cobra.Command {
+	var bodyMode string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "patch-lead-visibility",
 		Short:       "Update settings lead-visibility",
-		Example:     "  conduyt-crm-pp-cli settings patch-lead-visibility",
+		Example:     "  conduyt-crm-pp-cli settings patch-lead-visibility --mode owned",
 		Annotations: map[string]string{"pp:endpoint": "settings.patch-lead-visibility", "pp:method": "PATCH", "pp:path": "/settings/lead-visibility"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("mode") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "mode")
+				}
 			}
 			path := "/settings/lead-visibility"
 			c, err := flags.newClient()
@@ -43,6 +53,9 @@ func newSettingsPatchLeadVisibilityCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyMode != "" {
+					bodyMap["mode"] = bodyMode
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +200,7 @@ func newSettingsPatchLeadVisibilityCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyMode, "mode", "", "Mode")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

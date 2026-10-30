@@ -9,19 +9,39 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newCompaniesPostMergeCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyConfirmImpact bool
+	var bodyDryRun2 bool
+	var bodyDuplicateIds string
+	var bodyExpectedCounts string
+	var bodyPrimaryId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-merge",
 		Short:       "Create / invoke companies merge",
-		Example:     "  conduyt-crm-pp-cli companies post-merge",
+		Example:     "  conduyt-crm-pp-cli companies post-merge --primary-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "companies.post-merge", "pp:method": "POST", "pp:path": "/companies/merge"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("duplicate-ids") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "duplicate-ids")
+				}
+				if !cmd.Flags().Changed("primary-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "primary-id")
+				}
 			}
 			path := "/companies/merge"
 			c, err := flags.newClient()
@@ -29,6 +49,12 @@ func newCompaniesPostMergeCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +69,29 @@ func newCompaniesPostMergeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("confirm-impact") {
+					bodyMap["confirmImpact"] = bodyConfirmImpact
+				}
+				if cmd.Flags().Changed("dry-run-2") {
+					bodyMap["dryRun"] = bodyDryRun2
+				}
+				if bodyDuplicateIds != "" {
+					parsedDuplicateIds, parseErr := cliutil.ParseStringList(bodyDuplicateIds)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --duplicate-ids list: %w", parseErr)
+					}
+					bodyMap["duplicateIds"] = parsedDuplicateIds
+				}
+				if bodyExpectedCounts != "" {
+					var parsedExpectedCounts any
+					if err := json.Unmarshal([]byte(bodyExpectedCounts), &parsedExpectedCounts); err != nil {
+						return fmt.Errorf("parsing --expected-counts JSON: %w", err)
+					}
+					bodyMap["expectedCounts"] = parsedExpectedCounts
+				}
+				if bodyPrimaryId != "" {
+					bodyMap["primaryId"] = bodyPrimaryId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +236,13 @@ func newCompaniesPostMergeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().BoolVar(&bodyConfirmImpact, "confirm-impact", false, "Confirm impact")
+	cmd.Flags().BoolVar(&bodyDryRun2, "dry-run-2", false, "Dry run")
+	cmd.Flags().StringVar(&bodyDuplicateIds, "duplicate-ids", "", "Must name at least one company other than primaryId; otherwise a 400.")
+	cmd.Flags().StringVar(&bodyExpectedCounts, "expected-counts", "", "Expected counts")
+	cmd.Flags().StringVar(&bodyPrimaryId, "primary-id", "", "Primary id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

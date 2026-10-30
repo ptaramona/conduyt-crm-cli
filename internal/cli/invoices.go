@@ -22,6 +22,7 @@ func newInvoicesCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newInvoicesGetNextNumberCmd(flags))
 	cmd.AddCommand(newInvoicesListCmd(flags))
 	cmd.AddCommand(newInvoicesUpdateCmd(flags))
+	cmd.AddCommand(newInvoicesOverpaymentsCmd(flags))
 	cmd.AddCommand(newInvoicesPaymentLinkCmd(flags))
 	cmd.AddCommand(newInvoicesPaymentsCmd(flags))
 	cmd.AddCommand(newInvoicesPdfCmd(flags))

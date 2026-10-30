@@ -12,6 +12,14 @@ import (
 )
 
 func newUsersListCmd(flags *rootFlags) *cobra.Command {
+	var flagGroupId string
+	var flagIncludeActivity bool
+	var flagIncludeStats bool
+	var flagPage string
+	var flagPerPage string
+	var flagRoster bool
+	var flagSearch string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -24,8 +32,15 @@ func newUsersListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "users", true, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "users", path, map[string]string{
+				"group_id":         formatCLIParamValue(flagGroupId),
+				"include_activity": formatCLIParamValue(flagIncludeActivity),
+				"include_stats":    formatCLIParamValue(flagIncludeStats),
+				"page":             formatCLIParamValue(flagPage),
+				"per_page":         formatCLIParamValue(flagPerPage),
+				"roster":           formatCLIParamValue(flagRoster),
+				"search":           formatCLIParamValue(flagSearch),
+			}, nil, flagAll, "page", "page", "per_page", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +88,14 @@ func newUsersListCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagGroupId, "group-id", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagIncludeActivity, "include-activity", false, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagIncludeStats, "include-stats", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().StringVar(&flagPerPage, "per-page", "", "Items per page (1 to 200, default 50), or the word all: every member of the list in one query (with roster=true")
+	cmd.Flags().BoolVar(&flagRoster, "roster", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

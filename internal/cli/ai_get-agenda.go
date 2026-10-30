@@ -12,6 +12,8 @@ import (
 )
 
 func newAiGetAgendaCmd(flags *rootFlags) *cobra.Command {
+	var flagNarrative bool
+	var flagUserId string
 
 	cmd := &cobra.Command{
 		Use:         "get-agenda",
@@ -26,6 +28,12 @@ func newAiGetAgendaCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagNarrative != false {
+				params["narrative"] = formatCLIParamValue(flagNarrative)
+			}
+			if flagUserId != "" {
+				params["userId"] = formatCLIParamValue(flagUserId)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "ai", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -74,6 +82,8 @@ func newAiGetAgendaCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagNarrative, "narrative", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "Query parameter read by this route.")
 
 	return cmd
 }

@@ -13,17 +13,27 @@ import (
 )
 
 func newMessagesCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyBcc string
 	var bodyBody string
+	var bodyBodyHtml string
+	var bodyCc string
 	var bodyChannel string
 	var bodyContactId string
 	var bodyDirection string
 	var bodyFromEmail string
 	var bodyFromNumber string
+	var bodyMetadata string
 	var bodyProvider string
 	var bodyProviderId string
+	var bodyReplyTo string
 	var bodyScheduledAt string
+	var bodySignature string
 	var bodyStatus string
 	var bodySubject string
+	var bodySubjectEdited bool
+	var bodyTemplateId string
 	var bodyToEmail string
 	var bodyToNumber string
 	var stdinBody bool
@@ -61,6 +71,12 @@ func newMessagesCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -75,8 +91,33 @@ func newMessagesCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBcc != "" {
+					if looksLikeJSONComposite(bodyBcc) {
+						var parsedBcc any
+						if err := json.Unmarshal([]byte(bodyBcc), &parsedBcc); err != nil {
+							return fmt.Errorf("parsing --bcc JSON: %w", err)
+						}
+						bodyMap["bcc"] = parsedBcc
+					} else {
+						bodyMap["bcc"] = bodyBcc
+					}
+				}
 				if bodyBody != "" {
 					bodyMap["body"] = bodyBody
+				}
+				if bodyBodyHtml != "" {
+					bodyMap["bodyHtml"] = bodyBodyHtml
+				}
+				if bodyCc != "" {
+					if looksLikeJSONComposite(bodyCc) {
+						var parsedCc any
+						if err := json.Unmarshal([]byte(bodyCc), &parsedCc); err != nil {
+							return fmt.Errorf("parsing --cc JSON: %w", err)
+						}
+						bodyMap["cc"] = parsedCc
+					} else {
+						bodyMap["cc"] = bodyCc
+					}
 				}
 				if bodyChannel != "" {
 					bodyMap["channel"] = bodyChannel
@@ -93,20 +134,43 @@ func newMessagesCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyFromNumber != "" {
 					bodyMap["fromNumber"] = bodyFromNumber
 				}
+				if bodyMetadata != "" {
+					if looksLikeJSONComposite(bodyMetadata) {
+						var parsedMetadata any
+						if err := json.Unmarshal([]byte(bodyMetadata), &parsedMetadata); err != nil {
+							return fmt.Errorf("parsing --metadata JSON: %w", err)
+						}
+						bodyMap["metadata"] = parsedMetadata
+					} else {
+						bodyMap["metadata"] = bodyMetadata
+					}
+				}
 				if bodyProvider != "" {
 					bodyMap["provider"] = bodyProvider
 				}
 				if bodyProviderId != "" {
 					bodyMap["providerId"] = bodyProviderId
 				}
+				if bodyReplyTo != "" {
+					bodyMap["replyTo"] = bodyReplyTo
+				}
 				if bodyScheduledAt != "" {
 					bodyMap["scheduledAt"] = bodyScheduledAt
+				}
+				if bodySignature != "" {
+					bodyMap["signature"] = bodySignature
 				}
 				if bodyStatus != "" {
 					bodyMap["status"] = bodyStatus
 				}
 				if bodySubject != "" {
 					bodyMap["subject"] = bodySubject
+				}
+				if cmd.Flags().Changed("subject-edited") {
+					bodyMap["subjectEdited"] = bodySubjectEdited
+				}
+				if bodyTemplateId != "" {
+					bodyMap["templateId"] = bodyTemplateId
 				}
 				if bodyToEmail != "" {
 					bodyMap["toEmail"] = bodyToEmail
@@ -258,17 +322,27 @@ func newMessagesCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyBody, "body", "", "Message body (max 100KB)")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyBcc, "bcc", "", "Bcc")
+	cmd.Flags().StringVar(&bodyBody, "body", "", "Message body (max 100KB) For an email the body is HTML")
+	cmd.Flags().StringVar(&bodyBodyHtml, "body-html", "", "The email's HTML body HTML nested more than 256 elements deep is refused (400 html_nesting_too_deep).")
+	cmd.Flags().StringVar(&bodyCc, "cc", "", "Cc")
 	cmd.Flags().StringVar(&bodyChannel, "channel", "", "Channel")
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&bodyDirection, "direction", "", "Direction")
+	cmd.Flags().StringVar(&bodyDirection, "direction", "", "An outbound SMS that is not a draft is refused here (400): send it with POST /messages/sms/send.")
 	cmd.Flags().StringVar(&bodyFromEmail, "from-email", "", "From email")
 	cmd.Flags().StringVar(&bodyFromNumber, "from-number", "", "From number")
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "A JSON object, null or absent; any other kind is refused.")
 	cmd.Flags().StringVar(&bodyProvider, "provider", "", "Provider")
 	cmd.Flags().StringVar(&bodyProviderId, "provider-id", "", "Provider id")
+	cmd.Flags().StringVar(&bodyReplyTo, "reply-to", "", "Reply to")
 	cmd.Flags().StringVar(&bodyScheduledAt, "scheduled-at", "", "Scheduled at")
+	cmd.Flags().StringVar(&bodySignature, "signature", "", "Outbound email only: append the sender's saved email signature (GET /me/email-signature)")
 	cmd.Flags().StringVar(&bodyStatus, "status", "", "Status")
 	cmd.Flags().StringVar(&bodySubject, "subject", "", "Subject")
+	cmd.Flags().BoolVar(&bodySubjectEdited, "subject-edited", false, "With templateId, a tri-state. true: the subject is the sender's own and is sent verbatim.")
+	cmd.Flags().StringVar(&bodyTemplateId, "template-id", "", "Outbound email composed from an email template (active, this account's; else 404).")
 	cmd.Flags().StringVar(&bodyToEmail, "to-email", "", "To email")
 	cmd.Flags().StringVar(&bodyToNumber, "to-number", "", "To number")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")

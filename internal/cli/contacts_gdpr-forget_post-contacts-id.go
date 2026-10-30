@@ -13,6 +13,9 @@ import (
 )
 
 func newContactsGdprForgetPostContactsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyConfirm string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -37,6 +40,12 @@ func newContactsGdprForgetPostContactsIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +60,9 @@ func newContactsGdprForgetPostContactsIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyConfirm != "" {
+					bodyMap["confirm"] = bodyConfirm
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +207,9 @@ func newContactsGdprForgetPostContactsIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&bodyConfirm, "confirm", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

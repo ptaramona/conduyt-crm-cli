@@ -13,6 +13,10 @@ import (
 )
 
 func newContactsPostVerifyLineTypeCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactIds string
+	var bodyImportJobId string
+	var bodyLeaseToken string
+	var bodySmartListId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +47,18 @@ func newContactsPostVerifyLineTypeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContactIds != "" {
+					bodyMap["contactIds"] = bodyContactIds
+				}
+				if bodyImportJobId != "" {
+					bodyMap["importJobId"] = bodyImportJobId
+				}
+				if bodyLeaseToken != "" {
+					bodyMap["leaseToken"] = bodyLeaseToken
+				}
+				if bodySmartListId != "" {
+					bodyMap["smartListId"] = bodySmartListId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +203,10 @@ func newContactsPostVerifyLineTypeCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactIds, "contact-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyImportJobId, "import-job-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLeaseToken, "lease-token", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySmartListId, "smart-list-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

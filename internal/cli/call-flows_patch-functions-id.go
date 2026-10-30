@@ -13,6 +13,9 @@ import (
 )
 
 func newCallFlowsPatchFunctionsIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyName string
+	var bodySecret string
+	var bodyUrl string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +54,15 @@ func newCallFlowsPatchFunctionsIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodySecret != "" {
+					bodyMap["secret"] = bodySecret
+				}
+				if bodyUrl != "" {
+					bodyMap["url"] = bodyUrl
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +207,9 @@ func newCallFlowsPatchFunctionsIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyName, "name", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodySecret, "secret", "", "Secret")
+	cmd.Flags().StringVar(&bodyUrl, "url", "", "Must parse as an https:// URL with a host: no username or password, no #fragment, port 443 or 8443 only ('https")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

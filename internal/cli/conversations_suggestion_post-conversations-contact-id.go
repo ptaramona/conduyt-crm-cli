@@ -13,6 +13,9 @@ import (
 )
 
 func newConversationsSuggestionPostConversationsContactIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyDecision string
+	var bodyMessageId string
+	var bodySentMessageId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +54,15 @@ func newConversationsSuggestionPostConversationsContactIdCmd(flags *rootFlags) *
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDecision != "" {
+					bodyMap["decision"] = bodyDecision
+				}
+				if bodyMessageId != "" {
+					bodyMap["messageId"] = bodyMessageId
+				}
+				if bodySentMessageId != "" {
+					bodyMap["sentMessageId"] = bodySentMessageId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +207,9 @@ func newConversationsSuggestionPostConversationsContactIdCmd(flags *rootFlags) *
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDecision, "decision", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMessageId, "message-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySentMessageId, "sent-message-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

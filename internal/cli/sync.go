@@ -60,13 +60,13 @@ func newSyncCmd(flags *rootFlags) *cobra.Command {
 	var paramFlags []string
 	var resourceParamFlags []string
 	var globalParamFlags []string
+	var dates string
 
 	cmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Sync API data to local SQLite for offline search and analysis",
-		Long: `Sync data from the API into a local SQLite database. This API does
-not declare temporal sync filters, so sync performs full pagination unless an
-explicit resource declares its own incremental filter.
+		Long: `Sync data from the API into a local SQLite database. Supports resumable
+incremental sync (only fetches new data since last sync) and full resync.
 Once synced, use the 'search' command for instant full-text search.
 
 Exit codes & warnings:
@@ -108,7 +108,10 @@ Resource scoping:
   conduyt-crm-pp-cli sync --concurrency 8
 
   # Latest-only: refresh head of each resource, no historical backfill
-  conduyt-crm-pp-cli sync --latest-only`,
+  conduyt-crm-pp-cli sync --latest-only
+
+  # Sync historical data for a date range
+  conduyt-crm-pp-cli sync --dates 20250101-20250131`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			userParams, err := parseSyncUserParams(paramFlags, resourceParamFlags, globalParamFlags)
 			if err != nil {
@@ -205,6 +208,8 @@ Resource scoping:
 				}
 				sinceTS = ts.Format(time.RFC3339)
 			}
+			// If --dates is provided, set it as extra sync context
+			syncDates := dates
 
 			// Worker pool: produce resources, N workers consume
 			if concurrency < 1 {
@@ -233,7 +238,7 @@ Resource scoping:
 				go func() {
 					defer wg.Done()
 					for resource := range work {
-						res := syncResource(cmd.Context(), c, db, resource, sinceTS, full, maxPages, effectiveLatestOnly, prune, userParams, syncEventWriter)
+						res := syncResource(cmd.Context(), c, db, resource, sinceTS, full, maxPages, effectiveLatestOnly, prune, syncDates, userParams, syncEventWriter)
 						results <- res
 					}
 				}()
@@ -291,7 +296,7 @@ Resource scoping:
 				}
 			}
 			// Sync dependent (parent-child) resources sequentially after flat resources.
-			depResults := syncDependentResources(cmd.Context(), c, db, sinceTS, full, maxPages, effectiveLatestOnly, prune, parentFilter, userParams, syncEventWriter, concurrency)
+			depResults := syncDependentResources(cmd.Context(), c, db, sinceTS, full, maxPages, effectiveLatestOnly, prune, parentFilter, syncDates, userParams, syncEventWriter, concurrency)
 			for _, res := range depResults {
 				if res.Err != nil {
 					if humanFriendly {
@@ -400,6 +405,7 @@ Resource scoping:
 	cmd.Flags().StringArrayVar(&paramFlags, "param", nil, "Extra query param to inject into flat-list sync requests (repeatable, key=value). Skipped on path-scoped dependent requests so a top-level scope like workspace=<id> does not double up on /parents/<id>/children calls. Use --global-param to inject everywhere. Avoid pagination keys (limit/since/cursor) — overriding them corrupts resume state.")
 	cmd.Flags().StringArrayVar(&resourceParamFlags, "resource-param", nil, "Per-resource extra query param (repeatable, resource:key=value). Wins over --param and --global-param when keys conflict.")
 	cmd.Flags().StringArrayVar(&globalParamFlags, "global-param", nil, "Extra query param to inject into every sync request including dependent path-scoped calls (repeatable, key=value). Use when an API requires a scope on every call regardless of path nesting.")
+	cmd.Flags().StringVar(&dates, "dates", "", "Date or date range to sync (passed as dateRange query parameter)")
 
 	return cmd
 }
@@ -411,7 +417,7 @@ Resource scoping:
 func syncResource(ctx context.Context, c interface {
 	Get(context.Context, string, map[string]string) (json.RawMessage, error)
 	RateLimit() float64
-}, db *store.Store, resource, sinceTS string, full bool, maxPages int, latestOnly bool, prune bool, userParams *syncUserParams, syncEvents io.Writer) syncResult {
+}, db *store.Store, resource, sinceTS string, full bool, maxPages int, latestOnly bool, prune bool, dates string, userParams *syncUserParams, syncEvents io.Writer) syncResult {
 	started := time.Now()
 	if syncEvents == nil {
 		syncEvents = io.Discard
@@ -540,6 +546,11 @@ func syncResource(ctx context.Context, c interface {
 		// Set since filter
 		if effectiveSince != "" {
 			params[sinceParam] = effectiveSince
+		}
+
+		// Set date range filter (pass-through to API)
+		if dates != "" {
+			params[determineDateRangeParam()] = dates
 		}
 		// Apply user-supplied --param / --resource-param overrides last so they
 		// win over spec-derived defaults (e.g. forcing mine=true on a list
@@ -893,11 +904,53 @@ type paginationDefaults struct {
 // Values are detected from the API spec by the profiler at generation time.
 func determinePaginationDefaults(resource string) paginationDefaults {
 	switch resource {
+	case "account-exports":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "per_page",
+			limit:       100,
+		}
 	case "activities":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "activity":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "admin":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "offset",
+			limitParam:  "limit",
+			limit:       200,
+		}
+	case "ai":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       30,
+		}
+	case "api-keys":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "api_search":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
 			limit:       50,
 		}
 	case "appointments":
@@ -909,9 +962,9 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 		}
 	case "automation-executions":
 		return paginationDefaults{
-			cursorParam: "page",
-			cursorType:  "page",
-			limitParam:  "per_page",
+			cursorParam: "offset",
+			cursorType:  "offset",
+			limitParam:  "limit",
 			limit:       50,
 		}
 	case "automations":
@@ -919,9 +972,79 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "automations-failures":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "automations-failures-drilldown":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "automations-step-logs":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
 			limit:       50,
 		}
 	case "automations/step_logs":
+		return paginationDefaults{
+			cursorParam: "offset",
+			cursorType:  "offset",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "automations/versions":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       20,
+		}
+	case "batch-operations":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "limit",
+			limit:       20,
+		}
+	case "booking-pages":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "booking-pages/waitlist":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "booking-routing-forms":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "bulk-operations":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       20,
+		}
+	case "calendars":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
@@ -949,12 +1072,54 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limitParam:  "per_page",
 			limit:       50,
 		}
+	case "companies-duplicates":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "companies/companies_timeline":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "conduyt-auth":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "offset",
+			limitParam:  "limit",
+			limit:       20,
+		}
 	case "contacts":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
-			limitParam:  "per_page",
+			limitParam:  "limit",
 			limit:       50,
+		}
+	case "contacts-duplicates":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "contacts/contacts_duplicate_proposals":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "contacts/contacts_timeline":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       100,
 		}
 	case "conversations":
 		return paginationDefaults{
@@ -963,6 +1128,13 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limitParam:  "per_page",
 			limit:       50,
 		}
+	case "custom-fields":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
+		}
 	case "deals":
 		return paginationDefaults{
 			cursorParam: "page",
@@ -970,40 +1142,124 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limitParam:  "per_page",
 			limit:       50,
 		}
+	case "deals-inspection":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       100,
+		}
+	case "deals-lead-id":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "offset",
+			limitParam:  "limit",
+			limit:       5,
+		}
+	case "deals/deals_activities":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "deals/deals_history":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "limit",
+			limit:       100,
+		}
+	case "deals/deals_tasks":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "dialer":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       30,
+		}
+	case "dialer-history":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "dialer-queue":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "offset",
+			limitParam:  "limit",
+			limit:       25,
+		}
+	case "dialer-recordings":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "dnc":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "document-templates":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
+		}
 	case "drip-campaigns":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
-			limit:       50,
+			limit:       25,
 		}
 	case "drip-enrollments":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
-			limitParam:  "per_page",
+			limitParam:  "limit",
 			limit:       50,
 		}
-	case "emails":
+	case "drip-enrollments/drip_enrollments_timeline":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
-			limit:       50,
+			limit:       100,
 		}
 	case "emails-sequences":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
-			limit:       50,
+			limit:       100,
 		}
 	case "emails-templates":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
-			limit:       50,
+			limit:       100,
+		}
+	case "forms":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
 		}
 	case "forms/submissions":
 		return paginationDefaults{
@@ -1012,7 +1268,35 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limitParam:  "per_page",
 			limit:       50,
 		}
+	case "generated-documents":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       25,
+		}
 	case "imports":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       20,
+		}
+	case "imports/imports_duplicate_proposals":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       50,
+		}
+	case "imports/launch_monitor":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "imports/rows":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
@@ -1025,6 +1309,13 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			cursorType:  "page",
 			limitParam:  "per_page",
 			limit:       50,
+		}
+	case "lead-routing-assignment-log":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       25,
 		}
 	case "messages":
 		return paginationDefaults{
@@ -1047,12 +1338,75 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limitParam:  "per_page",
 			limit:       50,
 		}
+	case "pipelines":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "playbook-enrollments":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       100,
+		}
+	case "pool-filter-sets":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
+		}
 	case "products":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "scoring-rules":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "smart-views":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
+		}
+	case "sms":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
 			limit:       50,
+		}
+	case "sms-providers":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "status-metadata":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "offset",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "tags":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
 		}
 	case "tasks":
 		return paginationDefaults{
@@ -1061,7 +1415,28 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limitParam:  "per_page",
 			limit:       50,
 		}
+	case "team":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       25,
+		}
+	case "users":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "per_page",
+			limit:       100,
+		}
 	case "webhook-logs":
+		return paginationDefaults{
+			cursorParam: "page",
+			cursorType:  "page",
+			limitParam:  "limit",
+			limit:       50,
+		}
+	case "webhooks":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
@@ -1073,21 +1448,21 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
-			limit:       50,
+			limit:       100,
 		}
 	case "webhooks-replay":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
-			limit:       50,
+			limit:       25,
 		}
 	case "workflows":
 		return paginationDefaults{
 			cursorParam: "page",
 			cursorType:  "page",
 			limitParam:  "per_page",
-			limit:       50,
+			limit:       100,
 		}
 	case "workflows/runs":
 		return paginationDefaults{
@@ -1107,7 +1482,19 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 
 func resourceSupportsPagination(resource string) bool {
 	switch resource {
+	case "account-exports":
+		return true
 	case "activities":
+		return true
+	case "activity":
+		return true
+	case "admin":
+		return true
+	case "ai":
+		return true
+	case "api-keys":
+		return true
+	case "api_search":
 		return true
 	case "appointments":
 		return true
@@ -1115,31 +1502,93 @@ func resourceSupportsPagination(resource string) bool {
 		return true
 	case "automations":
 		return true
+	case "automations-failures":
+		return true
+	case "automations-failures-drilldown":
+		return true
+	case "automations-step-logs":
+		return true
+	case "batch-operations":
+		return true
+	case "booking-pages":
+		return true
+	case "booking-routing-forms":
+		return true
+	case "bulk-operations":
+		return true
+	case "calendars":
+		return true
 	case "calendars_appointments":
 		return true
 	case "calls":
 		return true
 	case "companies":
 		return true
+	case "companies-duplicates":
+		return true
+	case "companies_timeline":
+		return true
+	case "conduyt-auth":
+		return true
 	case "contacts":
+		return true
+	case "contacts-duplicates":
+		return true
+	case "contacts_duplicate_proposals":
+		return true
+	case "contacts_timeline":
 		return true
 	case "conversations":
 		return true
+	case "custom-fields":
+		return true
 	case "deals":
+		return true
+	case "deals-inspection":
+		return true
+	case "deals-lead-id":
+		return true
+	case "deals_activities":
+		return true
+	case "deals_history":
+		return true
+	case "deals_tasks":
+		return true
+	case "dialer":
+		return true
+	case "dialer-history":
+		return true
+	case "dialer-queue":
+		return true
+	case "dialer-recordings":
+		return true
+	case "dnc":
+		return true
+	case "document-templates":
 		return true
 	case "drip-campaigns":
 		return true
 	case "drip-enrollments":
 		return true
-	case "emails":
+	case "drip_enrollments_timeline":
 		return true
 	case "emails-sequences":
 		return true
 	case "emails-templates":
 		return true
+	case "forms":
+		return true
+	case "generated-documents":
+		return true
 	case "imports":
 		return true
+	case "imports_duplicate_proposals":
+		return true
 	case "invoices":
+		return true
+	case "launch_monitor":
+		return true
+	case "lead-routing-assignment-log":
 		return true
 	case "messages":
 		return true
@@ -1147,17 +1596,47 @@ func resourceSupportsPagination(resource string) bool {
 		return true
 	case "notifications":
 		return true
+	case "pipelines":
+		return true
+	case "playbook-enrollments":
+		return true
+	case "pool-filter-sets":
+		return true
 	case "products":
 		return true
+	case "rows":
+		return true
 	case "runs":
+		return true
+	case "scoring-rules":
+		return true
+	case "smart-views":
+		return true
+	case "sms":
+		return true
+	case "sms-providers":
+		return true
+	case "status-metadata":
 		return true
 	case "step_logs":
 		return true
 	case "submissions":
 		return true
+	case "tags":
+		return true
 	case "tasks":
 		return true
+	case "team":
+		return true
+	case "users":
+		return true
+	case "versions":
+		return true
+	case "waitlist":
+		return true
 	case "webhook-logs":
+		return true
+	case "webhooks":
 		return true
 	case "webhooks-manage":
 		return true
@@ -1175,12 +1654,22 @@ func resourceSupportsPagination(resource string) bool {
 // validation-error 400s on APIs that reject unknown query keys.
 func syncResourceSinceParam(resource string) string {
 	switch resource {
+	case "ai":
+		return "since"
+	case "calls-unknown-callers":
+		return "since"
+	case "deals":
+		return "created_after"
+	case "status-metadata":
+		return "since"
 	}
 	return ""
 }
 
 func syncResourceSinceParamFormat(resource string) string {
 	switch resource {
+	case "calls-unknown-callers":
+		return "date-time"
 	}
 	return ""
 }
@@ -1205,6 +1694,11 @@ func formatSyncSinceValue(value string, paramFormat string) string {
 		}
 	}
 	return value
+}
+
+// determineDateRangeParam returns the query parameter name for date-range sync filtering.
+func determineDateRangeParam() string {
+	return "dateRange"
 }
 
 // extractPageItems attempts to extract an array of items and pagination cursor from a response.
@@ -1893,6 +2387,12 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 	}
 
 	switch resource {
+	case "account_exports_files":
+		return db.UpsertAccountExportsFiles(data)
+	case "admin":
+		return db.UpsertAdmin(data)
+	case "outcome":
+		return db.UpsertOutcome(data)
 	case "recover":
 		return db.UpsertRecover(data)
 	case "automations_analytics":
@@ -1907,22 +2407,24 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertNodeStats(data)
 	case "preflight":
 		return db.UpsertPreflight(data)
-	case "publish":
-		return db.UpsertPublish(data)
+	case "automations_publish":
+		return db.UpsertAutomationsPublish(data)
 	case "step_logs":
 		return db.UpsertStepLogs(data)
 	case "test_node":
 		return db.UpsertTestNode(data)
 	case "versions":
 		return db.UpsertVersions(data)
-	case "cancel":
-		return db.UpsertCancel(data)
+	case "batch_operations_cancel":
+		return db.UpsertBatchOperationsCancel(data)
 	case "booking_pages_analytics":
 		return db.UpsertBookingPagesAnalytics(data)
 	case "booking_pages_availability":
 		return db.UpsertBookingPagesAvailability(data)
 	case "embed_code":
 		return db.UpsertEmbedCode(data)
+	case "ical_feed":
+		return db.UpsertIcalFeed(data)
 	case "overrides":
 		return db.UpsertOverrides(data)
 	case "readiness":
@@ -1931,8 +2433,22 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertWaitlist(data)
 	case "calendars_appointments":
 		return db.UpsertCalendarsAppointments(data)
+	case "call_flows_publish":
+		return db.UpsertCallFlowsPublish(data)
+	case "simulate":
+		return db.UpsertSimulate(data)
+	case "unpublish":
+		return db.UpsertUnpublish(data)
+	case "validate":
+		return db.UpsertValidate(data)
+	case "wiring":
+		return db.UpsertWiring(data)
+	case "link":
+		return db.UpsertLink(data)
 	case "intelligence":
 		return db.UpsertIntelligence(data)
+	case "related":
+		return db.UpsertRelated(data)
 	case "companies_tags":
 		return db.UpsertCompaniesTags(data)
 	case "companies_timeline":
@@ -1945,6 +2461,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertCollaborators(data)
 	case "contacts_dnc":
 		return db.UpsertContactsDnc(data)
+	case "contacts_duplicate_proposals":
+		return db.UpsertContactsDuplicateProposals(data)
 	case "enrich":
 		return db.UpsertEnrich(data)
 	case "gdpr_export":
@@ -1961,20 +2479,32 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertCompliance(data)
 	case "state":
 		return db.UpsertState(data)
+	case "suggestion":
+		return db.UpsertSuggestion(data)
 	case "custom_fields_history":
 		return db.UpsertCustomFieldsHistory(data)
 	case "impact":
 		return db.UpsertImpact(data)
+	case "run":
+		return db.UpsertRun(data)
+	case "tiles":
+		return db.UpsertTiles(data)
 	case "deals_activities":
 		return db.UpsertDealsActivities(data)
 	case "deals_contacts":
 		return db.UpsertDealsContacts(data)
+	case "handoff_files":
+		return db.UpsertHandoffFiles(data)
 	case "deals_history":
 		return db.UpsertDealsHistory(data)
 	case "deals_tags":
 		return db.UpsertDealsTags(data)
 	case "deals_tasks":
 		return db.UpsertDealsTasks(data)
+	case "dialer":
+		return db.UpsertDialer(data)
+	case "cancel_barrier":
+		return db.UpsertCancelBarrier(data)
 	case "drip_enrollments_timeline":
 		return db.UpsertDripEnrollmentsTimeline(data)
 	case "files_download":
@@ -1987,12 +2517,16 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertSubmissions(data)
 	case "submit":
 		return db.UpsertSubmit(data)
+	case "uploads":
+		return db.UpsertUploads(data)
 	case "generated_documents_download":
 		return db.UpsertGeneratedDocumentsDownload(data)
 	case "generated_documents_send":
 		return db.UpsertGeneratedDocumentsSend(data)
 	case "imports_download":
 		return db.UpsertImportsDownload(data)
+	case "imports_duplicate_proposals":
+		return db.UpsertImportsDuplicateProposals(data)
 	case "integrity":
 		return db.UpsertIntegrity(data)
 	case "launch_monitor":
@@ -2013,6 +2547,10 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertSideEffects(data)
 	case "imports_stats":
 		return db.UpsertImportsStats(data)
+	case "integrations":
+		return db.UpsertIntegrations(data)
+	case "overpayments":
+		return db.UpsertOverpayments(data)
 	case "payment_link":
 		return db.UpsertPaymentLink(data)
 	case "payments":
@@ -2025,12 +2563,24 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertVoid(data)
 	case "pull":
 		return db.UpsertPull(data)
+	case "media":
+		return db.UpsertMedia(data)
+	case "archive":
+		return db.UpsertArchive(data)
+	case "restore":
+		return db.UpsertRestore(data)
 	case "stages":
 		return db.UpsertStages(data)
+	case "reports":
+		return db.UpsertReports(data)
 	case "smart_lists_contacts":
 		return db.UpsertSmartListsContacts(data)
+	case "sms-providers":
+		return db.UpsertSmsProviders(data)
 	case "sms_providers_test":
 		return db.UpsertSmsProvidersTest(data)
+	case "tags":
+		return db.UpsertTags(data)
 	case "claim":
 		return db.UpsertClaim(data)
 	case "avatar":
@@ -2047,6 +2597,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertResetPassword(data)
 	case "users_stats":
 		return db.UpsertUsersStats(data)
+	case "webhook_logs_cancel":
+		return db.UpsertWebhookLogsCancel(data)
 	case "activate":
 		return db.UpsertActivate(data)
 	case "workflows_deactivate":
@@ -2091,48 +2643,24 @@ func parseSinceDuration(s string) (time.Time, error) {
 
 func defaultSyncResources() []string {
 	return []string{
+		"activity",
 		"admin",
-		"appointments",
-		"automation-executions",
-		"automations",
-		"automations-actions",
-		"automations-condition-fields",
-		"automations-templates",
-		"booking-pages",
-		"calendar",
-		"calendar-callback-google",
-		"calendar-callback-microsoft",
-		"calendars",
-		"calls",
-		"chat",
-		"conversations",
+		"batch-operations",
 		"custom-fields",
+		"deals",
+		"dialer",
+		"dialer-recordings",
+		"dnc",
 		"document-templates",
-		"drip-campaigns",
-		"drip-enrollments",
-		"emails",
-		"emails-sequences",
+		"email",
 		"emails-templates",
-		"files",
-		"forms",
-		"imports",
-		"integrations",
-		"integrations-zapier-subscribe",
-		"invoices",
-		"lead-routing",
+		"generated-documents",
+		"integrations-wordpress-forms-intakes",
 		"lead-routing-assignment-log",
-		"notifications",
-		"notifications-profiles",
-		"products",
-		"reports-custom",
 		"scoring-rules",
-		"smart-lists",
-		"users",
-		"webhook-logs",
-		"webhooks",
-		"webhooks-manage",
-		"webhooks-replay",
-		"workflows",
+		"sms",
+		"sms-providers",
+		"sms-providers-template-options",
 	}
 }
 
@@ -2141,8 +2669,11 @@ func defaultSyncResources() []string {
 // validation to reject misspellings before they become silent no-ops.
 func knownSyncResourceNames() []string {
 	names := []string{
+		"account-exports",
 		"activities",
+		"activity",
 		"admin",
+		"ai",
 		"api-keys",
 		"api_search",
 		"appointments",
@@ -2150,55 +2681,75 @@ func knownSyncResourceNames() []string {
 		"automations",
 		"automations-actions",
 		"automations-condition-fields",
+		"automations-failures",
+		"automations-failures-drilldown",
+		"automations-step-logs",
 		"automations-templates",
+		"batch-operations",
 		"booking-pages",
+		"booking-routing-forms",
+		"bulk-operations",
 		"calendar",
-		"calendar-callback-google",
-		"calendar-callback-microsoft",
 		"calendars",
 		"calls",
+		"calls-unknown-callers",
 		"chat",
 		"companies",
+		"companies-duplicates",
 		"conduyt-auth",
-		"conduyt-auth-callback",
 		"contacts",
 		"contacts-duplicates",
 		"conversations",
 		"custom-fields",
 		"deals",
+		"deals-inspection",
+		"deals-lead-id",
 		"dialer",
 		"dialer-calls-hourly",
+		"dialer-history",
+		"dialer-queue",
+		"dialer-recordings",
+		"dnc",
 		"document-templates",
 		"drip-campaigns",
 		"drip-enrollments",
+		"email",
+		"email-signature",
 		"emails",
 		"emails-sequences",
 		"emails-templates",
 		"files",
 		"forms",
+		"generated-documents",
 		"imports",
 		"integrations",
-		"integrations-slack-oauth-callback",
-		"integrations-slack-oauth-install",
+		"integrations-wordpress-forms-intakes",
 		"integrations-zapier-subscribe",
 		"invoices",
 		"lead-routing",
 		"lead-routing-assignment-log",
-		"mailbox",
 		"messages",
 		"notes",
 		"notifications",
 		"notifications-profiles",
 		"pipelines",
+		"playbook-enrollments",
+		"pool-filter-sets",
 		"products",
 		"reports",
+		"reports-call-performance",
 		"reports-custom",
 		"reports-dialer-list-performance",
 		"scoring-rules",
 		"smart-lists",
 		"smart-views",
+		"sms",
+		"sms-providers",
+		"sms-providers-template-options",
+		"status-metadata",
 		"tags",
 		"tasks",
+		"team",
 		"users",
 		"webhook-logs",
 		"webhooks",
@@ -2234,70 +2785,93 @@ func describeResourceFailure(count int, label string, resources []string) string
 // this preserves the actual endpoint path like "/ISteamApps/GetAppList/v2".
 func syncResourcePath(resource string) (string, error) {
 	paths := map[string]string{ // #nosec G101 -- endpoint paths, not credentials.
-		"activities":                        "/activities",
-		"admin":                             "/admin/accounts",
-		"api-keys":                          "/api-keys",
-		"api_search":                        "/search",
-		"appointments":                      "/appointments",
-		"automation-executions":             "/automation-executions",
-		"automations":                       "/automations",
-		"automations-actions":               "/automations/actions",
-		"automations-condition-fields":      "/automations/condition-fields",
-		"automations-templates":             "/automations/templates",
-		"booking-pages":                     "/booking-pages",
-		"calendar":                          "/calendar/connections",
-		"calendar-callback-google":          "/calendar/callback/google",
-		"calendar-callback-microsoft":       "/calendar/callback/microsoft",
-		"calendars":                         "/calendars",
-		"calls":                             "/calls",
-		"chat":                              "/chat/channels",
-		"companies":                         "/companies",
-		"conduyt-auth":                      "/auth/google/callback",
-		"conduyt-auth-callback":             "/auth/microsoft/callback",
-		"contacts":                          "/contacts",
-		"contacts-duplicates":               "/contacts/duplicates",
-		"conversations":                     "/conversations",
-		"custom-fields":                     "/custom-fields",
-		"deals":                             "/deals",
-		"dialer":                            "/dialer/calls",
-		"dialer-calls-hourly":               "/dialer/calls/hourly",
-		"document-templates":                "/document-templates",
-		"drip-campaigns":                    "/drip-campaigns",
-		"drip-enrollments":                  "/drip-enrollments",
-		"emails":                            "/emails",
-		"emails-sequences":                  "/emails/sequences",
-		"emails-templates":                  "/emails/templates",
-		"files":                             "/files",
-		"forms":                             "/forms",
-		"imports":                           "/imports",
-		"integrations":                      "/integrations",
-		"integrations-slack-oauth-callback": "/integrations/slack/oauth/callback",
-		"integrations-slack-oauth-install":  "/integrations/slack/oauth/install",
-		"integrations-zapier-subscribe":     "/integrations/zapier/subscribe",
-		"invoices":                          "/invoices",
-		"lead-routing":                      "/lead-routing",
-		"lead-routing-assignment-log":       "/lead-routing/assignment-log",
-		"mailbox":                           "/mailbox/callback/microsoft",
-		"messages":                          "/messages",
-		"notes":                             "/notes",
-		"notifications":                     "/notifications",
-		"notifications-profiles":            "/notifications/profiles",
-		"pipelines":                         "/pipelines",
-		"products":                          "/products",
-		"reports":                           "/reports/calls",
-		"reports-custom":                    "/reports/custom",
-		"reports-dialer-list-performance":   "/reports/dialer/list-performance",
-		"scoring-rules":                     "/scoring-rules",
-		"smart-lists":                       "/smart-lists",
-		"smart-views":                       "/smart-views",
-		"tags":                              "/tags",
-		"tasks":                             "/tasks",
-		"users":                             "/users",
-		"webhook-logs":                      "/webhook-logs",
-		"webhooks":                          "/webhooks",
-		"webhooks-manage":                   "/webhooks/manage",
-		"webhooks-replay":                   "/webhooks/replay",
-		"workflows":                         "/workflows",
+		"account-exports":                      "/account-exports",
+		"activities":                           "/activities",
+		"activity":                             "/activity/export.csv",
+		"admin":                                "/admin/accounts",
+		"ai":                                   "/ai/feed",
+		"api-keys":                             "/api-keys",
+		"api_search":                           "/search",
+		"appointments":                         "/appointments",
+		"automation-executions":                "/automation-executions",
+		"automations":                          "/automations",
+		"automations-actions":                  "/automations/actions",
+		"automations-condition-fields":         "/automations/condition-fields",
+		"automations-failures":                 "/automations/failures",
+		"automations-failures-drilldown":       "/automations/failures/drilldown",
+		"automations-step-logs":                "/automations/step-logs",
+		"automations-templates":                "/automations/templates",
+		"batch-operations":                     "/batch-operations",
+		"booking-pages":                        "/booking-pages",
+		"booking-routing-forms":                "/booking-routing-forms",
+		"bulk-operations":                      "/bulk-operations/unified",
+		"calendar":                             "/calendar/connections",
+		"calendars":                            "/calendars",
+		"calls":                                "/calls",
+		"calls-unknown-callers":                "/calls/unknown-callers",
+		"chat":                                 "/chat/channels",
+		"companies":                            "/companies",
+		"companies-duplicates":                 "/companies/duplicates",
+		"conduyt-auth":                         "/auth/login-history",
+		"contacts":                             "/contacts",
+		"contacts-duplicates":                  "/contacts/duplicates",
+		"conversations":                        "/conversations",
+		"custom-fields":                        "/custom-fields",
+		"deals":                                "/deals",
+		"deals-inspection":                     "/deals/inspection",
+		"deals-lead-id":                        "/deals/lead-id",
+		"dialer":                               "/dialer/calls",
+		"dialer-calls-hourly":                  "/dialer/calls/hourly",
+		"dialer-history":                       "/dialer/history",
+		"dialer-queue":                         "/dialer/queue",
+		"dialer-recordings":                    "/dialer/recordings",
+		"dnc":                                  "/dnc",
+		"document-templates":                   "/document-templates",
+		"drip-campaigns":                       "/drip-campaigns",
+		"drip-enrollments":                     "/drip-enrollments",
+		"email":                                "/email/opt-out-list",
+		"email-signature":                      "/email-signature/designs",
+		"emails":                               "/emails",
+		"emails-sequences":                     "/emails/sequences",
+		"emails-templates":                     "/emails/templates",
+		"files":                                "/files",
+		"forms":                                "/forms",
+		"generated-documents":                  "/generated-documents",
+		"imports":                              "/imports",
+		"integrations":                         "/integrations",
+		"integrations-wordpress-forms-intakes": "/integrations/wordpress-forms/intakes",
+		"integrations-zapier-subscribe":        "/integrations/zapier/subscribe",
+		"invoices":                             "/invoices",
+		"lead-routing":                         "/lead-routing",
+		"lead-routing-assignment-log":          "/lead-routing/assignment-log",
+		"messages":                             "/messages",
+		"notes":                                "/notes",
+		"notifications":                        "/notifications",
+		"notifications-profiles":               "/notifications/profiles",
+		"pipelines":                            "/pipelines",
+		"playbook-enrollments":                 "/playbook-enrollments",
+		"pool-filter-sets":                     "/pool-filter-sets",
+		"products":                             "/products",
+		"reports":                              "/reports/calls",
+		"reports-call-performance":             "/reports/call-performance",
+		"reports-custom":                       "/reports/custom",
+		"reports-dialer-list-performance":      "/reports/dialer/list-performance",
+		"scoring-rules":                        "/scoring-rules",
+		"smart-lists":                          "/smart-lists",
+		"smart-views":                          "/smart-views",
+		"sms":                                  "/sms/send-logs",
+		"sms-providers":                        "/sms-providers/options",
+		"sms-providers-template-options":       "/sms-providers/template-options",
+		"status-metadata":                      "/status-metadata/decisions",
+		"tags":                                 "/tags",
+		"tasks":                                "/tasks",
+		"team":                                 "/team/members",
+		"users":                                "/users",
+		"webhook-logs":                         "/webhook-logs",
+		"webhooks":                             "/webhooks",
+		"webhooks-manage":                      "/webhooks/manage",
+		"webhooks-replay":                      "/webhooks/replay",
+		"workflows":                            "/workflows",
 	}
 	if p, ok := paths[resource]; ok {
 		return p, nil
@@ -2424,6 +2998,36 @@ func dependentResourceDefs() []dependentResourceDef {
 		{Name: "calendars_appointments", ParentTable: "calendars", ParentIDParam: "id", PathTemplate: "/calendars/{id}/appointments", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
 			{Param: "id", Field: "id"},
 		}},
+		{Name: "companies_timeline", ParentTable: "companies", ParentIDParam: "id", PathTemplate: "/companies/{id}/timeline", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "contacts_duplicate_proposals", ParentTable: "contacts", ParentIDParam: "id", PathTemplate: "/contacts/{id}/duplicate-proposals", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "contacts_timeline", ParentTable: "contacts", ParentIDParam: "id", PathTemplate: "/contacts/{id}/timeline", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "deals_activities", ParentTable: "deals", ParentIDParam: "id", PathTemplate: "/deals/{id}/activities", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "deals_history", ParentTable: "deals", ParentIDParam: "id", PathTemplate: "/deals/{id}/history", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "deals_tasks", ParentTable: "deals", ParentIDParam: "id", PathTemplate: "/deals/{id}/tasks", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "drip_enrollments_timeline", ParentTable: "drip-enrollments", ParentIDParam: "id", PathTemplate: "/drip-enrollments/{id}/timeline", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "imports_duplicate_proposals", ParentTable: "imports", ParentIDParam: "id", PathTemplate: "/imports/{id}/duplicate-proposals", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "launch_monitor", ParentTable: "imports", ParentIDParam: "id", PathTemplate: "/imports/{id}/launch-monitor", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "rows", ParentTable: "imports", ParentIDParam: "id", PathTemplate: "/imports/{id}/rows", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
 		{Name: "runs", ParentTable: "workflows", ParentIDParam: "id", PathTemplate: "/workflows/{id}/runs", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
 			{Param: "id", Field: "id"},
 		}},
@@ -2431,6 +3035,12 @@ func dependentResourceDefs() []dependentResourceDef {
 			{Param: "id", Field: "id"},
 		}},
 		{Name: "submissions", ParentTable: "forms", ParentIDParam: "id", PathTemplate: "/forms/{id}/submissions", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "versions", ParentTable: "automations", ParentIDParam: "id", PathTemplate: "/automations/{id}/versions", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "id"},
+		}},
+		{Name: "waitlist", ParentTable: "booking-pages", ParentIDParam: "id", PathTemplate: "/booking-pages/{id}/waitlist", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
 			{Param: "id", Field: "id"},
 		}},
 	}
@@ -2442,7 +3052,7 @@ func dependentResourceDefs() []dependentResourceDef {
 func syncDependentResources(ctx context.Context, c interface {
 	Get(context.Context, string, map[string]string) (json.RawMessage, error)
 	RateLimit() float64
-}, db *store.Store, sinceTS string, full bool, maxPages int, latestOnly bool, prune bool, parentFilter []string, userParams *syncUserParams, syncEvents io.Writer, concurrency int) []syncResult {
+}, db *store.Store, sinceTS string, full bool, maxPages int, latestOnly bool, prune bool, parentFilter []string, dates string, userParams *syncUserParams, syncEvents io.Writer, concurrency int) []syncResult {
 	allow := make(map[string]bool, len(parentFilter))
 	for _, r := range parentFilter {
 		allow[r] = true
@@ -2452,7 +3062,7 @@ func syncDependentResources(ctx context.Context, c interface {
 		if len(allow) > 0 && !allow[dep.ParentTable] && !allow[dep.Name] {
 			continue
 		}
-		res := syncDependentResource(ctx, c, db, dep, sinceTS, full, maxPages, latestOnly, prune, userParams, syncEvents, concurrency)
+		res := syncDependentResource(ctx, c, db, dep, sinceTS, full, maxPages, latestOnly, prune, dates, userParams, syncEvents, concurrency)
 		results = append(results, res)
 	}
 	return results
@@ -2523,6 +3133,7 @@ func syncOneParent(
 	latestOnly, prune bool,
 	userParams *syncUserParams,
 	syncEvents io.Writer,
+	dates string,
 ) parentReport {
 	var rep parentReport
 	parentID := parentRow["id"]
@@ -2559,6 +3170,9 @@ func syncOneParent(
 		}
 		if depSinceTS != "" {
 			params[depSinceParam] = depSinceTS
+		}
+		if dates != "" {
+			params[determineDateRangeParam()] = dates
 		}
 		// Apply user flags last so they win over spec-derived cursor/since/limit.
 		// Dependent path: --param is skipped (already scoped by the parent path
@@ -2786,7 +3400,7 @@ func (l *lockedWriter) Write(p []byte) (int, error) {
 func syncDependentResource(ctx context.Context, c interface {
 	Get(context.Context, string, map[string]string) (json.RawMessage, error)
 	RateLimit() float64
-}, db *store.Store, dep dependentResourceDef, sinceTS string, full bool, maxPages int, latestOnly bool, prune bool, userParams *syncUserParams, syncEvents io.Writer, concurrency int) syncResult {
+}, db *store.Store, dep dependentResourceDef, sinceTS string, full bool, maxPages int, latestOnly bool, prune bool, dates string, userParams *syncUserParams, syncEvents io.Writer, concurrency int) syncResult {
 	started := time.Now()
 	if syncEvents == nil {
 		syncEvents = io.Discard
@@ -2895,7 +3509,7 @@ func syncDependentResource(ctx context.Context, c interface {
 				if humanFriendly {
 					fmt.Fprintf(os.Stderr, "\r  %s: syncing for %s (%d/%d parents)", dep.Name, dep.ParentTable, atomic.AddInt64(&startedParents, 1), len(parentRows))
 				}
-				reports <- syncOneParent(ctx, c, db, dep, job.row, pathParams, pageSize, depSinceParam, depSinceTS, maxPages, latestOnly, prune, userParams, syncEvents)
+				reports <- syncOneParent(ctx, c, db, dep, job.row, pathParams, pageSize, depSinceParam, depSinceTS, maxPages, latestOnly, prune, userParams, syncEvents, dates)
 			}
 		}()
 	}
@@ -3029,7 +3643,13 @@ func dependentParentRows(db *store.Store, parentTable string, pathParams []depen
 // Includes both flat resources and dependent (parent-child) resources so
 // annotations on a child path-item are honored at runtime, not just on
 // flat paths.
-var resourceIDFieldOverrides = map[string]string{}
+var resourceIDFieldOverrides = map[string]string{
+	"admin":                                "id",
+	"dialer":                               "id",
+	"integrations-wordpress-forms-intakes": "id",
+	"sms-providers":                        "id",
+	"sms-providers-template-options":       "id",
+}
 
 // partitionOutcome tracks whether a sync loop (flat tenant-scoped OR dependent
 // per-parent) enumerated its partition completely. complete is set ONLY at
@@ -3109,6 +3729,36 @@ var dataEnvelopeKeys = []string{"data", "Data", "result", "Result"}
 
 func responsePathForResource(resource, path string) []string {
 	switch resource + "\x00" + path {
+	case "admin\x00/admin/accounts":
+		return []string{"data"}
+	case "batch-operations\x00/batch-operations":
+		return []string{"data"}
+	case "custom-fields\x00/custom-fields":
+		return []string{"data"}
+	case "dialer\x00/dialer/calls":
+		return []string{"data"}
+	case "dialer\x00/dialer/recordings":
+		return []string{"data"}
+	case "document-templates\x00/document-templates":
+		return []string{"data"}
+	case "email\x00/email/opt-out-list":
+		return []string{"data"}
+	case "emails\x00/emails/templates":
+		return []string{"data"}
+	case "generated-documents\x00/generated-documents":
+		return []string{"data"}
+	case "integrations\x00/integrations/wordpress-forms/intakes":
+		return []string{"data"}
+	case "lead-routing\x00/lead-routing/assignment-log":
+		return []string{"data"}
+	case "scoring-rules\x00/scoring-rules":
+		return []string{"data"}
+	case "sms\x00/sms/send-logs":
+		return []string{"data"}
+	case "sms-providers\x00/sms-providers/options":
+		return []string{"data"}
+	case "sms-providers\x00/sms-providers/template-options":
+		return []string{"data"}
 	}
 	return nil
 }

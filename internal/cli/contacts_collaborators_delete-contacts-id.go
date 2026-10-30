@@ -6,22 +6,40 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newContactsCollaboratorsDeleteContactsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var flagUserId string
+	var bodyExpectedRevision int
+	var bodyUserId2 string
+	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "delete-contacts-id <id>",
 		Aliases:     []string{"delete"},
-		Short:       "Delete contacts id collaborators",
+		Short:       "Remove a collaborator from a contact",
 		Example:     "  conduyt-crm-pp-cli contacts collaborators delete-contacts-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "collaborators.delete-contacts-id", "pp:method": "DELETE", "pp:path": "/contacts/{id}/collaborators"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if !stdinBody {
+				if !cmd.Flags().Changed("user-id-2") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "user-id-2")
+				}
 			}
 			path := "/contacts/{id}/collaborators"
 			if len(args) < 1 || args[0] == "" {
@@ -33,7 +51,37 @@ func newContactsCollaboratorsDeleteContactsIdCmd(flags *rootFlags) *cobra.Comman
 				return err
 			}
 			params := map[string]string{}
-			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
+			if flagUserId != "" {
+				params["userId"] = formatCLIParamValue(flagUserId)
+			}
+			var body any
+			if stdinBody {
+				stdinData, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				var jsonBody map[string]any
+				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
+					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				body = jsonBody
+			} else {
+				bodyMap := map[string]any{}
+				body = bodyMap
+				if bodyExpectedRevision != 0 {
+					bodyMap["expectedRevision"] = bodyExpectedRevision
+				}
+				if bodyUserId2 != "" {
+					bodyMap["userId"] = bodyUserId2
+				}
+			}
+			data, statusCode, err := c.DeleteWithParamsAndBody(cmd.Context(), path, params, body)
 			if err != nil {
 				return classifyDeleteError(err, flags)
 			}
@@ -173,6 +221,12 @@ func newContactsCollaboratorsDeleteContactsIdCmd(flags *rootFlags) *cobra.Comman
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "The bodyless compatibility form: `DELETE /contacts/{id}/collaborators?")
+	cmd.Flags().IntVar(&bodyExpectedRevision, "expected-revision", 0, "Optional optimistic-concurrency pin: the contact's `revision` as the caller last read it (GET /contacts/{id}, the list")
+	cmd.Flags().StringVar(&bodyUserId2, "user-id-2", "", "The team member to remove.")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
 }

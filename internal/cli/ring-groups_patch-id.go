@@ -13,6 +13,13 @@ import (
 )
 
 func newRingGroupsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyExpectedUpdatedAt string
+	var bodyIsActive string
+	var bodyMemberIds string
+	var bodyName string
+	var bodyPhoneNumber string
+	var bodyRingSeconds string
+	var bodyStrategy string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +58,27 @@ func newRingGroupsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyExpectedUpdatedAt != "" {
+					bodyMap["expectedUpdatedAt"] = bodyExpectedUpdatedAt
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyMemberIds != "" {
+					bodyMap["memberIds"] = bodyMemberIds
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyPhoneNumber != "" {
+					bodyMap["phoneNumber"] = bodyPhoneNumber
+				}
+				if bodyRingSeconds != "" {
+					bodyMap["ringSeconds"] = bodyRingSeconds
+				}
+				if bodyStrategy != "" {
+					bodyMap["strategy"] = bodyStrategy
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +223,13 @@ func newRingGroupsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyExpectedUpdatedAt, "expected-updated-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMemberIds, "member-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPhoneNumber, "phone-number", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyRingSeconds, "ring-seconds", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStrategy, "strategy", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

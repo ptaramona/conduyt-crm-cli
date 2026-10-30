@@ -12,9 +12,12 @@ import (
 )
 
 func newLeadRoutingListLeadAssignmentLogCmd(flags *rootFlags) *cobra.Command {
-	var flagContactId string
 	var flagAssignedTo string
+	var flagContactId string
+	var flagPage string
+	var flagPerPage int
 	var flagRuleId string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "list-lead-assignment-log",
@@ -28,17 +31,13 @@ func newLeadRoutingListLeadAssignmentLogCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			if flagContactId != "" {
-				params["contactId"] = formatCLIParamValue(flagContactId)
-			}
-			if flagAssignedTo != "" {
-				params["assignedTo"] = formatCLIParamValue(flagAssignedTo)
-			}
-			if flagRuleId != "" {
-				params["ruleId"] = formatCLIParamValue(flagRuleId)
-			}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "lead-routing", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "lead-routing", path, map[string]string{
+				"assignedTo": formatCLIParamValue(flagAssignedTo),
+				"contactId":  formatCLIParamValue(flagContactId),
+				"page":       formatCLIParamValue(flagPage),
+				"per_page":   formatCLIParamValue(flagPerPage),
+				"ruleId":     formatCLIParamValue(flagRuleId),
+			}, nil, flagAll, "page", "page", "per_page", 25, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -86,9 +85,12 @@ func newLeadRoutingListLeadAssignmentLogCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Assigned to")
-	cmd.Flags().StringVar(&flagRuleId, "rule-id", "", "Rule id")
+	cmd.Flags().StringVar(&flagAssignedTo, "assigned-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagContactId, "contact-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 25, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagRuleId, "rule-id", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

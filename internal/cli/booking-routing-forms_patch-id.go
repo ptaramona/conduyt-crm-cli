@@ -13,6 +13,11 @@ import (
 )
 
 func newBookingRoutingFormsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyDescription string
+	var bodyIsActive string
+	var bodySlug string
+	var bodySteps string
+	var bodyTitle string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +56,25 @@ func newBookingRoutingFormsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodySlug != "" {
+					bodyMap["slug"] = bodySlug
+				}
+				if bodySteps != "" {
+					var parsedSteps any
+					if err := json.Unmarshal([]byte(bodySteps), &parsedSteps); err != nil {
+						return fmt.Errorf("parsing --steps JSON: %w", err)
+					}
+					bodyMap["steps"] = parsedSteps
+				}
+				if bodyTitle != "" {
+					bodyMap["title"] = bodyTitle
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +219,11 @@ func newBookingRoutingFormsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySlug, "slug", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySteps, "steps", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTitle, "title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,18 +13,28 @@ import (
 )
 
 func newSettingsPutProjectBlueLinesLineIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyUserId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "put-project-blue-lines-line-id <lineId>",
 		Short:       "Update settings project-blue lines lineId",
-		Example:     "  conduyt-crm-pp-cli settings put-project-blue-lines-line-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli settings put-project-blue-lines-line-id 550e8400-e29b-41d4-a716-446655440000 --user-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "settings.put-project-blue-lines-line-id", "pp:method": "PUT", "pp:path": "/settings/project-blue/lines/{lineId}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("user-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "user-id")
+				}
 			}
 			path := "/settings/project-blue/lines/{lineId}"
 			if len(args) < 1 || args[0] == "" {
@@ -50,6 +60,9 @@ func newSettingsPutProjectBlueLinesLineIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyUserId != "" {
+					bodyMap["userId"] = bodyUserId
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +207,7 @@ func newSettingsPutProjectBlueLinesLineIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "User id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

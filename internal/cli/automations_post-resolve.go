@@ -9,10 +9,23 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newAutomationsPostResolveCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var bodyAutomations string
+	var bodyCustomFields string
+	var bodyDripCampaigns string
+	var bodyForms string
+	var bodyGroups string
+	var bodyPipelines string
+	var bodySmartLists string
+	var bodyStages string
+	var bodyTags string
+	var bodyTemplates string
+	var bodyUsers string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -29,6 +42,9 @@ func newAutomationsPostResolveCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -43,6 +59,83 @@ func newAutomationsPostResolveCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAutomations != "" {
+					parsedAutomations, parseErr := cliutil.ParseStringList(bodyAutomations)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --automations list: %w", parseErr)
+					}
+					bodyMap["automations"] = parsedAutomations
+				}
+				if bodyCustomFields != "" {
+					parsedCustomFields, parseErr := cliutil.ParseStringList(bodyCustomFields)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --custom-fields list: %w", parseErr)
+					}
+					bodyMap["customFields"] = parsedCustomFields
+				}
+				if bodyDripCampaigns != "" {
+					parsedDripCampaigns, parseErr := cliutil.ParseStringList(bodyDripCampaigns)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --drip-campaigns list: %w", parseErr)
+					}
+					bodyMap["dripCampaigns"] = parsedDripCampaigns
+				}
+				if bodyForms != "" {
+					parsedForms, parseErr := cliutil.ParseStringList(bodyForms)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --forms list: %w", parseErr)
+					}
+					bodyMap["forms"] = parsedForms
+				}
+				if bodyGroups != "" {
+					parsedGroups, parseErr := cliutil.ParseStringList(bodyGroups)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --groups list: %w", parseErr)
+					}
+					bodyMap["groups"] = parsedGroups
+				}
+				if bodyPipelines != "" {
+					parsedPipelines, parseErr := cliutil.ParseStringList(bodyPipelines)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --pipelines list: %w", parseErr)
+					}
+					bodyMap["pipelines"] = parsedPipelines
+				}
+				if bodySmartLists != "" {
+					parsedSmartLists, parseErr := cliutil.ParseStringList(bodySmartLists)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --smart-lists list: %w", parseErr)
+					}
+					bodyMap["smartLists"] = parsedSmartLists
+				}
+				if bodyStages != "" {
+					parsedStages, parseErr := cliutil.ParseStringList(bodyStages)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --stages list: %w", parseErr)
+					}
+					bodyMap["stages"] = parsedStages
+				}
+				if bodyTags != "" {
+					parsedTags, parseErr := cliutil.ParseStringList(bodyTags)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --tags list: %w", parseErr)
+					}
+					bodyMap["tags"] = parsedTags
+				}
+				if bodyTemplates != "" {
+					parsedTemplates, parseErr := cliutil.ParseStringList(bodyTemplates)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --templates list: %w", parseErr)
+					}
+					bodyMap["templates"] = parsedTemplates
+				}
+				if bodyUsers != "" {
+					parsedUsers, parseErr := cliutil.ParseStringList(bodyUsers)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --users list: %w", parseErr)
+					}
+					bodyMap["users"] = parsedUsers
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +280,18 @@ func newAutomationsPostResolveCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&bodyAutomations, "automations", "", "Automations")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Custom fields")
+	cmd.Flags().StringVar(&bodyDripCampaigns, "drip-campaigns", "", "Drip campaigns")
+	cmd.Flags().StringVar(&bodyForms, "forms", "", "Forms")
+	cmd.Flags().StringVar(&bodyGroups, "groups", "", "Groups")
+	cmd.Flags().StringVar(&bodyPipelines, "pipelines", "", "Pipelines")
+	cmd.Flags().StringVar(&bodySmartLists, "smart-lists", "", "Smart lists")
+	cmd.Flags().StringVar(&bodyStages, "stages", "", "Stages")
+	cmd.Flags().StringVar(&bodyTags, "tags", "", "Tags")
+	cmd.Flags().StringVar(&bodyTemplates, "templates", "", "Templates")
+	cmd.Flags().StringVar(&bodyUsers, "users", "", "Users")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

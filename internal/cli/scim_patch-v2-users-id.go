@@ -13,6 +13,7 @@ import (
 )
 
 func newScimPatchV2UsersIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyOperations string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +52,13 @@ func newScimPatchV2UsersIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyOperations != "" {
+					var parsedOperations any
+					if err := json.Unmarshal([]byte(bodyOperations), &parsedOperations); err != nil {
+						return fmt.Errorf("parsing --operations JSON: %w", err)
+					}
+					bodyMap["Operations"] = parsedOperations
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +203,7 @@ func newScimPatchV2UsersIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyOperations, "operations", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

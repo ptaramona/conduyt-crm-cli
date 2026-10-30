@@ -13,7 +13,11 @@ import (
 )
 
 func newCalendarCreateEventCmd(flags *rootFlags) *cobra.Command {
-	var bodyCalendarConnectionId string
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAllDay string
+	var bodyAttendees string
+	var bodyConnectionId string
 	var bodyDescription string
 	var bodyEndAt string
 	var bodyLocation string
@@ -24,7 +28,7 @@ func newCalendarCreateEventCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "create-event",
 		Short:       "Create an event on a connected calendar",
-		Example:     "  conduyt-crm-pp-cli calendar create-event --calendar-connection-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli calendar create-event --end-at 2026-01-15T09:00:00Z",
 		Annotations: map[string]string{"pp:endpoint": "calendar.create-event", "pp:method": "POST", "pp:path": "/calendar/events"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -34,9 +38,6 @@ func newCalendarCreateEventCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("calendar-connection-id") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "calendar-connection-id")
-				}
 				if !cmd.Flags().Changed("end-at") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "end-at")
 				}
@@ -53,6 +54,12 @@ func newCalendarCreateEventCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -67,8 +74,14 @@ func newCalendarCreateEventCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyCalendarConnectionId != "" {
-					bodyMap["calendarConnectionId"] = bodyCalendarConnectionId
+				if bodyAllDay != "" {
+					bodyMap["allDay"] = bodyAllDay
+				}
+				if bodyAttendees != "" {
+					bodyMap["attendees"] = bodyAttendees
+				}
+				if bodyConnectionId != "" {
+					bodyMap["connectionId"] = bodyConnectionId
 				}
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
@@ -229,7 +242,11 @@ func newCalendarCreateEventCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyCalendarConnectionId, "calendar-connection-id", "", "Calendar connection id")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAllDay, "all-day", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttendees, "attendees", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyConnectionId, "connection-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
 	cmd.Flags().StringVar(&bodyEndAt, "end-at", "", "End at")
 	cmd.Flags().StringVar(&bodyLocation, "location", "", "Location")

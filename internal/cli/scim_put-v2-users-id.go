@@ -13,6 +13,14 @@ import (
 )
 
 func newScimPutV2UsersIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyActive string
+	var bodyDisplayName string
+	var bodyEmails string
+	var bodyExternalId string
+	var bodyNameFamilyName string
+	var bodyNameFormatted string
+	var bodyNameGivenName string
+	var bodyUserName string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -50,6 +58,40 @@ func newScimPutV2UsersIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyActive != "" {
+					bodyMap["active"] = bodyActive
+				}
+				if bodyDisplayName != "" {
+					bodyMap["displayName"] = bodyDisplayName
+				}
+				if bodyEmails != "" {
+					var parsedEmails any
+					if err := json.Unmarshal([]byte(bodyEmails), &parsedEmails); err != nil {
+						return fmt.Errorf("parsing --emails JSON: %w", err)
+					}
+					bodyMap["emails"] = parsedEmails
+				}
+				if bodyExternalId != "" {
+					bodyMap["externalId"] = bodyExternalId
+				}
+				{
+					nestedName := map[string]any{}
+					if bodyNameFamilyName != "" {
+						nestedName["familyName"] = bodyNameFamilyName
+					}
+					if bodyNameFormatted != "" {
+						nestedName["formatted"] = bodyNameFormatted
+					}
+					if bodyNameGivenName != "" {
+						nestedName["givenName"] = bodyNameGivenName
+					}
+					if len(nestedName) > 0 {
+						bodyMap["name"] = nestedName
+					}
+				}
+				if bodyUserName != "" {
+					bodyMap["userName"] = bodyUserName
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +236,14 @@ func newScimPutV2UsersIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyActive, "active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDisplayName, "display-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEmails, "emails", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExternalId, "external-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyNameFamilyName, "name-family-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyNameFormatted, "name-formatted", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyNameGivenName, "name-given-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUserName, "user-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

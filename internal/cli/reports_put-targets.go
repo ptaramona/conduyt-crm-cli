@@ -13,6 +13,7 @@ import (
 )
 
 func newReportsPutTargetsCmd(flags *rootFlags) *cobra.Command {
+	var bodyTargets string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +44,13 @@ func newReportsPutTargetsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyTargets != "" {
+					var parsedTargets any
+					if err := json.Unmarshal([]byte(bodyTargets), &parsedTargets); err != nil {
+						return fmt.Errorf("parsing --targets JSON: %w", err)
+					}
+					bodyMap["targets"] = parsedTargets
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +195,7 @@ func newReportsPutTargetsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyTargets, "targets", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

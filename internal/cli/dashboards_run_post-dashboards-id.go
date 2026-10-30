@@ -13,6 +13,11 @@ import (
 )
 
 func newDashboardsRunPostDashboardsIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyFiltersAssignedTo string
+	var bodyFiltersDateRange string
+	var bodyFiltersEnd string
+	var bodyFiltersSources string
+	var bodyFiltersStart string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -20,7 +25,7 @@ func newDashboardsRunPostDashboardsIdCmd(flags *rootFlags) *cobra.Command {
 		Aliases:     []string{"create"},
 		Short:       "Create / invoke dashboards id run",
 		Example:     "  conduyt-crm-pp-cli dashboards run post-dashboards-id 550e8400-e29b-41d4-a716-446655440000",
-		Annotations: map[string]string{"pp:endpoint": "run.post-dashboards-id", "pp:method": "POST", "pp:path": "/dashboards/{id}/run"},
+		Annotations: map[string]string{"pp:endpoint": "run.post-dashboards-id", "pp:method": "POST", "pp:path": "/dashboards/{id}/run", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
@@ -51,8 +56,29 @@ func newDashboardsRunPostDashboardsIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				{
+					nestedFilters := map[string]any{}
+					if bodyFiltersAssignedTo != "" {
+						nestedFilters["assignedTo"] = bodyFiltersAssignedTo
+					}
+					if bodyFiltersDateRange != "" {
+						nestedFilters["dateRange"] = bodyFiltersDateRange
+					}
+					if bodyFiltersEnd != "" {
+						nestedFilters["end"] = bodyFiltersEnd
+					}
+					if bodyFiltersSources != "" {
+						nestedFilters["sources"] = bodyFiltersSources
+					}
+					if bodyFiltersStart != "" {
+						nestedFilters["start"] = bodyFiltersStart
+					}
+					if len(nestedFilters) > 0 {
+						bodyMap["filters"] = nestedFilters
+					}
+				}
 			}
-			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
+			data, statusCode, err := c.PostQueryWithParams(cmd.Context(), path, params, body)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,9 +99,6 @@ func newDashboardsRunPostDashboardsIdCmd(flags *rootFlags) *cobra.Command {
 						fmt.Fprintf(os.Stderr, "         succeeded: %d operation(s)\n", len(partialFailure.ResourceNames))
 					}
 				}
-			}
-			if !flags.dryRun && statusCode >= 200 && statusCode < 300 && (partialFailure == nil || flags.allowPartialFailure) {
-				writeMutationResponseToStore(cmd.Context(), "run", data, "")
 			}
 			if wantsHumanTable(cmd.OutOrStdout(), flags) {
 				// Check if response contains an array (directly or wrapped in "data")
@@ -195,6 +218,11 @@ func newDashboardsRunPostDashboardsIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyFiltersAssignedTo, "filters-assigned-to", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersDateRange, "filters-date-range", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersEnd, "filters-end", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersSources, "filters-sources", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFiltersStart, "filters-start", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

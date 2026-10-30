@@ -13,12 +13,14 @@ import (
 )
 
 func newAutomationsVersionsPostAutomationsIdIdRestoreCmd(flags *rootFlags) *cobra.Command {
+	var bodyExpectedConfigRevision string
+	var bodyPublish string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-automations-id-id-restore <id> <versionId>",
 		Aliases:     []string{"create"},
-		Short:       "Create / invoke automations id versions versionId restore",
+		Short:       "Restore an automation version as the draft (optionally publishing it)",
 		Example:     "  conduyt-crm-pp-cli automations versions post-automations-id-id-restore 550e8400-e29b-41d4-a716-446655440000 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "versions.post-automations-id-id-restore", "pp:method": "POST", "pp:path": "/automations/{id}/versions/{versionId}/restore"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -55,6 +57,12 @@ func newAutomationsVersionsPostAutomationsIdIdRestoreCmd(flags *rootFlags) *cobr
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyExpectedConfigRevision != "" {
+					bodyMap["expectedConfigRevision"] = bodyExpectedConfigRevision
+				}
+				if bodyPublish != "" {
+					bodyMap["publish"] = bodyPublish
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -199,6 +207,8 @@ func newAutomationsVersionsPostAutomationsIdIdRestoreCmd(flags *rootFlags) *cobr
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyExpectedConfigRevision, "expected-config-revision", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPublish, "publish", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

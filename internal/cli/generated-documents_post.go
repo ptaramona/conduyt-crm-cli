@@ -13,6 +13,10 @@ import (
 )
 
 func newGeneratedDocumentsPostCmd(flags *rootFlags) *cobra.Command {
+	var bodyCompanyId string
+	var bodyContactId string
+	var bodyDealId string
+	var bodyTemplateId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -44,6 +48,18 @@ func newGeneratedDocumentsPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCompanyId != "" {
+					bodyMap["companyId"] = bodyCompanyId
+				}
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if bodyDealId != "" {
+					bodyMap["dealId"] = bodyDealId
+				}
+				if bodyTemplateId != "" {
+					bodyMap["templateId"] = bodyTemplateId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +204,10 @@ func newGeneratedDocumentsPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTemplateId, "template-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

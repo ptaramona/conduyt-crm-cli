@@ -12,6 +12,7 @@ import (
 )
 
 func newAutomationsDependencyAuditGetAutomationsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagSource string
 
 	cmd := &cobra.Command{
 		Use:         "get-automations-id <id>",
@@ -33,6 +34,9 @@ func newAutomationsDependencyAuditGetAutomationsIdCmd(flags *rootFlags) *cobra.C
 				return err
 			}
 			params := map[string]string{}
+			if flagSource != "" {
+				params["source"] = formatCLIParamValue(flagSource)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dependency-audit", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -81,6 +85,7 @@ func newAutomationsDependencyAuditGetAutomationsIdCmd(flags *rootFlags) *cobra.C
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagSource, "source", "", "Query parameter read by this route.")
 
 	return cmd
 }

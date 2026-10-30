@@ -13,18 +13,28 @@ import (
 )
 
 func newDialerPostCallIdSuperviseCmd(flags *rootFlags) *cobra.Command {
+	var bodyMode string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-call-id-supervise <id>",
 		Short:       "Create / invoke dialer call id supervise",
-		Example:     "  conduyt-crm-pp-cli dialer post-call-id-supervise 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli dialer post-call-id-supervise 550e8400-e29b-41d4-a716-446655440000 --mode listen",
 		Annotations: map[string]string{"pp:endpoint": "dialer.post-call-id-supervise", "pp:method": "POST", "pp:path": "/dialer/call/{id}/supervise"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("mode") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "mode")
+				}
 			}
 			path := "/dialer/call/{id}/supervise"
 			if len(args) < 1 || args[0] == "" {
@@ -50,6 +60,9 @@ func newDialerPostCallIdSuperviseCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyMode != "" {
+					bodyMap["mode"] = bodyMode
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +207,7 @@ func newDialerPostCallIdSuperviseCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyMode, "mode", "", "Mode")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

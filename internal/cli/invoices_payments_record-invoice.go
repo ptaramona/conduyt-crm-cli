@@ -13,9 +13,12 @@ import (
 )
 
 func newInvoicesPaymentsRecordInvoiceCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyAmount float64
 	var bodyMethod string
 	var bodyNotes string
+	var bodyPaidAt string
 	var bodyReference string
 	var stdinBody bool
 
@@ -50,6 +53,12 @@ func newInvoicesPaymentsRecordInvoiceCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -72,6 +81,9 @@ func newInvoicesPaymentsRecordInvoiceCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyNotes != "" {
 					bodyMap["notes"] = bodyNotes
+				}
+				if bodyPaidAt != "" {
+					bodyMap["paidAt"] = bodyPaidAt
 				}
 				if bodyReference != "" {
 					bodyMap["reference"] = bodyReference
@@ -220,9 +232,12 @@ func newInvoicesPaymentsRecordInvoiceCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().Float64Var(&bodyAmount, "amount", 0.0, "Amount")
 	cmd.Flags().StringVar(&bodyMethod, "method", "card", "Method")
 	cmd.Flags().StringVar(&bodyNotes, "notes", "", "Notes")
+	cmd.Flags().StringVar(&bodyPaidAt, "paid-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyReference, "reference", "", "Reference")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

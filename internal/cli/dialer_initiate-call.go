@@ -13,15 +13,20 @@ import (
 )
 
 func newDialerInitiateCallCmd(flags *rootFlags) *cobra.Command {
+	var bodyAutoDialer bool
+	var bodyCallerIdStrategy string
 	var bodyContactId string
-	var bodyToNumber string
+	var bodyDncOverride bool
+	var bodyTo string
+	var bodyVendorBridgeNonce string
+	var bodyVendorBridgeable bool
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:   "initiate-call",
 		Short: "Initiate an outbound call",
 		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli dialer initiate-call --to-number example-value",
+		Example:     "  conduyt-crm-pp-cli dialer initiate-call --to example-value",
 		Annotations: map[string]string{"pp:endpoint": "dialer.initiate-call", "pp:method": "POST", "pp:path": "/dialer/call"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -31,8 +36,8 @@ func newDialerInitiateCallCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("to-number") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "to-number")
+				if !cmd.Flags().Changed("to") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "to")
 				}
 			}
 			path := "/dialer/call"
@@ -55,11 +60,26 @@ func newDialerInitiateCallCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("auto-dialer") {
+					bodyMap["autoDialer"] = bodyAutoDialer
+				}
+				if bodyCallerIdStrategy != "" {
+					bodyMap["callerIdStrategy"] = bodyCallerIdStrategy
+				}
 				if bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
 				}
-				if bodyToNumber != "" {
-					bodyMap["toNumber"] = bodyToNumber
+				if cmd.Flags().Changed("dnc-override") {
+					bodyMap["dncOverride"] = bodyDncOverride
+				}
+				if bodyTo != "" {
+					bodyMap["to"] = bodyTo
+				}
+				if bodyVendorBridgeNonce != "" {
+					bodyMap["vendorBridgeNonce"] = bodyVendorBridgeNonce
+				}
+				if cmd.Flags().Changed("vendor-bridgeable") {
+					bodyMap["vendorBridgeable"] = bodyVendorBridgeable
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -205,8 +225,13 @@ func newDialerInitiateCallCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&bodyAutoDialer, "auto-dialer", false, "Auto dialer")
+	cmd.Flags().StringVar(&bodyCallerIdStrategy, "caller-id-strategy", "", "Caller id strategy")
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
-	cmd.Flags().StringVar(&bodyToNumber, "to-number", "", "To number")
+	cmd.Flags().BoolVar(&bodyDncOverride, "dnc-override", false, "Dnc override")
+	cmd.Flags().StringVar(&bodyTo, "to", "", "To")
+	cmd.Flags().StringVar(&bodyVendorBridgeNonce, "vendor-bridge-nonce", "", "Vendor bridge nonce")
+	cmd.Flags().BoolVar(&bodyVendorBridgeable, "vendor-bridgeable", false, "Vendor bridgeable")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

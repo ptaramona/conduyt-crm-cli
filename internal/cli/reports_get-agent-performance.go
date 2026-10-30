@@ -12,6 +12,13 @@ import (
 )
 
 func newReportsGetAgentPerformanceCmd(flags *rootFlags) *cobra.Command {
+	var flagFrom string
+	var flagTo string
+	var flagUserIds string
+	var flagDateRange string
+	var flagRange string
+	var flagStart string
+	var flagEnd string
 
 	cmd := &cobra.Command{
 		Use:         "get-agent-performance",
@@ -25,6 +32,27 @@ func newReportsGetAgentPerformanceCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagFrom != "" {
+				params["from"] = formatCLIParamValue(flagFrom)
+			}
+			if flagTo != "" {
+				params["to"] = formatCLIParamValue(flagTo)
+			}
+			if flagUserIds != "" {
+				params["userIds"] = formatCLIParamValue(flagUserIds)
+			}
+			if flagDateRange != "" {
+				params["dateRange"] = formatCLIParamValue(flagDateRange)
+			}
+			if flagRange != "" {
+				params["range"] = formatCLIParamValue(flagRange)
+			}
+			if flagStart != "" {
+				params["start"] = formatCLIParamValue(flagStart)
+			}
+			if flagEnd != "" {
+				params["end"] = formatCLIParamValue(flagEnd)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +101,13 @@ func newReportsGetAgentPerformanceCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagFrom, "from", "", "ISO datetime — window start (spans over 366 days clamp to the last 366 before `to`)")
+	cmd.Flags().StringVar(&flagTo, "to", "", "ISO datetime — window end (default now)")
+	cmd.Flags().StringVar(&flagUserIds, "user-ids", "", "string — comma-separated user uuids (repeatable, up to 10): the compare set; omit for every active member")
+	cmd.Flags().StringVar(&flagDateRange, "date-range", "", "string — shared dashboard range key (today, week, month, last_month, quarter, year, custom, ...")
+	cmd.Flags().StringVar(&flagRange, "range", "", "string — alias of dateRange")
+	cmd.Flags().StringVar(&flagStart, "start", "", "ISO datetime — with dateRange=custom: the custom window start")
+	cmd.Flags().StringVar(&flagEnd, "end", "", "ISO datetime — with dateRange=custom: the custom window end")
 
 	return cmd
 }

@@ -8,11 +8,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
 
 func newConduytAuthLogoutCmd(flags *rootFlags) *cobra.Command {
+	var bodyScreenShareCode string
+	var bodyScreenShareMarksDrew int
+	var bodyScreenShareMarksPointed string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -21,7 +25,18 @@ func newConduytAuthLogoutCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli conduyt-auth logout",
 		Annotations: map[string]string{"pp:endpoint": "conduyt-auth.logout", "pp:method": "POST", "pp:path": "/auth/logout"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// PATCH(nested-required-flags-637): no bare-invocation help guard: every input is optional (the screen-share
+			// object included), so a bare `conduyt-auth logout` logs out, as it did before the reprint.
 			if !stdinBody {
+				if !cmd.Flags().Changed("screen-share-code") && nestedFlagGroupChanged(cmd, "screen-share") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "screen-share-code")
+				}
+				if !cmd.Flags().Changed("screen-share-marks-drew") && nestedFlagGroupChanged(cmd, "screen-share-marks") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "screen-share-marks-drew")
+				}
+				if !cmd.Flags().Changed("screen-share-marks-pointed") && nestedFlagGroupChanged(cmd, "screen-share-marks") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "screen-share-marks-pointed")
+				}
 			}
 			path := "/auth/logout"
 			c, err := flags.newClient()
@@ -43,6 +58,31 @@ func newConduytAuthLogoutCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				{
+					nestedScreenShare := map[string]any{}
+					if bodyScreenShareCode != "" {
+						nestedScreenShare["code"] = bodyScreenShareCode
+					}
+					{
+						nestedScreenShareMarks := map[string]any{}
+						if cmd.Flags().Changed("screen-share-marks-drew") || bodyScreenShareMarksDrew != 0 { // PATCH(nested-required-flags-637): 0 is a valid count
+							nestedScreenShareMarks["drew"] = bodyScreenShareMarksDrew
+						}
+						if bodyScreenShareMarksPointed != "" {
+							parsedScreenShareMarksPointed, err := strconv.ParseBool(bodyScreenShareMarksPointed)
+							if err != nil {
+								return fmt.Errorf("parsing --screen-share-marks-pointed as bool: %w", err)
+							}
+							nestedScreenShareMarks["pointed"] = parsedScreenShareMarksPointed
+						}
+						if len(nestedScreenShareMarks) > 0 {
+							nestedScreenShare["marks"] = nestedScreenShareMarks
+						}
+					}
+					if len(nestedScreenShare) > 0 {
+						bodyMap["screenShare"] = nestedScreenShare
+					}
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +227,9 @@ func newConduytAuthLogoutCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyScreenShareCode, "screen-share-code", "", "Code")
+	cmd.Flags().IntVar(&bodyScreenShareMarksDrew, "screen-share-marks-drew", 0, "Drew")
+	cmd.Flags().StringVar(&bodyScreenShareMarksPointed, "screen-share-marks-pointed", "", "Pointed")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

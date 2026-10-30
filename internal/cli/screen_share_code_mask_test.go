@@ -275,3 +275,47 @@ func TestFeedbackUpstreamIsMasked(t *testing.T) {
 		}
 	}
 }
+
+// reprint637: the two public paths that carry a secret path code in the full public document
+// (/public/screen-share/{code}/state and /webhooks/inbound/forms/{token}) mask it in the output envelope too.
+func TestReprintSecretPathCodeEnvelopesHideTheCode(t *testing.T) {
+	cases := map[string]struct {
+		build func(*rootFlags) *cobra.Command
+		extra []string
+		where string
+	}{
+		"public post-screen-share-code-state": {newPublicPostScreenShareCodeStateCmd, []string{"--state", "x"}, "screen-share"},
+		"webhooks inbound-form-submission":    {newWebhooksInboundFormSubmissionCmd, []string{"--email", "a@b.co"}, "inbound/forms"},
+	}
+	for name, tc := range cases {
+		for _, dry := range []bool{false, true} {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = io.WriteString(w, `{"ok":true}`)
+			}))
+			t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
+			t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
+			t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+			cmd := tc.build(&rootFlags{asJSON: true, noCache: true, dryRun: dry})
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetErr(io.Discard)
+			cmd.SetArgs(append([]string{"SECRET-code-XYZ987654"}, tc.extra...))
+			err := cmd.Execute()
+			srv.Close()
+			if err != nil {
+				t.Fatalf("%s dry=%v: %v", name, dry, err)
+			}
+			if strings.Contains(out.String(), "XYZ987654") {
+				t.Errorf("%s dry=%v: code leaked in %s", name, dry, out.String())
+			}
+			var env map[string]any
+			if err := json.Unmarshal(out.Bytes(), &env); err != nil {
+				t.Fatalf("%s: not JSON: %q", name, out.String())
+			}
+			if p, _ := env["path"].(string); !strings.Contains(p, tc.where) {
+				t.Errorf("%s dry=%v: envelope path = %q", name, dry, p)
+			}
+		}
+	}
+}

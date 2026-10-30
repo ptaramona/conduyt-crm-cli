@@ -18,7 +18,7 @@ func newSavedFiltersPostCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "post",
 		Aliases:     []string{"create"},
-		Short:       "Create / invoke saved-filters",
+		Short:       "Saved filters are personal Smart Views now: create one with POST /api/v1/smart-views (personal",
 		Example:     "  conduyt-crm-pp-cli saved-filters post",
 		Annotations: map[string]string{"pp:endpoint": "saved-filters.post", "pp:method": "POST", "pp:path": "/saved-filters"},
 		RunE: func(cmd *cobra.Command, args []string) error {

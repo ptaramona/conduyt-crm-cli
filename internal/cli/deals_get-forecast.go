@@ -12,6 +12,9 @@ import (
 )
 
 func newDealsGetForecastCmd(flags *rootFlags) *cobra.Command {
+	var flagPipeline string
+	var flagPipelineId string
+	var flagPipelineId2 string
 
 	cmd := &cobra.Command{
 		Use:         "get-forecast",
@@ -25,6 +28,15 @@ func newDealsGetForecastCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagPipeline != "" {
+				params["pipeline"] = formatCLIParamValue(flagPipeline)
+			}
+			if flagPipelineId != "" {
+				params["pipeline_id"] = formatCLIParamValue(flagPipelineId)
+			}
+			if flagPipelineId2 != "" {
+				params["pipelineId"] = formatCLIParamValue(flagPipelineId2)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "deals", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +85,9 @@ func newDealsGetForecastCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagPipeline, "pipeline", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPipelineId, "pipeline-id", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPipelineId2, "pipeline-id-2", "", "Query parameter read by this route.")
 
 	return cmd
 }

@@ -13,6 +13,18 @@ import (
 )
 
 func newFormsUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDescription string
+	var bodyFields string
+	var bodyHyrosTag string
+	var bodyIsActive string
+	var bodyName string
+	var bodyRedirectUrl string
+	var bodySettingsConsentLinkUrl string
+	var bodySlug string
+	var bodyTemplate string
+	var bodyThankYouMessage string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -36,6 +48,12 @@ func newFormsUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -50,6 +68,52 @@ func newFormsUpdateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyFields != "" {
+					var parsedFields any
+					if err := json.Unmarshal([]byte(bodyFields), &parsedFields); err != nil {
+						return fmt.Errorf("parsing --fields JSON: %w", err)
+					}
+					bodyMap["fields"] = parsedFields
+				}
+				if bodyHyrosTag != "" {
+					bodyMap["hyrosTag"] = bodyHyrosTag
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyRedirectUrl != "" {
+					bodyMap["redirectUrl"] = bodyRedirectUrl
+				}
+				{
+					nestedSettings := map[string]any{}
+					{
+						nestedSettingsConsent := map[string]any{}
+						if bodySettingsConsentLinkUrl != "" {
+							nestedSettingsConsent["linkUrl"] = bodySettingsConsentLinkUrl
+						}
+						if len(nestedSettingsConsent) > 0 {
+							nestedSettings["consent"] = nestedSettingsConsent
+						}
+					}
+					if len(nestedSettings) > 0 {
+						bodyMap["settings"] = nestedSettings
+					}
+				}
+				if bodySlug != "" {
+					bodyMap["slug"] = bodySlug
+				}
+				if bodyTemplate != "" {
+					bodyMap["template"] = bodyTemplate
+				}
+				if bodyThankYouMessage != "" {
+					bodyMap["thankYouMessage"] = bodyThankYouMessage
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +258,18 @@ func newFormsUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFields, "fields", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyHyrosTag, "hyros-tag", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyRedirectUrl, "redirect-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySettingsConsentLinkUrl, "settings-consent-link-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySlug, "slug", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTemplate, "template", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyThankYouMessage, "thank-you-message", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

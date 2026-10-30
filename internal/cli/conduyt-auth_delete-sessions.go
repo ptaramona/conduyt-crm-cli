@@ -12,20 +12,33 @@ import (
 )
 
 func newConduytAuthDeleteSessionsCmd(flags *rootFlags) *cobra.Command {
+	var flagId string
 
 	cmd := &cobra.Command{
 		Use:         "delete-sessions",
 		Aliases:     []string{"delete"},
 		Short:       "Delete auth sessions",
-		Example:     "  conduyt-crm-pp-cli conduyt-auth delete-sessions",
+		Example:     "  conduyt-crm-pp-cli conduyt-auth delete-sessions --id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "conduyt-auth.delete-sessions", "pp:method": "DELETE", "pp:path": "/auth/sessions"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("id") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "id")
+			}
 			path := "/auth/sessions"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
+			if flagId != "" {
+				params["id"] = formatCLIParamValue(flagId)
+			}
 			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
 			if err != nil {
 				return classifyDeleteError(err, flags)
@@ -166,6 +179,7 @@ func newConduytAuthDeleteSessionsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagId, "id", "", "Query parameter read by this route.")
 
 	return cmd
 }

@@ -13,6 +13,7 @@ import (
 )
 
 func newImportsResubmitPostImportsIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyCorrections string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -22,10 +23,19 @@ func newImportsResubmitPostImportsIdCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli imports resubmit post-imports-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "resubmit.post-imports-id", "pp:method": "POST", "pp:path": "/imports/{id}/resubmit"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("corrections") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "corrections")
+				}
 			}
 			path := "/imports/{id}/resubmit"
 			if len(args) < 1 || args[0] == "" {
@@ -51,6 +61,13 @@ func newImportsResubmitPostImportsIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCorrections != "" {
+					var parsedCorrections any
+					if err := json.Unmarshal([]byte(bodyCorrections), &parsedCorrections); err != nil {
+						return fmt.Errorf("parsing --corrections JSON: %w", err)
+					}
+					bodyMap["corrections"] = parsedCorrections
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +212,7 @@ func newImportsResubmitPostImportsIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyCorrections, "corrections", "", "Required, non-empty array of per-row fixes: { row (required, 2 or higher)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

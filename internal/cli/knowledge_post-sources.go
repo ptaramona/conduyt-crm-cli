@@ -13,16 +13,27 @@ import (
 )
 
 func newKnowledgePostSourcesCmd(flags *rootFlags) *cobra.Command {
+	var bodyName string
+	var bodyUrl string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-sources",
 		Aliases:     []string{"create"},
 		Short:       "Create / invoke knowledge sources",
-		Example:     "  conduyt-crm-pp-cli knowledge post-sources",
+		Example:     "  conduyt-crm-pp-cli knowledge post-sources --url https://example.com/resource",
 		Annotations: map[string]string{"pp:endpoint": "knowledge.post-sources", "pp:method": "POST", "pp:path": "/knowledge/sources"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("url") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "url")
+				}
 			}
 			path := "/knowledge/sources"
 			c, err := flags.newClient()
@@ -44,6 +55,12 @@ func newKnowledgePostSourcesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyUrl != "" {
+					bodyMap["url"] = bodyUrl
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +205,8 @@ func newKnowledgePostSourcesCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().StringVar(&bodyUrl, "url", "", "Public http(s) page to index")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

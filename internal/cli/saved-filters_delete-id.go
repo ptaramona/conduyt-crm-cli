@@ -16,7 +16,7 @@ func newSavedFiltersDeleteIdCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "delete-id <id>",
 		Aliases:     []string{"delete"},
-		Short:       "Delete saved-filters id",
+		Short:       "Saved filters are personal Smart Views now: delete the migrated view with DELETE /api/v1/smart-views/:id.",
 		Example:     "  conduyt-crm-pp-cli saved-filters delete-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "saved-filters.delete-id", "pp:method": "DELETE", "pp:path": "/saved-filters/{id}"},
 		RunE: func(cmd *cobra.Command, args []string) error {

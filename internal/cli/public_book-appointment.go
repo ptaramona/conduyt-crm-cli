@@ -14,16 +14,24 @@ import (
 
 func newPublicBookAppointmentCmd(flags *rootFlags) *cobra.Command {
 	var bodyAnswers string
+	var bodyCompany string
+	var bodyDuration string
 	var bodyEmail string
+	var bodyFirstName string
+	var bodyGdprConsent string
+	var bodyJobTitle string
+	var bodyLastName string
 	var bodyName string
+	var bodyNotes string
 	var bodyPhone string
 	var bodyStartTime string
+	var bodyTimezone string
+	var bodyUtm string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:     "book-appointment <slug>",
-		Aliases: []string{"create"},
-		Short:   "Book an appointment via public page",
+		Use:   "book-appointment <slug>",
+		Short: "Book an appointment via public page",
 		// TODO: replace placeholder example values before relying on this for live dogfood.
 		Example:     "  conduyt-crm-pp-cli public book-appointment example-value --email user@example.com",
 		Annotations: map[string]string{"pp:endpoint": "public.book-appointment", "pp:method": "POST", "pp:path": "/public/booking/{slug}"},
@@ -79,17 +87,44 @@ func newPublicBookAppointmentCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["answers"] = parsedAnswers
 				}
+				if bodyCompany != "" {
+					bodyMap["company"] = bodyCompany
+				}
+				if bodyDuration != "" {
+					bodyMap["duration"] = bodyDuration
+				}
 				if bodyEmail != "" {
 					bodyMap["email"] = bodyEmail
 				}
+				if bodyFirstName != "" {
+					bodyMap["firstName"] = bodyFirstName
+				}
+				if bodyGdprConsent != "" {
+					bodyMap["gdprConsent"] = bodyGdprConsent
+				}
+				if bodyJobTitle != "" {
+					bodyMap["jobTitle"] = bodyJobTitle
+				}
+				if bodyLastName != "" {
+					bodyMap["lastName"] = bodyLastName
+				}
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
+				}
+				if bodyNotes != "" {
+					bodyMap["notes"] = bodyNotes
 				}
 				if bodyPhone != "" {
 					bodyMap["phone"] = bodyPhone
 				}
 				if bodyStartTime != "" {
 					bodyMap["startTime"] = bodyStartTime
+				}
+				if bodyTimezone != "" {
+					bodyMap["timezone"] = bodyTimezone
+				}
+				if bodyUtm != "" {
+					bodyMap["utm"] = bodyUtm
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -236,10 +271,19 @@ func newPublicBookAppointmentCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyAnswers, "answers", "", "Answers")
+	cmd.Flags().StringVar(&bodyCompany, "company", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDuration, "duration", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyEmail, "email", "", "Email")
+	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGdprConsent, "gdpr-consent", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyJobTitle, "job-title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().StringVar(&bodyNotes, "notes", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
 	cmd.Flags().StringVar(&bodyStartTime, "start-time", "", "Start time")
+	cmd.Flags().StringVar(&bodyTimezone, "timezone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUtm, "utm", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

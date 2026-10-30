@@ -13,12 +13,55 @@ import (
 )
 
 func newFormsSubmitFormCmd(flags *rootFlags) *cobra.Command {
+	var bodyHpField string
+	var bodySubmissionKey string
+	var bodyAttributionLandingUrl string
+	var bodyAttributionPageTitle string
+	var bodyAttributionSource string
+	var bodyAttributionUtmCampaign string
+	var bodyAttributionUtmContent string
+	var bodyAttributionUtmMedium string
+	var bodyAttributionUtmSource string
+	var bodyAttributionUtmTerm string
+	var bodyConsentAccepted string
+	var bodyConsentAcceptedAt string
+	var bodyDataHpField string
+	var bodyDataSubmissionKey string
+	var bodyDataAddressCity string
+	var bodyDataAddressLine1 string
+	var bodyDataAddressLine2 string
+	var bodyDataAddressState string
+	var bodyDataAddressZip string
+	var bodyDataAddressLine12 string
+	var bodyDataAddressLine22 string
+	var bodyDataCity string
+	var bodyDataCompany string
+	var bodyDataCountry string
+	var bodyDataEmail string
+	var bodyDataFirstName string
+	var bodyDataFirstName2 string
+	var bodyDataJobTitle string
+	var bodyDataLastName string
+	var bodyDataLastName2 string
+	var bodyDataName string
+	var bodyDataPhone string
+	var bodyDataSource string
+	var bodyDataState string
+	var bodyDataUtm string
+	var bodyDataUtmCampaign string
+	var bodyDataUtmContent string
+	var bodyDataUtmMedium string
+	var bodyDataUtmSource string
+	var bodyDataUtmTerm string
+	var bodyDataZip string
+	var bodySource string
+	var bodyUtm string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "form <id>",
 		Aliases:     []string{"create"},
-		Short:       "Submit a form (public, no auth)",
+		Short:       "Idempotent retries: send a random UUID v4 per attempt as _submissionKey.",
 		Example:     "  conduyt-crm-pp-cli forms submit form 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "submit.form", "pp:method": "POST", "pp:path": "/forms/{id}/submit"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -51,6 +94,163 @@ func newFormsSubmitFormCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyHpField != "" {
+					bodyMap["_hp_field"] = bodyHpField
+				}
+				if bodySubmissionKey != "" {
+					bodyMap["_submissionKey"] = bodySubmissionKey
+				}
+				{
+					nestedAttribution := map[string]any{}
+					if bodyAttributionLandingUrl != "" {
+						nestedAttribution["landingUrl"] = bodyAttributionLandingUrl
+					}
+					if bodyAttributionPageTitle != "" {
+						nestedAttribution["pageTitle"] = bodyAttributionPageTitle
+					}
+					if bodyAttributionSource != "" {
+						nestedAttribution["source"] = bodyAttributionSource
+					}
+					if bodyAttributionUtmCampaign != "" {
+						nestedAttribution["utm_campaign"] = bodyAttributionUtmCampaign
+					}
+					if bodyAttributionUtmContent != "" {
+						nestedAttribution["utm_content"] = bodyAttributionUtmContent
+					}
+					if bodyAttributionUtmMedium != "" {
+						nestedAttribution["utm_medium"] = bodyAttributionUtmMedium
+					}
+					if bodyAttributionUtmSource != "" {
+						nestedAttribution["utm_source"] = bodyAttributionUtmSource
+					}
+					if bodyAttributionUtmTerm != "" {
+						nestedAttribution["utm_term"] = bodyAttributionUtmTerm
+					}
+					if len(nestedAttribution) > 0 {
+						bodyMap["attribution"] = nestedAttribution
+					}
+				}
+				{
+					nestedConsent := map[string]any{}
+					if bodyConsentAccepted != "" {
+						nestedConsent["accepted"] = bodyConsentAccepted
+					}
+					if bodyConsentAcceptedAt != "" {
+						nestedConsent["acceptedAt"] = bodyConsentAcceptedAt
+					}
+					if len(nestedConsent) > 0 {
+						bodyMap["consent"] = nestedConsent
+					}
+				}
+				{
+					nestedData := map[string]any{}
+					if bodyDataHpField != "" {
+						nestedData["_hp_field"] = bodyDataHpField
+					}
+					if bodyDataSubmissionKey != "" {
+						nestedData["_submissionKey"] = bodyDataSubmissionKey
+					}
+					{
+						nestedDataAddress := map[string]any{}
+						if bodyDataAddressCity != "" {
+							nestedDataAddress["city"] = bodyDataAddressCity
+						}
+						if bodyDataAddressLine1 != "" {
+							nestedDataAddress["line1"] = bodyDataAddressLine1
+						}
+						if bodyDataAddressLine2 != "" {
+							nestedDataAddress["line2"] = bodyDataAddressLine2
+						}
+						if bodyDataAddressState != "" {
+							nestedDataAddress["state"] = bodyDataAddressState
+						}
+						if bodyDataAddressZip != "" {
+							nestedDataAddress["zip"] = bodyDataAddressZip
+						}
+						if len(nestedDataAddress) > 0 {
+							nestedData["address"] = nestedDataAddress
+						}
+					}
+					if bodyDataAddressLine12 != "" {
+						nestedData["addressLine1"] = bodyDataAddressLine12
+					}
+					if bodyDataAddressLine22 != "" {
+						nestedData["addressLine2"] = bodyDataAddressLine22
+					}
+					if bodyDataCity != "" {
+						nestedData["city"] = bodyDataCity
+					}
+					if bodyDataCompany != "" {
+						nestedData["company"] = bodyDataCompany
+					}
+					if bodyDataCountry != "" {
+						nestedData["country"] = bodyDataCountry
+					}
+					if bodyDataEmail != "" {
+						nestedData["email"] = bodyDataEmail
+					}
+					if bodyDataFirstName != "" {
+						nestedData["firstName"] = bodyDataFirstName
+					}
+					if bodyDataFirstName2 != "" {
+						nestedData["first_name"] = bodyDataFirstName2
+					}
+					if bodyDataJobTitle != "" {
+						nestedData["jobTitle"] = bodyDataJobTitle
+					}
+					if bodyDataLastName != "" {
+						nestedData["lastName"] = bodyDataLastName
+					}
+					if bodyDataLastName2 != "" {
+						nestedData["last_name"] = bodyDataLastName2
+					}
+					if bodyDataName != "" {
+						nestedData["name"] = bodyDataName
+					}
+					if bodyDataPhone != "" {
+						nestedData["phone"] = bodyDataPhone
+					}
+					if bodyDataSource != "" {
+						nestedData["source"] = bodyDataSource
+					}
+					if bodyDataState != "" {
+						nestedData["state"] = bodyDataState
+					}
+					if bodyDataUtm != "" {
+						nestedData["utm"] = bodyDataUtm
+					}
+					if bodyDataUtmCampaign != "" {
+						nestedData["utm_campaign"] = bodyDataUtmCampaign
+					}
+					if bodyDataUtmContent != "" {
+						nestedData["utm_content"] = bodyDataUtmContent
+					}
+					if bodyDataUtmMedium != "" {
+						nestedData["utm_medium"] = bodyDataUtmMedium
+					}
+					if bodyDataUtmSource != "" {
+						nestedData["utm_source"] = bodyDataUtmSource
+					}
+					if bodyDataUtmTerm != "" {
+						nestedData["utm_term"] = bodyDataUtmTerm
+					}
+					if bodyDataZip != "" {
+						nestedData["zip"] = bodyDataZip
+					}
+					if len(nestedData) > 0 {
+						bodyMap["data"] = nestedData
+					}
+				}
+				if bodySource != "" {
+					bodyMap["source"] = bodySource
+				}
+				if bodyUtm != "" {
+					var parsedUtm any
+					if err := json.Unmarshal([]byte(bodyUtm), &parsedUtm); err != nil {
+						return fmt.Errorf("parsing --utm JSON: %w", err)
+					}
+					bodyMap["utm"] = parsedUtm
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -75,7 +275,7 @@ func newFormsSubmitFormCmd(flags *rootFlags) *cobra.Command {
 				}
 			}
 			if !flags.dryRun && statusCode >= 200 && statusCode < 300 && (partialFailure == nil || flags.allowPartialFailure) {
-				writeMutationResponseToStore(cmd.Context(), "submit", data, "")
+				writeMutationResponseToStore(cmd.Context(), "submit", data, "warnings")
 			}
 			if wantsHumanTable(cmd.OutOrStdout(), flags) {
 				// Check if response contains an array (directly or wrapped in "data")
@@ -195,6 +395,49 @@ func newFormsSubmitFormCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyHpField, "hp-field", "", "Honeypot, leave empty")
+	cmd.Flags().StringVar(&bodySubmissionKey, "submission-key", "", "Idempotency key, a random UUID v4 generated per attempt; reuse it (or the one a 409 answer returns) on every retry.")
+	cmd.Flags().StringVar(&bodyAttributionLandingUrl, "attribution-landing-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionPageTitle, "attribution-page-title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionSource, "attribution-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmCampaign, "attribution-utm-campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmContent, "attribution-utm-content", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmMedium, "attribution-utm-medium", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmSource, "attribution-utm-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyAttributionUtmTerm, "attribution-utm-term", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyConsentAccepted, "consent-accepted", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyConsentAcceptedAt, "consent-accepted-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataHpField, "data-hp-field", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataSubmissionKey, "data-submission-key", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataAddressCity, "data-address-city", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataAddressLine1, "data-address-line1", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataAddressLine2, "data-address-line2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataAddressState, "data-address-state", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataAddressZip, "data-address-zip", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataAddressLine12, "data-address-line1-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataAddressLine22, "data-address-line2-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataCity, "data-city", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataCompany, "data-company", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataCountry, "data-country", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataEmail, "data-email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataFirstName, "data-first-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataFirstName2, "data-first-name-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataJobTitle, "data-job-title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataLastName, "data-last-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataLastName2, "data-last-name-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataName, "data-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataPhone, "data-phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataSource, "data-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataState, "data-state", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataUtm, "data-utm", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataUtmCampaign, "data-utm-campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataUtmContent, "data-utm-content", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataUtmMedium, "data-utm-medium", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataUtmSource, "data-utm-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataUtmTerm, "data-utm-term", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDataZip, "data-zip", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySource, "source", "", "Source")
+	cmd.Flags().StringVar(&bodyUtm, "utm", "", "Utm")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

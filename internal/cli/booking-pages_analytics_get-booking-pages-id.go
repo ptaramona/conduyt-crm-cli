@@ -12,6 +12,7 @@ import (
 )
 
 func newBookingPagesAnalyticsGetBookingPagesIdCmd(flags *rootFlags) *cobra.Command {
+	var flagPeriod string
 
 	cmd := &cobra.Command{
 		Use:         "get-booking-pages-id <id>",
@@ -33,6 +34,9 @@ func newBookingPagesAnalyticsGetBookingPagesIdCmd(flags *rootFlags) *cobra.Comma
 				return err
 			}
 			params := map[string]string{}
+			if flagPeriod != "" {
+				params["period"] = formatCLIParamValue(flagPeriod)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "analytics", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -81,6 +85,7 @@ func newBookingPagesAnalyticsGetBookingPagesIdCmd(flags *rootFlags) *cobra.Comma
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagPeriod, "period", "", "Query parameter read by this route.")
 
 	return cmd
 }

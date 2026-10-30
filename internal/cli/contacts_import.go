@@ -6,13 +6,14 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newContactsImportCmd(flags *rootFlags) *cobra.Command {
-	var bodyFile string
+	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "import",
@@ -20,19 +21,30 @@ func newContactsImportCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli contacts import",
 		Annotations: map[string]string{"pp:endpoint": "contacts.import", "pp:method": "POST", "pp:path": "/contacts/import"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !stdinBody {
+			}
 			path := "/contacts/import"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			fields := map[string]string{}
-			fileFields := map[string]string{}
-			if bodyFile != "" {
-				fileFields["file"] = bodyFile
+			var body any
+			if stdinBody {
+				stdinData, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				var jsonBody map[string]any
+				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
+					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				body = jsonBody
+			} else {
+				bodyMap := map[string]any{}
+				body = bodyMap
 			}
-
-			data, statusCode, err := c.PostMultipartWithParams(cmd.Context(), path, params, fields, fileFields)
+			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -175,7 +187,7 @@ func newContactsImportCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyFile, "file", "", "File")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
 }

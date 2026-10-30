@@ -9,19 +9,31 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newDialerPostStatusLogRollupCmd(flags *rootFlags) *cobra.Command {
+	var bodyDate string
+	var bodyUserIds string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-status-log-rollup",
 		Short:       "Create / invoke dialer status-log rollup",
-		Example:     "  conduyt-crm-pp-cli dialer post-status-log-rollup",
+		Example:     "  conduyt-crm-pp-cli dialer post-status-log-rollup --date 2026-01-15",
 		Annotations: map[string]string{"pp:endpoint": "dialer.post-status-log-rollup", "pp:method": "POST", "pp:path": "/dialer/status-log/rollup"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("date") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "date")
+				}
 			}
 			path := "/dialer/status-log/rollup"
 			c, err := flags.newClient()
@@ -43,6 +55,16 @@ func newDialerPostStatusLogRollupCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDate != "" {
+					bodyMap["date"] = bodyDate
+				}
+				if bodyUserIds != "" {
+					parsedUserIds, parseErr := cliutil.ParseStringList(bodyUserIds)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --user-ids list: %w", parseErr)
+					}
+					bodyMap["userIds"] = parsedUserIds
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +209,8 @@ func newDialerPostStatusLogRollupCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyDate, "date", "", "A real calendar date (YYYY-MM-DD); an impossible date is a 400.")
+	cmd.Flags().StringVar(&bodyUserIds, "user-ids", "", "User ids")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

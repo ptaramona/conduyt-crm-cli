@@ -13,6 +13,7 @@ import (
 )
 
 func newAutomationsPostValidateCmd(flags *rootFlags) *cobra.Command {
+	var flagBodyJSON string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -21,7 +22,16 @@ func newAutomationsPostValidateCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli automations post-validate",
 		Annotations: map[string]string{"pp:endpoint": "automations.post-validate", "pp:method": "POST", "pp:path": "/automations/validate"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("body-json") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "body-json")
+				}
 			}
 			path := "/automations/validate"
 			c, err := flags.newClient()
@@ -43,6 +53,17 @@ func newAutomationsPostValidateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if flagBodyJSON != "" {
+					var parsedBodyJSON any
+					if err := json.Unmarshal([]byte(flagBodyJSON), &parsedBodyJSON); err != nil {
+						return fmt.Errorf("parsing --body-json: %w", err)
+					}
+					asMap, ok := parsedBodyJSON.(map[string]any)
+					if !ok {
+						return fmt.Errorf("--body-json must be a JSON object, got JSON %T", parsedBodyJSON)
+					}
+					body = asMap
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +208,7 @@ func newAutomationsPostValidateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&flagBodyJSON, "body-json", "", "Provide the full request body as a JSON object string (this endpoint accepts a polymorphic schema: oneOf/anyOf)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

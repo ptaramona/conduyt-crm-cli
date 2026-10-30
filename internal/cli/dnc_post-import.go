@@ -13,6 +13,8 @@ import (
 )
 
 func newDncPostImportCmd(flags *rootFlags) *cobra.Command {
+	var bodyNumbers string
+	var bodyTier string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +45,12 @@ func newDncPostImportCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyNumbers != "" {
+					bodyMap["numbers"] = bodyNumbers
+				}
+				if bodyTier != "" {
+					bodyMap["tier"] = bodyTier
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +195,8 @@ func newDncPostImportCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyNumbers, "numbers", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTier, "tier", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

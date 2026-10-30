@@ -15,6 +15,7 @@ import (
 func newDocumentTemplatesCreateCmd(flags *rootFlags) *cobra.Command {
 	var bodyBodyHtml string
 	var bodyCategory string
+	var bodyIsActive string
 	var bodyMergeFields string
 	var bodyName string
 	var stdinBody bool
@@ -65,6 +66,9 @@ func newDocumentTemplatesCreateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if bodyCategory != "" {
 					bodyMap["category"] = bodyCategory
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
 				}
 				if bodyMergeFields != "" {
 					var parsedMergeFields any
@@ -222,6 +226,7 @@ func newDocumentTemplatesCreateCmd(flags *rootFlags) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&bodyBodyHtml, "body-html", "", "Body html")
 	cmd.Flags().StringVar(&bodyCategory, "category", "", "Category")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyMergeFields, "merge-fields", "", "Merge fields")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")

@@ -15,7 +15,6 @@ func newDialerGetAgentsStatusCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "get-agents-status",
-		Aliases:     []string{"list"},
 		Short:       "List dialer agents-status",
 		Example:     "  conduyt-crm-pp-cli dialer get-agents-status",
 		Annotations: map[string]string{"pp:endpoint": "dialer.get-agents-status", "pp:method": "GET", "pp:path": "/dialer/agents-status", "mcp:read-only": "true"},

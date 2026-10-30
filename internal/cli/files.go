@@ -19,6 +19,8 @@ func newFilesCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newFilesCreateRecordCmd(flags))
 	cmd.AddCommand(newFilesDeleteCmd(flags))
 	cmd.AddCommand(newFilesListCmd(flags))
+	cmd.AddCommand(newFilesPostUploadFinalizeCmd(flags))
+	cmd.AddCommand(newFilesPostUploadIntentCmd(flags))
 	cmd.AddCommand(newFilesUploadCmd(flags))
 	cmd.AddCommand(newFilesDownloadCmd(flags))
 	return cmd

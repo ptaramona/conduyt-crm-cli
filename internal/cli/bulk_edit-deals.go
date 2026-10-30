@@ -15,7 +15,15 @@ import (
 
 func newBulkEditDealsCmd(flags *rootFlags) *cobra.Command {
 	var bodyIds string
-	var bodyUpdates string
+	var bodyUpdatesAssignedTo string
+	var bodyUpdatesCurrency string
+	var bodyUpdatesExpectedCloseDate string
+	var bodyUpdatesLostReason string
+	var bodyUpdatesPriority string
+	var bodyUpdatesStageId string
+	var bodyUpdatesStatus string
+	var bodyUpdatesTitle string
+	var bodyUpdatesValue string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -33,9 +41,6 @@ func newBulkEditDealsCmd(flags *rootFlags) *cobra.Command {
 			if !stdinBody {
 				if !cmd.Flags().Changed("ids") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "ids")
-				}
-				if !cmd.Flags().Changed("updates") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "updates")
 				}
 			}
 			path := "/bulk/deals/edit"
@@ -65,12 +70,38 @@ func newBulkEditDealsCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["ids"] = parsedIds
 				}
-				if bodyUpdates != "" {
-					var parsedUpdates any
-					if err := json.Unmarshal([]byte(bodyUpdates), &parsedUpdates); err != nil {
-						return fmt.Errorf("parsing --updates JSON: %w", err)
+				{
+					nestedUpdates := map[string]any{}
+					if bodyUpdatesAssignedTo != "" {
+						nestedUpdates["assignedTo"] = bodyUpdatesAssignedTo
 					}
-					bodyMap["updates"] = parsedUpdates
+					if bodyUpdatesCurrency != "" {
+						nestedUpdates["currency"] = bodyUpdatesCurrency
+					}
+					if bodyUpdatesExpectedCloseDate != "" {
+						nestedUpdates["expectedCloseDate"] = bodyUpdatesExpectedCloseDate
+					}
+					if bodyUpdatesLostReason != "" {
+						nestedUpdates["lostReason"] = bodyUpdatesLostReason
+					}
+					if bodyUpdatesPriority != "" {
+						nestedUpdates["priority"] = bodyUpdatesPriority
+					}
+					if bodyUpdatesStageId != "" {
+						nestedUpdates["stageId"] = bodyUpdatesStageId
+					}
+					if bodyUpdatesStatus != "" {
+						nestedUpdates["status"] = bodyUpdatesStatus
+					}
+					if bodyUpdatesTitle != "" {
+						nestedUpdates["title"] = bodyUpdatesTitle
+					}
+					if bodyUpdatesValue != "" {
+						nestedUpdates["value"] = bodyUpdatesValue
+					}
+					if len(nestedUpdates) > 0 {
+						bodyMap["updates"] = nestedUpdates
+					}
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -217,7 +248,15 @@ func newBulkEditDealsCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&bodyIds, "ids", "", "Ids")
-	cmd.Flags().StringVar(&bodyUpdates, "updates", "", "Updates")
+	cmd.Flags().StringVar(&bodyUpdatesAssignedTo, "updates-assigned-to", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesCurrency, "updates-currency", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesExpectedCloseDate, "updates-expected-close-date", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesLostReason, "updates-lost-reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesPriority, "updates-priority", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesStageId, "updates-stage-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesStatus, "updates-status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesTitle, "updates-title", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdatesValue, "updates-value", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

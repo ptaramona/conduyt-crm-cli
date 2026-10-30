@@ -13,8 +13,9 @@ import (
 )
 
 func newIntegrationsConnectCmd(flags *rootFlags) *cobra.Command {
-	var bodyConfig string
-	var bodyCredentials string
+	var bodyConfigChannel string
+	var bodyCredentialsApiKey string
+	var bodyExternalAccountId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -54,19 +55,26 @@ func newIntegrationsConnectCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyConfig != "" {
-					var parsedConfig any
-					if err := json.Unmarshal([]byte(bodyConfig), &parsedConfig); err != nil {
-						return fmt.Errorf("parsing --config JSON: %w", err)
+				{
+					nestedConfig := map[string]any{}
+					if bodyConfigChannel != "" {
+						nestedConfig["channel"] = bodyConfigChannel
 					}
-					bodyMap["config"] = parsedConfig
+					if len(nestedConfig) > 0 {
+						bodyMap["config"] = nestedConfig
+					}
 				}
-				if bodyCredentials != "" {
-					var parsedCredentials any
-					if err := json.Unmarshal([]byte(bodyCredentials), &parsedCredentials); err != nil {
-						return fmt.Errorf("parsing --credentials JSON: %w", err)
+				{
+					nestedCredentials := map[string]any{}
+					if bodyCredentialsApiKey != "" {
+						nestedCredentials["apiKey"] = bodyCredentialsApiKey
 					}
-					bodyMap["credentials"] = parsedCredentials
+					if len(nestedCredentials) > 0 {
+						bodyMap["credentials"] = nestedCredentials
+					}
+				}
+				if bodyExternalAccountId != "" {
+					bodyMap["externalAccountId"] = bodyExternalAccountId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -212,8 +220,9 @@ func newIntegrationsConnectCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyConfig, "config", "", "Config")
-	cmd.Flags().StringVar(&bodyCredentials, "credentials", "", "Credentials")
+	cmd.Flags().StringVar(&bodyConfigChannel, "config-channel", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCredentialsApiKey, "credentials-api-key", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExternalAccountId, "external-account-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

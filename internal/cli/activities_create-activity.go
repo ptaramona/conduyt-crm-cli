@@ -13,10 +13,16 @@ import (
 )
 
 func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyCompanyId string
 	var bodyContactId string
 	var bodyDealId string
 	var bodyDescription string
-	var bodyMetadata string
+	var bodyMetadataCancelledBy string
+	var bodyMetadataIntakeOccurrence string
+	var bodyMetadataRescheduledBy string
+	var bodyMetadataSource string
 	var bodyTitle string
 	var bodyType string
 	var stdinBody bool
@@ -48,6 +54,12 @@ func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -62,6 +74,9 @@ func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCompanyId != "" {
+					bodyMap["companyId"] = bodyCompanyId
+				}
 				if bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
 				}
@@ -71,12 +86,23 @@ func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
-				if bodyMetadata != "" {
-					var parsedMetadata any
-					if err := json.Unmarshal([]byte(bodyMetadata), &parsedMetadata); err != nil {
-						return fmt.Errorf("parsing --metadata JSON: %w", err)
+				{
+					nestedMetadata := map[string]any{}
+					if bodyMetadataCancelledBy != "" {
+						nestedMetadata["cancelledBy"] = bodyMetadataCancelledBy
 					}
-					bodyMap["metadata"] = parsedMetadata
+					if bodyMetadataIntakeOccurrence != "" {
+						nestedMetadata["intakeOccurrence"] = bodyMetadataIntakeOccurrence
+					}
+					if bodyMetadataRescheduledBy != "" {
+						nestedMetadata["rescheduledBy"] = bodyMetadataRescheduledBy
+					}
+					if bodyMetadataSource != "" {
+						nestedMetadata["source"] = bodyMetadataSource
+					}
+					if len(nestedMetadata) > 0 {
+						bodyMap["metadata"] = nestedMetadata
+					}
 				}
 				if bodyTitle != "" {
 					bodyMap["title"] = bodyTitle
@@ -228,12 +254,18 @@ func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Company id")
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
 	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "Deal id")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
-	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Metadata")
+	cmd.Flags().StringVar(&bodyMetadataCancelledBy, "metadata-cancelled-by", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntakeOccurrence, "metadata-intake-occurrence", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataRescheduledBy, "metadata-rescheduled-by", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataSource, "metadata-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")
-	cmd.Flags().StringVar(&bodyType, "type", "", "Type")
+	cmd.Flags().StringVar(&bodyType, "type", "", "One of the activity types the server knows (call, email, sms and meeting are stored as manual activities)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

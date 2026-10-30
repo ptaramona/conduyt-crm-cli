@@ -12,9 +12,13 @@ import (
 )
 
 func newConduytAuthGetLoginHistoryCmd(flags *rootFlags) *cobra.Command {
+	var flagAllAccounts bool
+	var flagLimit int
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-login-history",
+		Aliases:     []string{"list"},
 		Short:       "List auth login-history",
 		Example:     "  conduyt-crm-pp-cli conduyt-auth get-login-history",
 		Annotations: map[string]string{"pp:endpoint": "conduyt-auth.get-login-history", "pp:method": "GET", "pp:path": "/auth/login-history", "mcp:read-only": "true"},
@@ -24,8 +28,10 @@ func newConduytAuthGetLoginHistoryCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "conduyt-auth", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "conduyt-auth", path, map[string]string{
+				"all_accounts": formatCLIParamValue(flagAllAccounts),
+				"limit":        formatCLIParamValue(flagLimit),
+			}, nil, flagAll, "", "offset", "limit", 20, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +79,9 @@ func newConduytAuthGetLoginHistoryCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagAllAccounts, "all-accounts", false, "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 20, "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

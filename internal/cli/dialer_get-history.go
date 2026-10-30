@@ -12,12 +12,24 @@ import (
 )
 
 func newDialerGetHistoryCmd(flags *rootFlags) *cobra.Command {
-	var flagUnmatched bool
+	var flagDateFrom string
+	var flagDateTo string
+	var flagDirection string
+	var flagDisposition string
 	var flagLine string
+	var flagMine string
+	var flagPage string
+	var flagPerPage int
+	var flagQ string
+	var flagRecordedOnly bool
+	var flagStatus string
+	var flagUnmatched bool
+	var flagUserId string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-history",
-		Short:       "Get recent call history",
+		Short:       "The Call History list, with search (`q`) and filters (`recorded_only`, `disposition`, `user_id`, `date_from`, `date_to`",
 		Example:     "  conduyt-crm-pp-cli dialer get-history",
 		Annotations: map[string]string{"pp:endpoint": "dialer.get-history", "pp:method": "GET", "pp:path": "/dialer/history", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -26,14 +38,26 @@ func newDialerGetHistoryCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
+			// PATCH(unknown-caller-link-and-counter): --unmatched is a bool that sends unmatched=1 (board #35); false sends nothing
+			unmatchedParam := ""
 			if flagUnmatched {
-				params["unmatched"] = "1"
+				unmatchedParam = "1"
 			}
-			if flagLine != "" {
-				params["line"] = formatCLIParamValue(flagLine)
-			}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "dialer", path, map[string]string{
+				"date_from":     formatCLIParamValue(flagDateFrom),
+				"date_to":       formatCLIParamValue(flagDateTo),
+				"direction":     formatCLIParamValue(flagDirection),
+				"disposition":   formatCLIParamValue(flagDisposition),
+				"line":          formatCLIParamValue(flagLine),
+				"mine":          formatCLIParamValue(flagMine),
+				"page":          formatCLIParamValue(flagPage),
+				"per_page":      formatCLIParamValue(flagPerPage),
+				"q":             formatCLIParamValue(flagQ),
+				"recorded_only": formatCLIParamValue(flagRecordedOnly),
+				"status":        formatCLIParamValue(flagStatus),
+				"unmatched":     unmatchedParam,
+				"user_id":       formatCLIParamValue(flagUserId),
+			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -81,8 +105,20 @@ func newDialerGetHistoryCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().BoolVar(&flagUnmatched, "unmatched", false, "Only calls no contact is linked to (sends unmatched=1) (board #35, the unknown-caller prompt's not-matched calls).")
+	cmd.Flags().StringVar(&flagDateFrom, "date-from", "", "ISO 8601 date or date-time — only calls created on or after it (invalid = 400)")
+	cmd.Flags().StringVar(&flagDateTo, "date-to", "", "ISO 8601 date or date-time — only calls created on or before it (invalid = 400)")
+	cmd.Flags().StringVar(&flagDirection, "direction", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDisposition, "disposition", "", "string — exact disposition value, max 100 characters (a repeated key is a 400)")
 	cmd.Flags().StringVar(&flagLine, "line", "", "Our line (any formatting): only INBOUND calls to it (board #35, the toll-free counter's link).")
+	cmd.Flags().StringVar(&flagMine, "mine", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
+	cmd.Flags().StringVar(&flagQ, "q", "", "string — call search (trimmed, max 200 code points, empty ignored; a repeated q is a 400).")
+	cmd.Flags().BoolVar(&flagRecordedOnly, "recorded-only", false, "boolean — 1 or true: only calls with a recording or a live voicemail (a repeated key is a 400)")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagUnmatched, "unmatched", false, "Only calls no contact is linked to (sends unmatched=1) (board #35, the unknown-caller prompt's not-matched calls).")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "uuid — only this agent's calls (a non-UUID or repeated user_id is a 400)")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

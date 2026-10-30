@@ -12,6 +12,16 @@ import (
 )
 
 func newBulkOperationsPromotedCmd(flags *rootFlags) *cobra.Command {
+	var flagDateFrom string
+	var flagDateTo string
+	var flagObjectType string
+	var flagPage string
+	var flagPerPage int
+	var flagSearch string
+	var flagStatus string
+	var flagType string
+	var flagUserId string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "bulk-operations",
@@ -26,8 +36,17 @@ func newBulkOperationsPromotedCmd(flags *rootFlags) *cobra.Command {
 			}
 
 			path := "/bulk-operations/unified"
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "bulk-operations", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "bulk-operations", path, map[string]string{
+				"dateFrom":   formatCLIParamValue(flagDateFrom),
+				"dateTo":     formatCLIParamValue(flagDateTo),
+				"objectType": formatCLIParamValue(flagObjectType),
+				"page":       formatCLIParamValue(flagPage),
+				"per_page":   formatCLIParamValue(flagPerPage),
+				"search":     formatCLIParamValue(flagSearch),
+				"status":     formatCLIParamValue(flagStatus),
+				"type":       formatCLIParamValue(flagType),
+				"userId":     formatCLIParamValue(flagUserId),
+			}, nil, flagAll, "page", "page", "per_page", 20, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -77,6 +96,16 @@ func newBulkOperationsPromotedCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagDateFrom, "date-from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagDateTo, "date-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagObjectType, "object-type", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPage, "page", "1", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagPerPage, "per-page", 20, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSearch, "search", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagType, "type", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	// Wire sibling endpoints and sub-resources as subcommands
 

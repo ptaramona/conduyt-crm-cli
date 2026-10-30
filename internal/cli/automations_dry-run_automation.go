@@ -15,10 +15,14 @@ import (
 func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
 	var flagMode string
 	var flagSource string
+	var bodyAppointmentId string
 	var bodyCompanyId string
 	var bodyContactId string
 	var bodyDealId string
 	var bodyExecutionId string
+	var bodyPreviousPipelineId string
+	var bodyPreviousStageId string
+	var bodyTriggerNodeId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -30,6 +34,32 @@ func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if cmd.Flags().Changed("mode") {
+				allowedMode := []string{"single", "all-paths"}
+				validMode := false
+				for _, v := range allowedMode {
+					if flagMode == v {
+						validMode = true
+						break
+					}
+				}
+				if !validMode {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagMode, "mode", allowedMode)
+				}
+			}
+			if cmd.Flags().Changed("source") {
+				allowedSource := []string{"draft", "published"}
+				validSource := false
+				for _, v := range allowedSource {
+					if flagSource == v {
+						validSource = true
+						break
+					}
+				}
+				if !validSource {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagSource, "source", allowedSource)
+				}
 			}
 			if !stdinBody {
 			}
@@ -63,6 +93,9 @@ func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("appointment-id") || bodyAppointmentId != "" {
+					bodyMap["appointmentId"] = bodyAppointmentId
+				}
 				if cmd.Flags().Changed("company-id") || bodyCompanyId != "" {
 					bodyMap["companyId"] = bodyCompanyId
 				}
@@ -74,6 +107,15 @@ func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
 				}
 				if cmd.Flags().Changed("execution-id") || bodyExecutionId != "" {
 					bodyMap["executionId"] = bodyExecutionId
+				}
+				if cmd.Flags().Changed("previous-pipeline-id") || bodyPreviousPipelineId != "" {
+					bodyMap["previousPipelineId"] = bodyPreviousPipelineId
+				}
+				if cmd.Flags().Changed("previous-stage-id") || bodyPreviousStageId != "" {
+					bodyMap["previousStageId"] = bodyPreviousStageId
+				}
+				if cmd.Flags().Changed("trigger-node-id") || bodyTriggerNodeId != "" {
+					bodyMap["triggerNodeId"] = bodyTriggerNodeId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -219,12 +261,16 @@ func newAutomationsDryRunAutomationCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&flagMode, "mode", "", "Query parameter read by this route.")
-	cmd.Flags().StringVar(&flagSource, "source", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagMode, "mode", "", "enum(single|all-paths) — single (default) walks the one path the subject takes (one of: single, all-paths)")
+	cmd.Flags().StringVar(&flagSource, "source", "", "enum(draft|published) — Which version of the workflow to preview: the working draft (default) or the published one. (one of: draft, published)")
+	cmd.Flags().StringVar(&bodyAppointmentId, "appointment-id", "", "Optional appointment UUID (owned by the contact; calendar.view) for an appointment occurrence; omitted, the dry run infers the contact's latest active appointment for appointment.booked only")
 	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "UUID of the event's company: REQUIRED for a COMPANY occurrence (company.created, updated, stage_changed, deleted, tagged, tag_removed), 400 without it; on any other occurrence accepted only when it equals the company the --execution-id payload carries, else 400; --execution-id does not replace it")
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Optional contact UUID the simulated event is about: merge tokens, contact-backed trigger filters and contact conditions are judged against it; refused (400) on a company occurrence")
 	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "UUID of the event's deal: REQUIRED for a DEAL occurrence (deal.created, stage_changed, won, lost), 400 without it, 404 for a deal you cannot see; refused (400) on any other occurrence")
 	cmd.Flags().StringVar(&bodyExecutionId, "execution-id", "", "UUID of a stored run of THIS automation to replay (admin or owner only); supplies ONE fact, the company that run's payload carried, with the same account, automation, trigger event, contact and deal as the preview (else 404 or 400); runs carrying a deal are hidden from API keys without the deals scope; without it, on a non-company occurrence, the preview is a synthetic sample and company rules evaluate as unknown/absent, which the response says")
+	cmd.Flags().StringVar(&bodyPreviousPipelineId, "previous-pipeline-id", "", "For a deal.stage_changed occurrence whose trigger filter reads the pipeline the deal moved FROM: that pipeline's UUID (409 unjudgeable without it); ignored elsewhere")
+	cmd.Flags().StringVar(&bodyPreviousStageId, "previous-stage-id", "", "For a deal.stage_changed occurrence whose trigger filter reads the stage the deal moved FROM: that stage's UUID (409 unjudgeable without it); ignored elsewhere")
+	cmd.Flags().StringVar(&bodyTriggerNodeId, "trigger-node-id", "", "Optional id of the trigger occurrence to simulate, one of the workflow's admitted occurrences; omitted: the default occurrence; an unknown or unadmitted id is a 400")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

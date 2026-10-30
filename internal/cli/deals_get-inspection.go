@@ -12,10 +12,16 @@ import (
 )
 
 func newDealsGetInspectionCmd(flags *rootFlags) *cobra.Command {
+	var flagCheck string
+	var flagCursor string
+	var flagLimit int
+	var flagOffset string
+	var flagPipeline string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-inspection",
-		Short:       "List deals inspection",
+		Short:       "The six Pipeline health checks (High-value idle, Stale in stage, Unassigned, Needs next action, No close date",
 		Example:     "  conduyt-crm-pp-cli deals get-inspection",
 		Annotations: map[string]string{"pp:endpoint": "deals.get-inspection", "pp:method": "GET", "pp:path": "/deals/inspection", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -24,8 +30,13 @@ func newDealsGetInspectionCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "deals", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "deals", path, map[string]string{
+				"check":    formatCLIParamValue(flagCheck),
+				"cursor":   formatCLIParamValue(flagCursor),
+				"limit":    formatCLIParamValue(flagLimit),
+				"offset":   formatCLIParamValue(flagOffset),
+				"pipeline": formatCLIParamValue(flagPipeline),
+			}, nil, flagAll, "cursor", "cursor", "limit", 100, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +84,12 @@ func newDealsGetInspectionCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagCheck, "check", "", "One of high_value_idle, stale, unassigned, needs_action, missing_close_date, missing_contact")
+	cmd.Flags().StringVar(&flagCursor, "cursor", "", "With check: continue after this cursor, the nextCursor of the previous page (keyset over value desc, then id).")
+	cmd.Flags().IntVar(&flagLimit, "limit", 0, "With check: deals per page, 1-100 (default 5).")
+	cmd.Flags().StringVar(&flagOffset, "offset", "", "With check: deals to skip (default 0).")
+	cmd.Flags().StringVar(&flagPipeline, "pipeline", "", "Pipeline id; omit for every visible active pipeline.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

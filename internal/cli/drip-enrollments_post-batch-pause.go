@@ -13,6 +13,13 @@ import (
 )
 
 func newDripEnrollmentsPostBatchPauseCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyCampaignId string
+	var bodyContactId string
+	var bodyDryRun2 string
+	var bodyEnrollmentIds string
+	var bodySmartListId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -30,6 +37,12 @@ func newDripEnrollmentsPostBatchPauseCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -44,6 +57,21 @@ func newDripEnrollmentsPostBatchPauseCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyCampaignId != "" {
+					bodyMap["campaignId"] = bodyCampaignId
+				}
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if bodyDryRun2 != "" {
+					bodyMap["dryRun"] = bodyDryRun2
+				}
+				if bodyEnrollmentIds != "" {
+					bodyMap["enrollmentIds"] = bodyEnrollmentIds
+				}
+				if bodySmartListId != "" {
+					bodyMap["smartListId"] = bodySmartListId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +216,13 @@ func newDripEnrollmentsPostBatchPauseCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyCampaignId, "campaign-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyDryRun2, "dry-run-2", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEnrollmentIds, "enrollment-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySmartListId, "smart-list-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

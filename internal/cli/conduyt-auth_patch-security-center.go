@@ -9,20 +9,41 @@ import (
 	"io"
 	"os"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newConduytAuthPatchSecurityCenterCmd(flags *rootFlags) *cobra.Command {
+	var bodyAllowedSignupDomains string
+	var bodyDomainSignupMode string
+	var bodyIdleTimeout string
+	var bodyLoginIpAllowlist string
+	var bodyMfaMode string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "patch-security-center",
 		Aliases:     []string{"update"},
 		Short:       "Update auth security-center",
-		Example:     "  conduyt-crm-pp-cli conduyt-auth patch-security-center",
+		Example:     "  conduyt-crm-pp-cli conduyt-auth patch-security-center --domain-signup-mode open",
 		Annotations: map[string]string{"pp:endpoint": "conduyt-auth.patch-security-center", "pp:method": "PATCH", "pp:path": "/auth/security-center"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("allowed-signup-domains") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "allowed-signup-domains")
+				}
+				if !cmd.Flags().Changed("domain-signup-mode") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "domain-signup-mode")
+				}
+				if !cmd.Flags().Changed("mfa-mode") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "mfa-mode")
+				}
 			}
 			path := "/auth/security-center"
 			c, err := flags.newClient()
@@ -44,6 +65,29 @@ func newConduytAuthPatchSecurityCenterCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAllowedSignupDomains != "" {
+					parsedAllowedSignupDomains, parseErr := cliutil.ParseStringList(bodyAllowedSignupDomains)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --allowed-signup-domains list: %w", parseErr)
+					}
+					bodyMap["allowedSignupDomains"] = parsedAllowedSignupDomains
+				}
+				if bodyDomainSignupMode != "" {
+					bodyMap["domainSignupMode"] = bodyDomainSignupMode
+				}
+				if bodyIdleTimeout != "" {
+					bodyMap["idleTimeout"] = bodyIdleTimeout
+				}
+				if bodyLoginIpAllowlist != "" {
+					parsedLoginIpAllowlist, parseErr := cliutil.ParseStringList(bodyLoginIpAllowlist)
+					if parseErr != nil {
+						return fmt.Errorf("parsing --login-ip-allowlist list: %w", parseErr)
+					}
+					bodyMap["loginIpAllowlist"] = parsedLoginIpAllowlist
+				}
+				if bodyMfaMode != "" {
+					bodyMap["mfaMode"] = bodyMfaMode
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +232,11 @@ func newConduytAuthPatchSecurityCenterCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAllowedSignupDomains, "allowed-signup-domains", "", "Allowed signup domains")
+	cmd.Flags().StringVar(&bodyDomainSignupMode, "domain-signup-mode", "", "Domain signup mode")
+	cmd.Flags().StringVar(&bodyIdleTimeout, "idle-timeout", "", "Idle timeout")
+	cmd.Flags().StringVar(&bodyLoginIpAllowlist, "login-ip-allowlist", "[]", "Login ip allowlist")
+	cmd.Flags().StringVar(&bodyMfaMode, "mfa-mode", "", "Mfa mode")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -11,21 +11,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newCalendarGoogleCallbackCmd(flags *rootFlags) *cobra.Command {
+func newIntegrationsGetMailchimpAudiencesCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:         "google-callback",
-		Short:       "Google Calendar OAuth callback",
-		Example:     "  conduyt-crm-pp-cli calendar google-callback",
-		Annotations: map[string]string{"pp:endpoint": "calendar.google-callback", "pp:method": "GET", "pp:path": "/calendar/callback/google", "mcp:read-only": "true"},
+		Use:         "get-mailchimp-audiences",
+		Short:       "List integrations mailchimp audiences",
+		Example:     "  conduyt-crm-pp-cli integrations get-mailchimp-audiences",
+		Annotations: map[string]string{"pp:endpoint": "integrations.get-mailchimp-audiences", "pp:method": "GET", "pp:path": "/integrations/mailchimp/audiences", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := "/calendar/callback/google"
+			path := "/integrations/mailchimp/audiences"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "calendar", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "integrations", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}

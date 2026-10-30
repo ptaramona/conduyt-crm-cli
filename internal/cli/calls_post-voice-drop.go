@@ -13,15 +13,28 @@ import (
 )
 
 func newCallsPostVoiceDropCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactId string
+	var bodyFromNumber string
+	var bodyOnHuman string
+	var bodyRecording string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-voice-drop",
 		Short:       "Create / invoke calls voice-drop",
-		Example:     "  conduyt-crm-pp-cli calls post-voice-drop",
+		Example:     "  conduyt-crm-pp-cli calls post-voice-drop --contact-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "calls.post-voice-drop", "pp:method": "POST", "pp:path": "/calls/voice-drop"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
+				}
 			}
 			path := "/calls/voice-drop"
 			c, err := flags.newClient()
@@ -43,6 +56,18 @@ func newCallsPostVoiceDropCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if bodyFromNumber != "" {
+					bodyMap["fromNumber"] = bodyFromNumber
+				}
+				if bodyOnHuman != "" {
+					bodyMap["onHuman"] = bodyOnHuman
+				}
+				if bodyRecording != "" {
+					bodyMap["recording"] = bodyRecording
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +212,10 @@ func newCallsPostVoiceDropCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodyFromNumber, "from-number", "", "From number")
+	cmd.Flags().StringVar(&bodyOnHuman, "on-human", "", "On human")
+	cmd.Flags().StringVar(&bodyRecording, "recording", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

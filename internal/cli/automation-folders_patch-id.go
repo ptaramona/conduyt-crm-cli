@@ -13,6 +13,8 @@ import (
 )
 
 func newAutomationFoldersPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyColorIndex string
+	var bodyName string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +53,12 @@ func newAutomationFoldersPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyColorIndex != "" {
+					bodyMap["colorIndex"] = bodyColorIndex
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +203,8 @@ func newAutomationFoldersPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyColorIndex, "color-index", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

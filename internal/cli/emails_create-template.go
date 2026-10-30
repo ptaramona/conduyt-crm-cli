@@ -13,20 +13,15 @@ import (
 )
 
 func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
-	var bodyBody string
-	var bodyBodyHtml string
-	var bodyCategory string
-	var bodyChannel string
-	var bodyIsActive bool
-	var bodyName string
-	var bodySubject string
+	var flagDryRun bool
+	var flagSandbox bool
+	var flagBodyJSON string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:   "create-template",
-		Short: "Create an email template",
-		// TODO: replace placeholder example values before relying on this for live dogfood.
-		Example:     "  conduyt-crm-pp-cli emails create-template --body example-value",
+		Use:         "create-template",
+		Short:       "Email templates built in the editor keep their builder state in hidden markers",
+		Example:     "  conduyt-crm-pp-cli emails create-template",
 		Annotations: map[string]string{"pp:endpoint": "emails.create-template", "pp:method": "POST", "pp:path": "/emails/templates"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
@@ -36,14 +31,8 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("body") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "body")
-				}
-				if !cmd.Flags().Changed("channel") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "channel")
-				}
-				if !cmd.Flags().Changed("name") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "name")
+				if !cmd.Flags().Changed("body-json") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "body-json")
 				}
 			}
 			path := "/emails/templates"
@@ -52,6 +41,12 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -66,26 +61,16 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyBody != "" {
-					bodyMap["body"] = bodyBody
-				}
-				if bodyBodyHtml != "" {
-					bodyMap["bodyHtml"] = bodyBodyHtml
-				}
-				if bodyCategory != "" {
-					bodyMap["category"] = bodyCategory
-				}
-				if bodyChannel != "" {
-					bodyMap["channel"] = bodyChannel
-				}
-				if cmd.Flags().Changed("is-active") {
-					bodyMap["isActive"] = bodyIsActive
-				}
-				if bodyName != "" {
-					bodyMap["name"] = bodyName
-				}
-				if bodySubject != "" {
-					bodyMap["subject"] = bodySubject
+				if flagBodyJSON != "" {
+					var parsedBodyJSON any
+					if err := json.Unmarshal([]byte(flagBodyJSON), &parsedBodyJSON); err != nil {
+						return fmt.Errorf("parsing --body-json: %w", err)
+					}
+					asMap, ok := parsedBodyJSON.(map[string]any)
+					if !ok {
+						return fmt.Errorf("--body-json must be a JSON object, got JSON %T", parsedBodyJSON)
+					}
+					body = asMap
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -231,13 +216,9 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&bodyBody, "body", "", "Body")
-	cmd.Flags().StringVar(&bodyBodyHtml, "body-html", "", "Body html")
-	cmd.Flags().StringVar(&bodyCategory, "category", "", "Category")
-	cmd.Flags().StringVar(&bodyChannel, "channel", "", "Channel")
-	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
-	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
-	cmd.Flags().StringVar(&bodySubject, "subject", "", "Subject")
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&flagBodyJSON, "body-json", "", "Provide the full request body as a JSON object string (this endpoint accepts a polymorphic schema: oneOf/anyOf)")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,6 +13,12 @@ import (
 )
 
 func newRepShiftsPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDayOfWeek int
+	var bodyEndMinute int
+	var bodyIsActive bool
+	var bodyStartMinute int
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -37,6 +43,12 @@ func newRepShiftsPatchIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +63,18 @@ func newRepShiftsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDayOfWeek != 0 {
+					bodyMap["dayOfWeek"] = bodyDayOfWeek
+				}
+				if bodyEndMinute != 0 {
+					bodyMap["endMinute"] = bodyEndMinute
+				}
+				if cmd.Flags().Changed("is-active") {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyStartMinute != 0 {
+					bodyMap["startMinute"] = bodyStartMinute
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +219,12 @@ func newRepShiftsPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().IntVar(&bodyDayOfWeek, "day-of-week", 0, "Day of week")
+	cmd.Flags().IntVar(&bodyEndMinute, "end-minute", 0, "End minute")
+	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "Is active")
+	cmd.Flags().IntVar(&bodyStartMinute, "start-minute", 0, "Start minute")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

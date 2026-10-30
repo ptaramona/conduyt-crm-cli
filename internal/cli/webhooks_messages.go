@@ -13,6 +13,46 @@ import (
 )
 
 func newWebhooksMessagesCmd(flags *rootFlags) *cobra.Command {
+	var bodyBody string
+	var bodyChannel string
+	var bodyContactEmail string
+	var bodyContactPhone string
+	var bodyMetadataAttachmentLinkBlock string
+	var bodyMetadataAttachmentLinkBlockHtml string
+	var bodyMetadataAttachments string
+	var bodyMetadataAttemptAt string
+	var bodyMetadataCarrierVerdictAt string
+	var bodyMetadataCcBccSkipped string
+	var bodyMetadataDeliveryUnconfirmed string
+	var bodyMetadataFanoutSuppressed string
+	var bodyMetadataFromkPhoneNumberId string
+	var bodyMetadataFromkSentEffectsPending string
+	var bodyMetadataInboundAttachments string
+	var bodyMetadataIntent string
+	var bodyMetadataIntentClassifiedAt string
+	var bodyMetadataIntentConfidence string
+	var bodyMetadataIntentEventsAt string
+	var bodyMetadataIntentOptOutPhone string
+	var bodyMetadataIntentSkippedReason string
+	var bodyMetadataIntentSuggestedAction string
+	var bodyMetadataIntentSummary string
+	var bodyMetadataLineId string
+	var bodyMetadataMailboxConnectionId string
+	var bodyMetadataMmsMedia string
+	var bodyMetadataOperationFingerprint string
+	var bodyMetadataPreWireRefusal string
+	var bodyMetadataPreWireRetryCount string
+	var bodyMetadataProviderMessageId string
+	var bodyMetadataRetriedAt string
+	var bodyMetadataRetryable string
+	var bodyMetadataSendAttempt string
+	var bodyMetadataSendSource string
+	var bodyMetadataService string
+	var bodyMetadataSyncedForUserId string
+	var bodyMetadataWhatsappTemplate string
+	var bodyProvider string
+	var bodyProviderId string
+	var bodySubject string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +83,132 @@ func newWebhooksMessagesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBody != "" {
+					bodyMap["body"] = bodyBody
+				}
+				if bodyChannel != "" {
+					bodyMap["channel"] = bodyChannel
+				}
+				if bodyContactEmail != "" {
+					bodyMap["contactEmail"] = bodyContactEmail
+				}
+				if bodyContactPhone != "" {
+					bodyMap["contactPhone"] = bodyContactPhone
+				}
+				{
+					nestedMetadata := map[string]any{}
+					if bodyMetadataAttachmentLinkBlock != "" {
+						nestedMetadata["attachmentLinkBlock"] = bodyMetadataAttachmentLinkBlock
+					}
+					if bodyMetadataAttachmentLinkBlockHtml != "" {
+						nestedMetadata["attachmentLinkBlockHtml"] = bodyMetadataAttachmentLinkBlockHtml
+					}
+					if bodyMetadataAttachments != "" {
+						nestedMetadata["attachments"] = bodyMetadataAttachments
+					}
+					if bodyMetadataAttemptAt != "" {
+						nestedMetadata["attemptAt"] = bodyMetadataAttemptAt
+					}
+					if bodyMetadataCarrierVerdictAt != "" {
+						nestedMetadata["carrierVerdictAt"] = bodyMetadataCarrierVerdictAt
+					}
+					if bodyMetadataCcBccSkipped != "" {
+						nestedMetadata["ccBccSkipped"] = bodyMetadataCcBccSkipped
+					}
+					if bodyMetadataDeliveryUnconfirmed != "" {
+						nestedMetadata["deliveryUnconfirmed"] = bodyMetadataDeliveryUnconfirmed
+					}
+					if bodyMetadataFanoutSuppressed != "" {
+						nestedMetadata["fanoutSuppressed"] = bodyMetadataFanoutSuppressed
+					}
+					if bodyMetadataFromkPhoneNumberId != "" {
+						nestedMetadata["fromkPhoneNumberId"] = bodyMetadataFromkPhoneNumberId
+					}
+					if bodyMetadataFromkSentEffectsPending != "" {
+						nestedMetadata["fromkSentEffectsPending"] = bodyMetadataFromkSentEffectsPending
+					}
+					if bodyMetadataInboundAttachments != "" {
+						nestedMetadata["inboundAttachments"] = bodyMetadataInboundAttachments
+					}
+					if bodyMetadataIntent != "" {
+						nestedMetadata["intent"] = bodyMetadataIntent
+					}
+					if bodyMetadataIntentClassifiedAt != "" {
+						nestedMetadata["intentClassifiedAt"] = bodyMetadataIntentClassifiedAt
+					}
+					if bodyMetadataIntentConfidence != "" {
+						nestedMetadata["intentConfidence"] = bodyMetadataIntentConfidence
+					}
+					if bodyMetadataIntentEventsAt != "" {
+						nestedMetadata["intentEventsAt"] = bodyMetadataIntentEventsAt
+					}
+					if bodyMetadataIntentOptOutPhone != "" {
+						nestedMetadata["intentOptOutPhone"] = bodyMetadataIntentOptOutPhone
+					}
+					if bodyMetadataIntentSkippedReason != "" {
+						nestedMetadata["intentSkippedReason"] = bodyMetadataIntentSkippedReason
+					}
+					if bodyMetadataIntentSuggestedAction != "" {
+						nestedMetadata["intentSuggestedAction"] = bodyMetadataIntentSuggestedAction
+					}
+					if bodyMetadataIntentSummary != "" {
+						nestedMetadata["intentSummary"] = bodyMetadataIntentSummary
+					}
+					if bodyMetadataLineId != "" {
+						nestedMetadata["lineId"] = bodyMetadataLineId
+					}
+					if bodyMetadataMailboxConnectionId != "" {
+						nestedMetadata["mailboxConnectionId"] = bodyMetadataMailboxConnectionId
+					}
+					if bodyMetadataMmsMedia != "" {
+						nestedMetadata["mmsMedia"] = bodyMetadataMmsMedia
+					}
+					if bodyMetadataOperationFingerprint != "" {
+						nestedMetadata["operationFingerprint"] = bodyMetadataOperationFingerprint
+					}
+					if bodyMetadataPreWireRefusal != "" {
+						nestedMetadata["preWireRefusal"] = bodyMetadataPreWireRefusal
+					}
+					if bodyMetadataPreWireRetryCount != "" {
+						nestedMetadata["preWireRetryCount"] = bodyMetadataPreWireRetryCount
+					}
+					if bodyMetadataProviderMessageId != "" {
+						nestedMetadata["providerMessageId"] = bodyMetadataProviderMessageId
+					}
+					if bodyMetadataRetriedAt != "" {
+						nestedMetadata["retriedAt"] = bodyMetadataRetriedAt
+					}
+					if bodyMetadataRetryable != "" {
+						nestedMetadata["retryable"] = bodyMetadataRetryable
+					}
+					if bodyMetadataSendAttempt != "" {
+						nestedMetadata["sendAttempt"] = bodyMetadataSendAttempt
+					}
+					if bodyMetadataSendSource != "" {
+						nestedMetadata["sendSource"] = bodyMetadataSendSource
+					}
+					if bodyMetadataService != "" {
+						nestedMetadata["service"] = bodyMetadataService
+					}
+					if bodyMetadataSyncedForUserId != "" {
+						nestedMetadata["syncedForUserId"] = bodyMetadataSyncedForUserId
+					}
+					if bodyMetadataWhatsappTemplate != "" {
+						nestedMetadata["whatsappTemplate"] = bodyMetadataWhatsappTemplate
+					}
+					if len(nestedMetadata) > 0 {
+						bodyMap["metadata"] = nestedMetadata
+					}
+				}
+				if bodyProvider != "" {
+					bodyMap["provider"] = bodyProvider
+				}
+				if bodyProviderId != "" {
+					bodyMap["providerId"] = bodyProviderId
+				}
+				if bodySubject != "" {
+					bodyMap["subject"] = bodySubject
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +353,46 @@ func newWebhooksMessagesCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyBody, "body", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyChannel, "channel", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactEmail, "contact-email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyContactPhone, "contact-phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataAttachmentLinkBlock, "metadata-attachment-link-block", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataAttachmentLinkBlockHtml, "metadata-attachment-link-block-html", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataAttachments, "metadata-attachments", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataAttemptAt, "metadata-attempt-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataCarrierVerdictAt, "metadata-carrier-verdict-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataCcBccSkipped, "metadata-cc-bcc-skipped", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataDeliveryUnconfirmed, "metadata-delivery-unconfirmed", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataFanoutSuppressed, "metadata-fanout-suppressed", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataFromkPhoneNumberId, "metadata-fromk-phone-number-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataFromkSentEffectsPending, "metadata-fromk-sent-effects-pending", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataInboundAttachments, "metadata-inbound-attachments", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntent, "metadata-intent", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntentClassifiedAt, "metadata-intent-classified-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntentConfidence, "metadata-intent-confidence", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntentEventsAt, "metadata-intent-events-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntentOptOutPhone, "metadata-intent-opt-out-phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntentSkippedReason, "metadata-intent-skipped-reason", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntentSuggestedAction, "metadata-intent-suggested-action", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataIntentSummary, "metadata-intent-summary", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataLineId, "metadata-line-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataMailboxConnectionId, "metadata-mailbox-connection-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataMmsMedia, "metadata-mms-media", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataOperationFingerprint, "metadata-operation-fingerprint", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataPreWireRefusal, "metadata-pre-wire-refusal", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataPreWireRetryCount, "metadata-pre-wire-retry-count", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataProviderMessageId, "metadata-provider-message-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataRetriedAt, "metadata-retried-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataRetryable, "metadata-retryable", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataSendAttempt, "metadata-send-attempt", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataSendSource, "metadata-send-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataService, "metadata-service", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataSyncedForUserId, "metadata-synced-for-user-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMetadataWhatsappTemplate, "metadata-whatsapp-template", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyProvider, "provider", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyProviderId, "provider-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySubject, "subject", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,15 +13,33 @@ import (
 )
 
 func newSettingsPutAiByoCmd(flags *rootFlags) *cobra.Command {
+	var bodyKey string
+	var bodyModel string
+	var bodyProvider string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "put-ai-byo",
 		Short:       "Update settings ai byo",
-		Example:     "  conduyt-crm-pp-cli settings put-ai-byo",
+		Example:     "  conduyt-crm-pp-cli settings put-ai-byo --key your-token-here",
 		Annotations: map[string]string{"pp:endpoint": "settings.put-ai-byo", "pp:method": "PUT", "pp:path": "/settings/ai/byo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("key") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "key")
+				}
+				if !cmd.Flags().Changed("model") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "model")
+				}
+				if !cmd.Flags().Changed("provider") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "provider")
+				}
 			}
 			path := "/settings/ai/byo"
 			c, err := flags.newClient()
@@ -43,6 +61,15 @@ func newSettingsPutAiByoCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyKey != "" {
+					bodyMap["key"] = bodyKey
+				}
+				if bodyModel != "" {
+					bodyMap["model"] = bodyModel
+				}
+				if bodyProvider != "" {
+					bodyMap["provider"] = bodyProvider
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +214,9 @@ func newSettingsPutAiByoCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyKey, "key", "", "Key")
+	cmd.Flags().StringVar(&bodyModel, "model", "", "One of the provider's allowed models (the 400 lists them).")
+	cmd.Flags().StringVar(&bodyProvider, "provider", "", "Provider")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

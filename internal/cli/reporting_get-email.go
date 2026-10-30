@@ -12,6 +12,7 @@ import (
 )
 
 func newReportingGetEmailCmd(flags *rootFlags) *cobra.Command {
+	var flagSmartListId string
 
 	cmd := &cobra.Command{
 		Use:         "get-email",
@@ -26,6 +27,9 @@ func newReportingGetEmailCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagSmartListId != "" {
+				params["smartListId"] = formatCLIParamValue(flagSmartListId)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reporting", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -74,6 +78,7 @@ func newReportingGetEmailCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagSmartListId, "smart-list-id", "", "Query parameter read by this route.")
 
 	return cmd
 }

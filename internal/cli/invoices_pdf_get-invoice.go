@@ -12,6 +12,7 @@ import (
 )
 
 func newInvoicesPdfGetInvoiceCmd(flags *rootFlags) *cobra.Command {
+	var flagDownload bool
 
 	cmd := &cobra.Command{
 		Use:         "get-invoice <id>",
@@ -37,6 +38,9 @@ func newInvoicesPdfGetInvoiceCmd(flags *rootFlags) *cobra.Command {
 				"X-Printing-Press-Binary-Response": "true",
 			}
 			params := map[string]string{}
+			if flagDownload != false {
+				params["download"] = formatCLIParamValue(flagDownload)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "pdf", false, path, params, headerOverrides, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -54,6 +58,7 @@ func newInvoicesPdfGetInvoiceCmd(flags *rootFlags) *cobra.Command {
 			return err
 		},
 	}
+	cmd.Flags().BoolVar(&flagDownload, "download", false, "Query parameter read by this route.")
 
 	return cmd
 }

@@ -6,12 +6,15 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newBillingDeleteAddonsCmd(flags *rootFlags) *cobra.Command {
+	var bodySubscriptionId string
+	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "delete-addons",
@@ -20,13 +23,32 @@ func newBillingDeleteAddonsCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli billing delete-addons",
 		Annotations: map[string]string{"pp:endpoint": "billing.delete-addons", "pp:method": "DELETE", "pp:path": "/billing/addons"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !stdinBody {
+			}
 			path := "/billing/addons"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, statusCode, err := c.DeleteWithParams(cmd.Context(), path, params)
+			var body any
+			if stdinBody {
+				stdinData, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				var jsonBody map[string]any
+				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
+					return fmt.Errorf("parsing stdin JSON: %w", err)
+				}
+				body = jsonBody
+			} else {
+				bodyMap := map[string]any{}
+				body = bodyMap
+				if bodySubscriptionId != "" {
+					bodyMap["subscriptionId"] = bodySubscriptionId
+				}
+			}
+			data, statusCode, err := c.DeleteWithBody(cmd.Context(), path, body)
 			if err != nil {
 				return classifyDeleteError(err, flags)
 			}
@@ -166,6 +188,8 @@ func newBillingDeleteAddonsCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodySubscriptionId, "subscription-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
 }

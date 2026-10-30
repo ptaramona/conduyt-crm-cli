@@ -13,15 +13,33 @@ import (
 )
 
 func newStatusMetadataPostDryRunCmd(flags *rootFlags) *cobra.Command {
+	var bodyContactId string
+	var bodyDealId string
+	var bodyTargetStageId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-dry-run",
 		Short:       "Create / invoke status-metadata dry-run",
-		Example:     "  conduyt-crm-pp-cli status-metadata post-dry-run",
+		Example:     "  conduyt-crm-pp-cli status-metadata post-dry-run --contact-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "status-metadata.post-dry-run", "pp:method": "POST", "pp:path": "/status-metadata/dry-run"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("contact-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "contact-id")
+				}
+				if !cmd.Flags().Changed("deal-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "deal-id")
+				}
+				if !cmd.Flags().Changed("target-stage-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "target-stage-id")
+				}
 			}
 			path := "/status-metadata/dry-run"
 			c, err := flags.newClient()
@@ -43,6 +61,15 @@ func newStatusMetadataPostDryRunCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if bodyDealId != "" {
+					bodyMap["dealId"] = bodyDealId
+				}
+				if bodyTargetStageId != "" {
+					bodyMap["targetStageId"] = bodyTargetStageId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +214,9 @@ func newStatusMetadataPostDryRunCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "Deal id")
+	cmd.Flags().StringVar(&bodyTargetStageId, "target-stage-id", "", "Target stage id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

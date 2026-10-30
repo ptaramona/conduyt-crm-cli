@@ -12,6 +12,8 @@ import (
 )
 
 func newDialerGetCallsHourlyCmd(flags *rootFlags) *cobra.Command {
+	var flagRange string
+	var flagUserId string
 
 	cmd := &cobra.Command{
 		Use:         "get-calls-hourly",
@@ -25,6 +27,12 @@ func newDialerGetCallsHourlyCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagRange != "" {
+				params["range"] = formatCLIParamValue(flagRange)
+			}
+			if flagUserId != "" {
+				params["userId"] = formatCLIParamValue(flagUserId)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +81,8 @@ func newDialerGetCallsHourlyCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagRange, "range", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagUserId, "user-id", "", "Query parameter read by this route.")
 
 	return cmd
 }

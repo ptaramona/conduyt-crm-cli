@@ -13,6 +13,16 @@ import (
 )
 
 func newDripTracksPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyChannel string
+	var bodyComplianceProfile string
+	var bodyExitConditions string
+	var bodyIsActive string
+	var bodyLabel string
+	var bodyName string
+	var bodyReEntryAllowed string
+	var bodySteps string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -37,6 +47,12 @@ func newDripTracksPatchIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +67,30 @@ func newDripTracksPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyChannel != "" {
+					bodyMap["channel"] = bodyChannel
+				}
+				if bodyComplianceProfile != "" {
+					bodyMap["complianceProfile"] = bodyComplianceProfile
+				}
+				if bodyExitConditions != "" {
+					bodyMap["exitConditions"] = bodyExitConditions
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyLabel != "" {
+					bodyMap["label"] = bodyLabel
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyReEntryAllowed != "" {
+					bodyMap["reEntryAllowed"] = bodyReEntryAllowed
+				}
+				if bodySteps != "" {
+					bodyMap["steps"] = bodySteps
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +235,16 @@ func newDripTracksPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyChannel, "channel", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyComplianceProfile, "compliance-profile", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyExitConditions, "exit-conditions", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLabel, "label", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReEntryAllowed, "re-entry-allowed", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodySteps, "steps", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

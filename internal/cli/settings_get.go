@@ -12,11 +12,12 @@ import (
 )
 
 func newSettingsGetCmd(flags *rootFlags) *cobra.Command {
+	var flagOp string
 
 	cmd := &cobra.Command{
 		Use:         "get",
 		Aliases:     []string{"list"},
-		Short:       "Get account settings",
+		Short:       "Includes messageCheck.",
 		Example:     "  conduyt-crm-pp-cli settings get",
 		Annotations: map[string]string{"pp:endpoint": "settings.get", "pp:method": "GET", "pp:path": "/settings", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -26,6 +27,9 @@ func newSettingsGetCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagOp != "" {
+				params["op"] = formatCLIParamValue(flagOp)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "settings", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -74,6 +78,7 @@ func newSettingsGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagOp, "op", "", "Query parameter read by this route.")
 
 	return cmd
 }

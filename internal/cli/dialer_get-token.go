@@ -13,6 +13,7 @@ import (
 )
 
 func newDialerGetTokenCmd(flags *rootFlags) *cobra.Command {
+	var bodyVendor string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -44,6 +45,9 @@ func newDialerGetTokenCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyVendor != "" {
+					bodyMap["vendor"] = bodyVendor
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +192,7 @@ func newDialerGetTokenCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyVendor, "vendor", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

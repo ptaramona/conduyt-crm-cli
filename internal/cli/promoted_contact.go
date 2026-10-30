@@ -8,28 +8,19 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/spf13/cobra"
 )
 
 func newContactPromotedCmd(flags *rootFlags) *cobra.Command {
-	var bodyAddressLine1 string
-	var bodyAddressLine2 string
-	var bodyAssignedTo string
-	var bodyCity string
 	var bodyCompany string
-	var bodyCompanyId string
-	var bodyCountry string
-	var bodyCustomFields string
+	var bodyElapsedMs string
 	var bodyEmail string
 	var bodyFirstName string
-	var bodyJobTitle string
+	var bodyIntent string
 	var bodyLastName string
-	var bodyPhone string
-	var bodySource string
-	var bodyState string
-	var bodyTags string
-	var bodyZip string
+	var bodyMessage string
+	var bodyTeamSize string
+	var bodyWebsite string
 
 	cmd := &cobra.Command{
 		Use:         "contact",
@@ -51,33 +42,11 @@ func newContactPromotedCmd(flags *rootFlags) *cobra.Command {
 			// second store-backed POST-search consumer ships.
 			bodyMap := map[string]any{}
 			var body any = bodyMap
-			if bodyAddressLine1 != "" {
-				bodyMap["addressLine1"] = bodyAddressLine1
-			}
-			if bodyAddressLine2 != "" {
-				bodyMap["addressLine2"] = bodyAddressLine2
-			}
-			if bodyAssignedTo != "" {
-				bodyMap["assignedTo"] = bodyAssignedTo
-			}
-			if bodyCity != "" {
-				bodyMap["city"] = bodyCity
-			}
 			if bodyCompany != "" {
 				bodyMap["company"] = bodyCompany
 			}
-			if bodyCompanyId != "" {
-				bodyMap["companyId"] = bodyCompanyId
-			}
-			if bodyCountry != "" {
-				bodyMap["country"] = bodyCountry
-			}
-			if bodyCustomFields != "" {
-				var parsedCustomFields any
-				if err := json.Unmarshal([]byte(bodyCustomFields), &parsedCustomFields); err != nil {
-					return fmt.Errorf("parsing --custom-fields JSON: %w", err)
-				}
-				bodyMap["customFields"] = parsedCustomFields
+			if bodyElapsedMs != "" {
+				bodyMap["elapsedMs"] = bodyElapsedMs
 			}
 			if bodyEmail != "" {
 				bodyMap["email"] = bodyEmail
@@ -85,30 +54,20 @@ func newContactPromotedCmd(flags *rootFlags) *cobra.Command {
 			if bodyFirstName != "" {
 				bodyMap["firstName"] = bodyFirstName
 			}
-			if bodyJobTitle != "" {
-				bodyMap["jobTitle"] = bodyJobTitle
+			if bodyIntent != "" {
+				bodyMap["intent"] = bodyIntent
 			}
 			if bodyLastName != "" {
 				bodyMap["lastName"] = bodyLastName
 			}
-			if bodyPhone != "" {
-				bodyMap["phone"] = bodyPhone
+			if bodyMessage != "" {
+				bodyMap["message"] = bodyMessage
 			}
-			if bodySource != "" {
-				bodyMap["source"] = bodySource
+			if bodyTeamSize != "" {
+				bodyMap["teamSize"] = bodyTeamSize
 			}
-			if bodyState != "" {
-				bodyMap["state"] = bodyState
-			}
-			if bodyTags != "" {
-				parsedTags, parseErr := cliutil.ParseStringList(bodyTags)
-				if parseErr != nil {
-					return fmt.Errorf("parsing --tags list: %w", parseErr)
-				}
-				bodyMap["tags"] = parsedTags
-			}
-			if bodyZip != "" {
-				bodyMap["zip"] = bodyZip
+			if bodyWebsite != "" {
+				bodyMap["website"] = bodyWebsite
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 
@@ -169,23 +128,15 @@ func newContactPromotedCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&bodyAddressLine1, "address-line1", "", "Address line1")
-	cmd.Flags().StringVar(&bodyAddressLine2, "address-line2", "", "Address line2")
-	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
-	cmd.Flags().StringVar(&bodyCity, "city", "", "City")
 	cmd.Flags().StringVar(&bodyCompany, "company", "", "Company")
-	cmd.Flags().StringVar(&bodyCompanyId, "company-id", "", "Company id")
-	cmd.Flags().StringVar(&bodyCountry, "country", "", "Country")
-	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Key-value pairs for custom fields. Max 100KB.")
+	cmd.Flags().StringVar(&bodyElapsedMs, "elapsed-ms", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyEmail, "email", "", "Email")
 	cmd.Flags().StringVar(&bodyFirstName, "first-name", "", "First name")
-	cmd.Flags().StringVar(&bodyJobTitle, "job-title", "", "Job title")
+	cmd.Flags().StringVar(&bodyIntent, "intent", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyLastName, "last-name", "", "Last name")
-	cmd.Flags().StringVar(&bodyPhone, "phone", "", "Phone")
-	cmd.Flags().StringVar(&bodySource, "source", "", "Source")
-	cmd.Flags().StringVar(&bodyState, "state", "", "State")
-	cmd.Flags().StringVar(&bodyTags, "tags", "", "Tags")
-	cmd.Flags().StringVar(&bodyZip, "zip", "", "Zip")
+	cmd.Flags().StringVar(&bodyMessage, "message", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTeamSize, "team-size", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyWebsite, "website", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 
 	// Wire sibling endpoints and sub-resources as subcommands
 

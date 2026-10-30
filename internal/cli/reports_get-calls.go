@@ -12,6 +12,9 @@ import (
 )
 
 func newReportsGetCallsCmd(flags *rootFlags) *cobra.Command {
+	var flagFrom string
+	var flagGroupBy string
+	var flagTo string
 
 	cmd := &cobra.Command{
 		Use:         "get-calls",
@@ -25,6 +28,15 @@ func newReportsGetCallsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagFrom != "" {
+				params["from"] = formatCLIParamValue(flagFrom)
+			}
+			if flagGroupBy != "" {
+				params["group_by"] = formatCLIParamValue(flagGroupBy)
+			}
+			if flagTo != "" {
+				params["to"] = formatCLIParamValue(flagTo)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "reports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -73,6 +85,9 @@ func newReportsGetCallsCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagFrom, "from", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagGroupBy, "group-by", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTo, "to", "", "Query parameter read by this route.")
 
 	return cmd
 }

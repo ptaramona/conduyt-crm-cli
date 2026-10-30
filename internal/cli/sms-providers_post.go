@@ -13,6 +13,13 @@ import (
 )
 
 func newSmsProvidersPostCmd(flags *rootFlags) *cobra.Command {
+	var bodyColor string
+	var bodyFieldMapping string
+	var bodyMode string
+	var bodyName string
+	var bodyResponseConditions string
+	var bodyWebhookHeaders string
+	var bodyWebhookUrl string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -44,6 +51,27 @@ func newSmsProvidersPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyColor != "" {
+					bodyMap["color"] = bodyColor
+				}
+				if bodyFieldMapping != "" {
+					bodyMap["fieldMapping"] = bodyFieldMapping
+				}
+				if bodyMode != "" {
+					bodyMap["mode"] = bodyMode
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodyResponseConditions != "" {
+					bodyMap["responseConditions"] = bodyResponseConditions
+				}
+				if bodyWebhookHeaders != "" {
+					bodyMap["webhookHeaders"] = bodyWebhookHeaders
+				}
+				if bodyWebhookUrl != "" {
+					bodyMap["webhookUrl"] = bodyWebhookUrl
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +216,13 @@ func newSmsProvidersPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyColor, "color", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFieldMapping, "field-mapping", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMode, "mode", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyResponseConditions, "response-conditions", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyWebhookHeaders, "webhook-headers", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyWebhookUrl, "webhook-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

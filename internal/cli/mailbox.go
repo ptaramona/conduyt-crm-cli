@@ -18,6 +18,7 @@ func newMailboxCmd(flags *rootFlags) *cobra.Command {
 
 	cmd.AddCommand(newMailboxDeleteConnectionsIdCmd(flags))
 	cmd.AddCommand(newMailboxGetConnectionsCmd(flags))
+	cmd.AddCommand(newMailboxPostConnectGoogleCmd(flags))
 	cmd.AddCommand(newMailboxPostConnectMicrosoftCmd(flags))
 	return cmd
 }

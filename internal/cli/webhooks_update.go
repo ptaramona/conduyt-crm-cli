@@ -14,9 +14,12 @@ import (
 )
 
 func newWebhooksUpdateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
 	var bodyDescription string
 	var bodyEvents string
 	var bodyIsActive bool
+	var bodyRotateSecret string
 	var bodyUrl string
 	var stdinBody bool
 
@@ -41,6 +44,12 @@ func newWebhooksUpdateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -67,6 +76,9 @@ func newWebhooksUpdateCmd(flags *rootFlags) *cobra.Command {
 				}
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyRotateSecret != "" {
+					bodyMap["rotateSecret"] = bodyRotateSecret
 				}
 				if bodyUrl != "" {
 					bodyMap["url"] = bodyUrl
@@ -215,9 +227,12 @@ func newWebhooksUpdateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
 	cmd.Flags().StringVar(&bodyEvents, "events", "", "Events")
 	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "Is active")
+	cmd.Flags().StringVar(&bodyRotateSecret, "rotate-secret", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyUrl, "url", "", "Url")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

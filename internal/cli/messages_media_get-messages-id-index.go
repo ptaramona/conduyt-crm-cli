@@ -12,6 +12,7 @@ import (
 )
 
 func newMessagesMediaGetMessagesIdIndexCmd(flags *rootFlags) *cobra.Command {
+	var flagDownload string
 
 	cmd := &cobra.Command{
 		Use:     "get-messages-id-index <id> <mediaIndex>",
@@ -42,6 +43,9 @@ func newMessagesMediaGetMessagesIdIndexCmd(flags *rootFlags) *cobra.Command {
 				"X-Printing-Press-Binary-Response": "true",
 			}
 			params := map[string]string{}
+			if flagDownload != "" {
+				params["download"] = formatCLIParamValue(flagDownload)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "media", false, path, params, headerOverrides, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -59,6 +63,7 @@ func newMessagesMediaGetMessagesIdIndexCmd(flags *rootFlags) *cobra.Command {
 			return err
 		},
 	}
+	cmd.Flags().StringVar(&flagDownload, "download", "", "Query parameter read by this route.")
 
 	return cmd
 }

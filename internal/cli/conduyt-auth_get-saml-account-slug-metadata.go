@@ -14,8 +14,9 @@ import (
 func newConduytAuthGetSamlAccountSlugMetadataCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:   "get-saml-account-slug-metadata <accountSlug>",
-		Short: "Get auth saml accountSlug metadata",
+		Use:     "get-saml-account-slug-metadata <accountSlug>",
+		Aliases: []string{"get"},
+		Short:   "Get auth saml accountSlug metadata",
 		// TODO: replace placeholder example values before relying on this for live dogfood.
 		Example:     "  conduyt-crm-pp-cli conduyt-auth get-saml-account-slug-metadata example-value",
 		Annotations: map[string]string{"pp:endpoint": "conduyt-auth.get-saml-account-slug-metadata", "pp:method": "GET", "pp:path": "/auth/saml/{accountSlug}/metadata", "mcp:read-only": "true"},
@@ -32,53 +33,25 @@ func newConduytAuthGetSamlAccountSlugMetadataCmd(flags *rootFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
+			headerOverrides := map[string]string{
+				"X-Printing-Press-Binary-Response": "true",
+			}
 			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "conduyt-auth", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "conduyt-auth", false, path, params, headerOverrides, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
-			// Print provenance to stderr for human-facing output only.
-			// Machine-format flags (--json, --csv, --compact, --quiet, --plain,
-			// --select) and piped stdout suppress this line; the JSON envelope
-			// already carries meta.source for those consumers.
-			// SYNC: keep this gate aligned with command_promoted.go.tmpl.
-			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var countItems []json.RawMessage
-				_ = json.Unmarshal(data, &countItems)
-				printProvenance(cmd, len(countItems), prov)
+			_ = json.Valid
+			_ = os.Stderr
+			_ = prov
+			if flags.quiet {
+				return nil
 			}
-			// For JSON output, wrap with provenance envelope before passing through flags.
-			// --select wins over --compact when both are set; --compact only runs when
-			// no explicit fields were requested. Explicit format flags (--csv, --quiet,
-			// --plain) opt out of the auto-JSON path so piped consumers that asked for
-			// a non-JSON format reach the standard pipeline below.
-			if flags.asJSON || (!isTerminal(cmd.OutOrStdout()) && !flags.csv && !flags.quiet && !flags.plain) {
-				filtered := data
-				if flags.selectFields != "" {
-					filtered = filterFields(filtered, flags.selectFields)
-				} else if flags.compact {
-					filtered = compactFields(filtered)
-				}
-				wrapped, wrapErr := wrapWithProvenance(filtered, prov)
-				if wrapErr != nil {
-					return wrapErr
-				}
-				return printOutput(cmd.OutOrStdout(), wrapped, true)
+			if flags.asJSON || flags.csv || flags.compact || flags.plain || flags.selectFields != "" {
+				return fmt.Errorf("binary response cannot be rendered as structured output; redirect stdout or use --deliver file:<path>")
 			}
-			// For all other output modes (table, csv, plain, quiet), use the standard pipeline
-			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var items []map[string]any
-				if json.Unmarshal(data, &items) == nil && len(items) > 0 {
-					if err := printAutoTable(cmd.OutOrStdout(), items); err != nil {
-						return err
-					}
-					if len(items) >= 25 {
-						fmt.Fprintf(os.Stderr, "\nShowing %d results. To narrow: add --limit, --json --select, or filter flags.\n", len(items))
-					}
-					return nil
-				}
-			}
-			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
+			_, err = cmd.OutOrStdout().Write(data)
+			return err
 		},
 	}
 

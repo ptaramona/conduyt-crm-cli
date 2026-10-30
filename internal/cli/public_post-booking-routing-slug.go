@@ -13,6 +13,7 @@ import (
 )
 
 func newPublicPostBookingRoutingSlugCmd(flags *rootFlags) *cobra.Command {
+	var bodyAnswers string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -51,6 +52,9 @@ func newPublicPostBookingRoutingSlugCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAnswers != "" {
+					bodyMap["answers"] = bodyAnswers
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +199,7 @@ func newPublicPostBookingRoutingSlugCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAnswers, "answers", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

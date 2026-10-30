@@ -43,9 +43,33 @@ func dealsListBranches(t *testing.T, file string) []*jsonschema.Resolved {
 	if !ok || len(branches) < 2 {
 		t.Fatalf("%s: GET /deals 200 has no oneOf with at least two branches", file)
 	}
-	defs := dig(doc, "components", "schemas")
+	all, _ := dig(doc, "components", "schemas").(map[string]any)
 	var out []*jsonschema.Resolved
 	for i, b := range branches {
+		// only the components this branch reaches: the full public document carries patterns (lookaheads) that Go's
+		// regexp, and so the resolver, cannot compile, in schemas no GET /deals branch uses (reprint637)
+		defs := map[string]any{}
+		var walk func(v any)
+		walk = func(v any) {
+			switch x := v.(type) {
+			case map[string]any:
+				if ref, ok := x["$ref"].(string); ok && strings.HasPrefix(ref, "#/components/schemas/") {
+					name := strings.TrimPrefix(ref, "#/components/schemas/")
+					if _, seen := defs[name]; !seen && all[name] != nil {
+						defs[name] = all[name]
+						walk(all[name])
+					}
+				}
+				for _, e := range x {
+					walk(e)
+				}
+			case []any:
+				for _, e := range x {
+					walk(e)
+				}
+			}
+		}
+		walk(b)
 		j, err := json.Marshal(map[string]any{"$defs": defs, "allOf": []any{b}})
 		if err != nil {
 			t.Fatal(err)
@@ -87,9 +111,10 @@ func TestDealsListOKBranchesAreMutuallyExclusive(t *testing.T) {
 		if n := matchingBranches(t, branches, specPaginatedAnswer); n != 1 {
 			t.Errorf("%s: a paginated answer matches %d branches, want exactly 1", f, n)
 		}
-		// a half-and-half envelope matches neither branch
-		if n := matchingBranches(t, branches, `{"data":{"data":[],"meta":{"page":1},"columns":[]}}`); n != 0 {
-			t.Errorf("%s: an answer with both data.data and data.columns matches %d branches, want 0", f, n)
+		// a half-and-half envelope never matches two branches (reprint637: the public document's list branch does not forbid
+		// extra keys, so it may match that one; it must never also match the snapshot branch)
+		if n := matchingBranches(t, branches, `{"data":{"data":[],"meta":{"page":1},"columns":[]}}`); n > 1 {
+			t.Errorf("%s: an answer with both data.data and data.columns matches %d branches, want at most 1", f, n)
 		}
 	}
 }

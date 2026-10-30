@@ -15,6 +15,7 @@ func newMailboxGetConnectionsCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "get-connections",
+		Aliases:     []string{"list"},
 		Short:       "List mailbox connections",
 		Example:     "  conduyt-crm-pp-cli mailbox get-connections",
 		Annotations: map[string]string{"pp:endpoint": "mailbox.get-connections", "pp:method": "GET", "pp:path": "/mailbox/connections", "mcp:read-only": "true"},

@@ -13,15 +13,25 @@ import (
 )
 
 func newDialerPostQueueReleaseCmd(flags *rootFlags) *cobra.Command {
+	var bodyLeaseId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-queue-release",
 		Short:       "Create / invoke dialer queue release",
-		Example:     "  conduyt-crm-pp-cli dialer post-queue-release",
+		Example:     "  conduyt-crm-pp-cli dialer post-queue-release --lease-id 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "dialer.post-queue-release", "pp:method": "POST", "pp:path": "/dialer/queue/release"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("lease-id") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "lease-id")
+				}
 			}
 			path := "/dialer/queue/release"
 			c, err := flags.newClient()
@@ -43,6 +53,9 @@ func newDialerPostQueueReleaseCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyLeaseId != "" {
+					bodyMap["leaseId"] = bodyLeaseId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +200,7 @@ func newDialerPostQueueReleaseCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyLeaseId, "lease-id", "", "Lease id")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

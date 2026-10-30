@@ -13,6 +13,13 @@ import (
 )
 
 func newPlaybooksPatchIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyDescription string
+	var bodyIsActive bool
+	var bodyName string
+	var bodySteps string
+	var bodyTimezone string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -37,6 +44,12 @@ func newPlaybooksPatchIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +64,25 @@ func newPlaybooksPatchIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if cmd.Flags().Changed("is-active") {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodySteps != "" {
+					var parsedSteps any
+					if err := json.Unmarshal([]byte(bodySteps), &parsedSteps); err != nil {
+						return fmt.Errorf("parsing --steps JSON: %w", err)
+					}
+					bodyMap["steps"] = parsedSteps
+				}
+				if bodyTimezone != "" {
+					bodyMap["timezone"] = bodyTimezone
+				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +227,13 @@ func newPlaybooksPatchIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
+	cmd.Flags().BoolVar(&bodyIsActive, "is-active", false, "Is active")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodySteps, "steps", "", "Steps")
+	cmd.Flags().StringVar(&bodyTimezone, "timezone", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

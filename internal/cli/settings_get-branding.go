@@ -15,7 +15,7 @@ func newSettingsGetBrandingCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "get-branding",
-		Short:       "Get white-label branding settings",
+		Short:       "The white-label branding (name, logo, favicon, colours, custom domain) and the account's Company details",
 		Example:     "  conduyt-crm-pp-cli settings get-branding",
 		Annotations: map[string]string{"pp:endpoint": "settings.get-branding", "pp:method": "GET", "pp:path": "/settings/branding", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {

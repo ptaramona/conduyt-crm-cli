@@ -10,14 +10,18 @@ import (
 func newSmartViewsCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "smart-views",
-		Short:       "List, create, update, and delete smart views",
+		Short:       "List, get, create, update, and delete smart views",
 		Hidden:      true,
 		Annotations: map[string]string{"mcp:read-only": "true", "pp:typed-exit-codes": "0,2"},
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
 	cmd.AddCommand(newSmartViewsDeleteIdCmd(flags))
+	cmd.AddCommand(newSmartViewsGetDialOrderCmd(flags))
+	cmd.AddCommand(newSmartViewsGetIdCmd(flags))
+	cmd.AddCommand(newSmartViewsGetVersionCmd(flags))
 	cmd.AddCommand(newSmartViewsListCmd(flags))
+	cmd.AddCommand(newSmartViewsPatchDialOrderCmd(flags))
 	cmd.AddCommand(newSmartViewsPatchIdCmd(flags))
 	cmd.AddCommand(newSmartViewsPatchReorderCmd(flags))
 	cmd.AddCommand(newSmartViewsPostCmd(flags))

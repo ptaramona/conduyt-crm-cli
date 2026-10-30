@@ -12,6 +12,7 @@ import (
 )
 
 func newSchemaGetApiCatalogCmd(flags *rootFlags) *cobra.Command {
+	var flagDomain string
 
 	cmd := &cobra.Command{
 		Use:         "get-api-catalog",
@@ -26,6 +27,9 @@ func newSchemaGetApiCatalogCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDomain != "" {
+				params["domain"] = formatCLIParamValue(flagDomain)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "schema", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -74,6 +78,7 @@ func newSchemaGetApiCatalogCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagDomain, "domain", "", "Query parameter read by this route.")
 
 	return cmd
 }

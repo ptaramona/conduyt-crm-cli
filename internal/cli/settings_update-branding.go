@@ -18,12 +18,21 @@ func newSettingsUpdateBrandingCmd(flags *rootFlags) *cobra.Command {
 	var bodyBrandLogo string
 	var bodyBrandName string
 	var bodyBrandPrimaryColor string
+	var bodyCompanyDetailsAddress string
+	var bodyCompanyDetailsDisclaimer string
+	var bodyCompanyDetailsFacebook string
+	var bodyCompanyDetailsInstagram string
+	var bodyCompanyDetailsLinkedin string
+	var bodyCompanyDetailsPhone string
+	var bodyCompanyDetailsWebsite string
+	var bodyCompanyDetailsYoutube string
 	var bodyCustomDomain string
+	var bodyExpectedSettingsRevision string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "update-branding",
-		Short:       "Update white-label branding",
+		Short:       "Two shapes. (1) The white-label fields (JSON or multipart with a logo / favicon upload); needs the premium plan.",
 		Example:     "  conduyt-crm-pp-cli settings update-branding",
 		Annotations: map[string]string{"pp:endpoint": "settings.update-branding", "pp:method": "PATCH", "pp:path": "/settings/branding"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -64,8 +73,41 @@ func newSettingsUpdateBrandingCmd(flags *rootFlags) *cobra.Command {
 				if bodyBrandPrimaryColor != "" {
 					bodyMap["brandPrimaryColor"] = bodyBrandPrimaryColor
 				}
+				{
+					nestedCompanyDetails := map[string]any{}
+					if bodyCompanyDetailsAddress != "" {
+						nestedCompanyDetails["address"] = bodyCompanyDetailsAddress
+					}
+					if bodyCompanyDetailsDisclaimer != "" {
+						nestedCompanyDetails["disclaimer"] = bodyCompanyDetailsDisclaimer
+					}
+					if bodyCompanyDetailsFacebook != "" {
+						nestedCompanyDetails["facebook"] = bodyCompanyDetailsFacebook
+					}
+					if bodyCompanyDetailsInstagram != "" {
+						nestedCompanyDetails["instagram"] = bodyCompanyDetailsInstagram
+					}
+					if bodyCompanyDetailsLinkedin != "" {
+						nestedCompanyDetails["linkedin"] = bodyCompanyDetailsLinkedin
+					}
+					if bodyCompanyDetailsPhone != "" {
+						nestedCompanyDetails["phone"] = bodyCompanyDetailsPhone
+					}
+					if bodyCompanyDetailsWebsite != "" {
+						nestedCompanyDetails["website"] = bodyCompanyDetailsWebsite
+					}
+					if bodyCompanyDetailsYoutube != "" {
+						nestedCompanyDetails["youtube"] = bodyCompanyDetailsYoutube
+					}
+					if len(nestedCompanyDetails) > 0 {
+						bodyMap["companyDetails"] = nestedCompanyDetails
+					}
+				}
 				if bodyCustomDomain != "" {
 					bodyMap["customDomain"] = bodyCustomDomain
+				}
+				if bodyExpectedSettingsRevision != "" {
+					bodyMap["expectedSettingsRevision"] = bodyExpectedSettingsRevision
 				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
@@ -216,7 +258,16 @@ func newSettingsUpdateBrandingCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyBrandLogo, "brand-logo", "", "Brand logo")
 	cmd.Flags().StringVar(&bodyBrandName, "brand-name", "", "Brand name")
 	cmd.Flags().StringVar(&bodyBrandPrimaryColor, "brand-primary-color", "", "Hex color e.g. '#2E3B5B'")
+	cmd.Flags().StringVar(&bodyCompanyDetailsAddress, "company-details-address", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCompanyDetailsDisclaimer, "company-details-disclaimer", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCompanyDetailsFacebook, "company-details-facebook", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCompanyDetailsInstagram, "company-details-instagram", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCompanyDetailsLinkedin, "company-details-linkedin", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCompanyDetailsPhone, "company-details-phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCompanyDetailsWebsite, "company-details-website", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCompanyDetailsYoutube, "company-details-youtube", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyCustomDomain, "custom-domain", "", "Custom domain")
+	cmd.Flags().StringVar(&bodyExpectedSettingsRevision, "expected-settings-revision", "", "Required with companyDetails. The settingsRevision GET /settings/branding returned with the values you edited.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

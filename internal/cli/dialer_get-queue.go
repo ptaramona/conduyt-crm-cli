@@ -12,6 +12,10 @@ import (
 )
 
 func newDialerGetQueueCmd(flags *rootFlags) *cobra.Command {
+	var flagAgentId string
+	var flagLimit int
+	var flagSmartViewId string
+	var flagAll bool
 
 	cmd := &cobra.Command{
 		Use:         "get-queue",
@@ -24,8 +28,11 @@ func newDialerGetQueueCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dialer", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "dialer", path, map[string]string{
+				"agentId":     formatCLIParamValue(flagAgentId),
+				"limit":       formatCLIParamValue(flagLimit),
+				"smartViewId": formatCLIParamValue(flagSmartViewId),
+			}, nil, flagAll, "", "offset", "limit", 25, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -73,6 +80,10 @@ func newDialerGetQueueCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().StringVar(&flagAgentId, "agent-id", "", "Query parameter read by this route.")
+	cmd.Flags().IntVar(&flagLimit, "limit", 25, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSmartViewId, "smart-view-id", "", "Query parameter read by this route.")
+	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
 }

@@ -96,7 +96,12 @@ These capabilities aren't available in any other tool for this API.
 
 **account** — Manage account
 
-- `conduyt-crm-pp-cli account` — List account readiness
+- `conduyt-crm-pp-cli account get-readiness` — List account readiness
+- `conduyt-crm-pp-cli account post-company-name` — The one screen after a one-click Google or Microsoft sign-up ('What's your company called?').
+
+**account-exports** — Manage account exports
+
+- `conduyt-crm-pp-cli account-exports` — List account-exports
 
 **accounts** — Manage accounts
 
@@ -109,12 +114,16 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli activities get-id` — Get activities id
 - `conduyt-crm-pp-cli activities list` — List activities
 
+**activity** — Manage activity
+
+- `conduyt-crm-pp-cli activity` — Streams the activities the activity list would answer for the same filters (the same visibility
+
 **admin** — Super-admin account management and impersonation
 
 - `conduyt-crm-pp-cli admin clean-test-accounts` — Delete test accounts
 - `conduyt-crm-pp-cli admin clean-test-data` — Clean test data from the system
 - `conduyt-crm-pp-cli admin impersonate` — Impersonate a user (super-admin)
-- `conduyt-crm-pp-cli admin list-accounts` — List all accounts (super-admin)
+- `conduyt-crm-pp-cli admin list-accounts` — Every account with the columns the admin console needs.
 - `conduyt-crm-pp-cli admin stop-impersonate` — Stop impersonating
 - `conduyt-crm-pp-cli admin toggle-comp` — Toggle comp (free) status for an account
 
@@ -124,12 +133,16 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli ai compose-email` — AI-assisted email composition
 - `conduyt-crm-pp-cli ai deal-insights` — AI-generated deal insights and recommendations
 - `conduyt-crm-pp-cli ai enrich-contact` — AI-powered contact data enrichment
+- `conduyt-crm-pp-cli ai get-actions-runs-id` — Get ai actions runs id
+- `conduyt-crm-pp-cli ai get-agenda` — List ai agenda
 - `conduyt-crm-pp-cli ai get-daily-brief` — List ai daily-brief
 - `conduyt-crm-pp-cli ai get-feed` — List ai feed
 - `conduyt-crm-pp-cli ai get-insights` — List ai insights
 - `conduyt-crm-pp-cli ai get-next-actions` — List ai next-actions
 - `conduyt-crm-pp-cli ai get-usage` — List ai usage
 - `conduyt-crm-pp-cli ai improve-email` — AI-assisted email improvement
+- `conduyt-crm-pp-cli ai post-actions` — Create / invoke ai actions
+- `conduyt-crm-pp-cli ai post-actions-execute` — Create / invoke ai actions execute
 - `conduyt-crm-pp-cli ai post-conversation-intelligence` — Create / invoke ai conversation-intelligence
 - `conduyt-crm-pp-cli ai post-insights` — Create / invoke ai insights
 - `conduyt-crm-pp-cli ai post-tasks` — Create / invoke ai tasks
@@ -139,6 +152,7 @@ These capabilities aren't available in any other tool for this API.
 
 - `conduyt-crm-pp-cli api-keys check` — Returns tier, scopes, rate limit, IP allowlist, and usage for the API key used on the request.
 - `conduyt-crm-pp-cli api-keys create` — Returns the full key exactly once. Store it securely.
+- `conduyt-crm-pp-cli api-keys get-id` — Get api-keys id
 - `conduyt-crm-pp-cli api-keys list` — Returns API key metadata. Never returns the full key.
 - `conduyt-crm-pp-cli api-keys revoke` — Revoke an API key
 - `conduyt-crm-pp-cli api-keys update` — Update key name, tier, scopes, IP allowlist, rate limit, and optional expiry. API-key auth cannot manage API keys.
@@ -159,6 +173,13 @@ These capabilities aren't available in any other tool for this API.
 
 - `conduyt-crm-pp-cli automation-executions get` — Get execution details by ID
 - `conduyt-crm-pp-cli automation-executions list` — List automation execution logs
+
+**automation-folders** — Manage automation folders
+
+- `conduyt-crm-pp-cli automation-folders delete-id` — Delete automation-folders id
+- `conduyt-crm-pp-cli automation-folders get` — List automation-folders
+- `conduyt-crm-pp-cli automation-folders patch-id` — Update automation-folders id
+- `conduyt-crm-pp-cli automation-folders post` — Create / invoke automation-folders
 
 **automations** — Workflow automations (native + n8n), publishing, analytics
 
@@ -228,11 +249,12 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli bulk edit-contacts` — Bulk edit contact fields
 - `conduyt-crm-pp-cli bulk edit-deals` — Bulk edit deal fields
 - `conduyt-crm-pp-cli bulk get-status` — Get bulk operation status
+- `conduyt-crm-pp-cli bulk post-contacts-delete-matching` — Create / invoke bulk contacts delete-matching
 - `conduyt-crm-pp-cli bulk post-contacts-dnc` — Create / invoke bulk contacts dnc
 - `conduyt-crm-pp-cli bulk post-contacts-untag` — Create / invoke bulk contacts untag
 - `conduyt-crm-pp-cli bulk tag-contacts` — Bulk add/remove tags on contacts
 - `conduyt-crm-pp-cli bulk update-contacts` — Bulk update contacts with field values
-- `conduyt-crm-pp-cli bulk update-deals` — Bulk update deals
+- `conduyt-crm-pp-cli bulk update-deals` — Updates up to 100 deals in one request.
 
 **bulk-operations** — Bulk update, delete, and tag contacts and deals
 
@@ -248,10 +270,8 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli calendar get-connection` — Get a calendar connection by ID
 - `conduyt-crm-pp-cli calendar get-event` — Get a synced calendar event
 - `conduyt-crm-pp-cli calendar get-health` — List calendar health
-- `conduyt-crm-pp-cli calendar google-callback` — Google Calendar OAuth callback
 - `conduyt-crm-pp-cli calendar list-connections` — List calendar connections
 - `conduyt-crm-pp-cli calendar list-events` — List synced calendar events
-- `conduyt-crm-pp-cli calendar microsoft-callback` — Microsoft Calendar OAuth callback
 - `conduyt-crm-pp-cli calendar sync` — Trigger manual calendar sync
 - `conduyt-crm-pp-cli calendar update-event` — Update a synced calendar event
 - `conduyt-crm-pp-cli calendar webhook-google` — Google Calendar push notification webhook
@@ -264,6 +284,24 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli calendars list` — List internal calendars
 - `conduyt-crm-pp-cli calendars update` — Update a calendar
 
+**call-flows** — Manage call flows
+
+- `conduyt-crm-pp-cli call-flows delete-functions-id` — Delete call-flows functions id
+- `conduyt-crm-pp-cli call-flows delete-id` — Delete call-flows id
+- `conduyt-crm-pp-cli call-flows get` — List call-flows
+- `conduyt-crm-pp-cli call-flows get-functions` — List call-flows functions
+- `conduyt-crm-pp-cli call-flows get-functions-id` — Get call-flows functions id
+- `conduyt-crm-pp-cli call-flows get-id` — Get call-flows id
+- `conduyt-crm-pp-cli call-flows get-numbers` — List call-flows numbers
+- `conduyt-crm-pp-cli call-flows get-roster` — List call-flows roster
+- `conduyt-crm-pp-cli call-flows patch-functions-id` — Update call-flows functions id
+- `conduyt-crm-pp-cli call-flows patch-id` — Update call-flows id
+- `conduyt-crm-pp-cli call-flows post` — Create / invoke call-flows
+- `conduyt-crm-pp-cli call-flows post-audio` — Create / invoke call-flows audio
+- `conduyt-crm-pp-cli call-flows post-functions` — Create / invoke call-flows functions
+- `conduyt-crm-pp-cli call-flows post-functions-id-test` — Create / invoke call-flows functions id test
+- `conduyt-crm-pp-cli call-flows post-tombstones-release` — Create / invoke call-flows tombstones release
+
 **calls** — Call log management
 
 - `conduyt-crm-pp-cli calls count-unknown-callers` — Board #35. Needs `--line` and `--since` (RFC 3339 with Z or an explicit offset).
@@ -271,6 +309,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli calls get` — Get a call by ID
 - `conduyt-crm-pp-cli calls link call-to-contact` — Board #35, the unknown-caller prompt's 'Search a contact'. Link a contact-less call to a contact (`<id> --contact-id <uuid> [--attach-number] [--dry-run]`).
 - `conduyt-crm-pp-cli calls list` — List call records
+- `conduyt-crm-pp-cli calls post-voice-drop` — Create / invoke calls voice-drop
 - `conduyt-crm-pp-cli calls update` — Update a call record (e.g., add notes)
 
 **chat** — Internal team chat channels and messages
@@ -278,13 +317,40 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli chat add-member` — Add a member to a channel
 - `conduyt-crm-pp-cli chat add-reaction` — Add a reaction to a message
 - `conduyt-crm-pp-cli chat create-channel` — Create a chat channel
+- `conduyt-crm-pp-cli chat delete-agents-id` — Delete chat agents id
 - `conduyt-crm-pp-cli chat delete-message` — Delete a chat message
 - `conduyt-crm-pp-cli chat edit-message` — Edit a chat message
+- `conduyt-crm-pp-cli chat get-agents` — List chat agents
+- `conduyt-crm-pp-cli chat get-agents-me-inbox` — List chat agents me inbox
+- `conduyt-crm-pp-cli chat get-channels-id-notifications` — Get chat channels id notifications
+- `conduyt-crm-pp-cli chat get-channels-id-pins` — Get chat channels id pins
 - `conduyt-crm-pp-cli chat get-channels-id-upload` — Get chat channels id upload
+- `conduyt-crm-pp-cli chat get-floor` — List chat floor
 - `conduyt-crm-pp-cli chat get-message` — Get a chat message by ID
+- `conduyt-crm-pp-cli chat get-messages-message-id-location` — Get chat messages messageId location
+- `conduyt-crm-pp-cli chat get-presence` — List chat presence
+- `conduyt-crm-pp-cli chat get-search` — List chat search
 - `conduyt-crm-pp-cli chat get-typing-status` — Get who is currently typing
+- `conduyt-crm-pp-cli chat get-unread` — List chat unread
 - `conduyt-crm-pp-cli chat list-channels` — List chat channels
 - `conduyt-crm-pp-cli chat list-messages` — List messages in a channel
+- `conduyt-crm-pp-cli chat patch-agents-id` — Update chat agents id
+- `conduyt-crm-pp-cli chat patch-channels-id-agents` — Update chat channels id agents
+- `conduyt-crm-pp-cli chat patch-channels-id-notifications` — Update chat channels id notifications
+- `conduyt-crm-pp-cli chat post-agents` — Create / invoke chat agents
+- `conduyt-crm-pp-cli chat post-agents-id-pair-code` — Create / invoke chat agents id pair-code
+- `conduyt-crm-pp-cli chat post-agents-me-heartbeat` — Create / invoke chat agents me heartbeat
+- `conduyt-crm-pp-cli chat post-agents-me-inbox-ack` — Create / invoke chat agents me inbox ack
+- `conduyt-crm-pp-cli chat post-agents-me-inbox-claim` — Create / invoke chat agents me inbox claim
+- `conduyt-crm-pp-cli chat post-agents-pair` — Create / invoke chat agents pair
+- `conduyt-crm-pp-cli chat post-ask` — Create / invoke chat ask
+- `conduyt-crm-pp-cli chat post-celebrate` — Create / invoke chat celebrate
+- `conduyt-crm-pp-cli chat post-channels-id-messages-message-id-claim` — Create / invoke chat channels id messages messageId claim
+- `conduyt-crm-pp-cli chat post-channels-id-messages-message-id-handoff` — Create / invoke chat channels id messages messageId handoff
+- `conduyt-crm-pp-cli chat post-channels-id-messages-message-id-pin` — Create / invoke chat channels id messages messageId pin
+- `conduyt-crm-pp-cli chat post-channels-id-upload-finalize` — Create / invoke chat channels id upload finalize
+- `conduyt-crm-pp-cli chat post-channels-id-upload-intent` — Create / invoke chat channels id upload intent
+- `conduyt-crm-pp-cli chat post-handoff` — Create / invoke chat handoff
 - `conduyt-crm-pp-cli chat remove-member` — Remove a member from a channel
 - `conduyt-crm-pp-cli chat remove-reaction` — Remove a reaction from a message
 - `conduyt-crm-pp-cli chat send-message` — Send a message in a channel
@@ -307,16 +373,12 @@ These capabilities aren't available in any other tool for this API.
 
 - `conduyt-crm-pp-cli conduyt-auth accept-invite` — Accept a team invitation
 - `conduyt-crm-pp-cli conduyt-auth change-password` — Change password (authenticated)
+- `conduyt-crm-pp-cli conduyt-auth confirm-sso-signup` — The consent (a browser flow, before any session).
 - `conduyt-crm-pp-cli conduyt-auth delete-sessions` — Delete auth sessions
 - `conduyt-crm-pp-cli conduyt-auth forgot-password` — Request a password reset email
-- `conduyt-crm-pp-cli conduyt-auth get-google` — List auth google
-- `conduyt-crm-pp-cli conduyt-auth get-google-callback` — List auth google callback
 - `conduyt-crm-pp-cli conduyt-auth get-login-history` — List auth login-history
-- `conduyt-crm-pp-cli conduyt-auth get-me` — Get current authenticated user
+- `conduyt-crm-pp-cli conduyt-auth get-me` — Identical to GET /users/me, byte for byte (that route re-exports this handler) — including `data.account.name`.
 - `conduyt-crm-pp-cli conduyt-auth get-mfa-setup` — List auth mfa setup
-- `conduyt-crm-pp-cli conduyt-auth get-microsoft` — List auth microsoft
-- `conduyt-crm-pp-cli conduyt-auth get-microsoft-callback` — List auth microsoft callback
-- `conduyt-crm-pp-cli conduyt-auth get-saml-account-slug` — Get auth saml accountSlug
 - `conduyt-crm-pp-cli conduyt-auth get-saml-account-slug-metadata` — Get auth saml accountSlug metadata
 - `conduyt-crm-pp-cli conduyt-auth get-sandbox-key` — List auth sandbox-key
 - `conduyt-crm-pp-cli conduyt-auth get-security-center` — List auth security-center
@@ -328,11 +390,23 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli conduyt-auth post-mfa-disable` — Create / invoke auth mfa disable
 - `conduyt-crm-pp-cli conduyt-auth post-mfa-setup` — Create / invoke auth mfa setup
 - `conduyt-crm-pp-cli conduyt-auth post-mfa-verify` — Create / invoke auth mfa verify
-- `conduyt-crm-pp-cli conduyt-auth post-saml-account-slug-acs` — Create / invoke auth saml accountSlug acs
 - `conduyt-crm-pp-cli conduyt-auth post-sandbox-key` — Create / invoke auth sandbox-key
+- `conduyt-crm-pp-cli conduyt-auth post-signup-events` — Used by the sign-up page before any session exists: one of signup_page_viewed, signup_form_started
+- `conduyt-crm-pp-cli conduyt-auth read-sso-signup-consent` — The consent screen's read (a browser flow, before any session).
 - `conduyt-crm-pp-cli conduyt-auth register`: Creates a new user and account. Rate limited to 3 requests per hour per IP. Requires `--terms-accepted` (consent to the Terms of Service and Privacy Policy)
 - `conduyt-crm-pp-cli conduyt-auth reset-password` — Reset password with token
+- `conduyt-crm-pp-cli conduyt-auth start-google-signup` — The register page's one-click Google sign-up start (a browser flow, before any session
+- `conduyt-crm-pp-cli conduyt-auth start-microsoft-signup` — The register page's one-click Microsoft sign-up start (a browser flow, before any session
 - `conduyt-crm-pp-cli conduyt-auth switch-account` — Switch to a different account
+
+**conduyt-help** — Manage conduyt help
+
+- `conduyt-crm-pp-cli conduyt-help get-guides` — List help guides
+- `conduyt-crm-pp-cli conduyt-help get-guides-slug` — Get help guides slug
+- `conduyt-crm-pp-cli conduyt-help get-guides-slug-feedback` — Get help guides slug feedback
+- `conduyt-crm-pp-cli conduyt-help post-guides-slug-feedback` — Create / invoke help guides slug feedback
+- `conduyt-crm-pp-cli conduyt-help post-guides-slug-open` — Create / invoke help guides slug open
+- `conduyt-crm-pp-cli conduyt-help post-suggestions` — Create / invoke help suggestions
 
 **confirm** — Manage confirm
 
@@ -353,6 +427,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli imports duplicate-proposals get-imports-id <importId> [--page] [--per-page]` — The duplicate proposals one import raised on the records it created, every status, oldest first; read-only.
 - `conduyt-crm-pp-cli contacts find-duplicate` — Find duplicate contacts
 - `conduyt-crm-pp-cli contacts get` — Get a contact by ID
+- `conduyt-crm-pp-cli contacts get-count` — The total of a contacts list, asked separately from its rows (GET /api/v1/contacts answers meta.
 - `conduyt-crm-pp-cli contacts get-dnc-status` — List contacts dnc-status
 - `conduyt-crm-pp-cli contacts get-geo` — List contacts geo
 - `conduyt-crm-pp-cli contacts get-import-template` — Download CSV import template
@@ -363,7 +438,8 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli contacts post-ai-import` — Create / invoke contacts ai-import
 - `conduyt-crm-pp-cli contacts post-dry-run` — Create / invoke contacts dry-run
 - `conduyt-crm-pp-cli contacts post-verify-line-type` — Create / invoke contacts verify-line-type
-- `conduyt-crm-pp-cli contacts update` — Update a contact
+- `conduyt-crm-pp-cli contacts score-batch` — Batch twin of GET /contacts/{id}/score, used by the contacts list so a page makes one request instead of one per row.
+- `conduyt-crm-pp-cli contacts update` — Deprecated on contacts (2026-10-13): `customFields.oes_number` and `customFields.dpp_oes_raw`.
 
 **conversations** — Threaded conversation view per contact
 
@@ -383,7 +459,15 @@ These capabilities aren't available in any other tool for this API.
 
 **dashboard** — Dashboard summary metrics
 
-- `conduyt-crm-pp-cli dashboard` — Get dashboard summary metrics
+- `conduyt-crm-pp-cli dashboard` — The counts and totals are cached per server instance for 60 seconds per account, role and visibility scope
+
+**dashboards** — Dashboard summary metrics
+
+- `conduyt-crm-pp-cli dashboards delete-id` — Delete dashboards id
+- `conduyt-crm-pp-cli dashboards get` — List dashboards
+- `conduyt-crm-pp-cli dashboards get-id` — Get dashboards id
+- `conduyt-crm-pp-cli dashboards patch-id` — Update dashboards id
+- `conduyt-crm-pp-cli dashboards post` — Create / invoke dashboards
 
 **data-model** — Manage data model
 
@@ -397,7 +481,8 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli deals get` — Get a deal by ID
 - `conduyt-crm-pp-cli deals get-export` — List deals export
 - `conduyt-crm-pp-cli deals get-forecast` — List deals forecast
-- `conduyt-crm-pp-cli deals get-inspection` — List deals inspection
+- `conduyt-crm-pp-cli deals get-inspection` — The six Pipeline health checks (High-value idle, Stale in stage, Unassigned, Needs next action, No close date
+- `conduyt-crm-pp-cli deals get-lead-id` — Resolves a Lead ID (the first 8 to 32 hex characters of a deal id or of a contact id, dashes optional, any case
 - `conduyt-crm-pp-cli deals get-views` — List deals views
 - `conduyt-crm-pp-cli deals get-views-id` — Get deals views id
 - `conduyt-crm-pp-cli deals list` — Returns deals with Kanban-optimized sort order (stage, sortOrder, then requested sort).
@@ -409,20 +494,27 @@ These capabilities aren't available in any other tool for this API.
 
 **dialer** — Click-to-call dialer via Twilio
 
+- `conduyt-crm-pp-cli dialer delete-call-id-participants-participant-sid` — Delete dialer call id participants participantSid
 - `conduyt-crm-pp-cli dialer delete-call-id-supervise` — Delete dialer call id supervise
+- `conduyt-crm-pp-cli dialer get-agent-statuses` — List dialer agent-statuses
 - `conduyt-crm-pp-cli dialer get-agents-status` — List dialer agents-status
+- `conduyt-crm-pp-cli dialer get-call-id` — Get dialer call id
 - `conduyt-crm-pp-cli dialer get-call-id-media` — Get dialer call id media
+- `conduyt-crm-pp-cli dialer get-call-id-participants` — Get dialer call id participants
+- `conduyt-crm-pp-cli dialer get-call-id-post-call` — Get dialer call id post-call
 - `conduyt-crm-pp-cli dialer get-calls` — List dialer calls
 - `conduyt-crm-pp-cli dialer get-calls-hourly` — List dialer calls hourly
 - `conduyt-crm-pp-cli dialer get-capabilities` — List dialer capabilities
 - `conduyt-crm-pp-cli dialer get-dispositions` — List dialer dispositions
 - `conduyt-crm-pp-cli dialer get-health` — List dialer health
-- `conduyt-crm-pp-cli dialer get-history` — Get recent call history
+- `conduyt-crm-pp-cli dialer get-history` — The Call History list, with search (`q`) and filters (`recorded_only`, `disposition`, `user_id`, `date_from`, `date_to`
 - `conduyt-crm-pp-cli dialer get-inbound-lookup` — List dialer inbound-lookup
 - `conduyt-crm-pp-cli dialer get-intelligence` — List dialer intelligence
 - `conduyt-crm-pp-cli dialer get-leaderboard` — List dialer leaderboard
 - `conduyt-crm-pp-cli dialer get-live-monitor` — List dialer live-monitor
+- `conduyt-crm-pp-cli dialer get-local-presence-resolve` — List dialer local-presence resolve
 - `conduyt-crm-pp-cli dialer get-queue` — List dialer queue
+- `conduyt-crm-pp-cli dialer get-queue-open` — List dialer queue open
 - `conduyt-crm-pp-cli dialer get-recordings` — List dialer recordings
 - `conduyt-crm-pp-cli dialer get-settings` — List dialer settings
 - `conduyt-crm-pp-cli dialer get-setup` — List dialer setup
@@ -432,21 +524,26 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli dialer get-token` — Get a Twilio browser token for click-to-call
 - `conduyt-crm-pp-cli dialer initiate-call` — Initiate an outbound call
 - `conduyt-crm-pp-cli dialer patch-call-id` — Update dialer call id
+- `conduyt-crm-pp-cli dialer patch-call-id-participants-participant-sid` — Update dialer call id participants participantSid
 - `conduyt-crm-pp-cli dialer patch-settings` — Update dialer settings
 - `conduyt-crm-pp-cli dialer post-call-eligibility` — Create / invoke dialer call eligibility
 - `conduyt-crm-pp-cli dialer post-call-id-ai-disposition` — Create / invoke dialer call id ai-disposition
+- `conduyt-crm-pp-cli dialer post-call-id-facetime-status` — Create / invoke dialer call id facetime-status
 - `conduyt-crm-pp-cli dialer post-call-id-hangup` — Create / invoke dialer call id hangup
 - `conduyt-crm-pp-cli dialer post-call-id-hold` — Create / invoke dialer call id hold
 - `conduyt-crm-pp-cli dialer post-call-id-mute` — Create / invoke dialer call id mute
+- `conduyt-crm-pp-cli dialer post-call-id-participants` — Create / invoke dialer call id participants
 - `conduyt-crm-pp-cli dialer post-call-id-record` — Create / invoke dialer call id record
 - `conduyt-crm-pp-cli dialer post-call-id-supervise` — Create / invoke dialer call id supervise
 - `conduyt-crm-pp-cli dialer post-call-id-transfer` — Create / invoke dialer call id transfer
 - `conduyt-crm-pp-cli dialer post-call-id-vm-drop` — Create / invoke dialer call id vm-drop
-- `conduyt-crm-pp-cli dialer post-conference-events` — Create / invoke dialer conference events
 - `conduyt-crm-pp-cli dialer post-heartbeat` — Create / invoke dialer heartbeat
+- `conduyt-crm-pp-cli dialer post-local-presence-sync` — Create / invoke dialer local-presence sync
 - `conduyt-crm-pp-cli dialer post-mirror-token` — Create / invoke dialer mirror-token
 - `conduyt-crm-pp-cli dialer post-queue-next` — Create / invoke dialer queue next
+- `conduyt-crm-pp-cli dialer post-queue-release` — Create / invoke dialer queue release
 - `conduyt-crm-pp-cli dialer post-queue-skip` — Create / invoke dialer queue skip
+- `conduyt-crm-pp-cli dialer post-queue-worked` — Create / invoke dialer queue worked
 - `conduyt-crm-pp-cli dialer post-setup-wire-inbound` — Create / invoke dialer setup wire-inbound
 - `conduyt-crm-pp-cli dialer post-status-log` — Create / invoke dialer status-log
 - `conduyt-crm-pp-cli dialer post-status-log-rollup` — Create / invoke dialer status-log rollup
@@ -493,48 +590,67 @@ These capabilities aren't available in any other tool for this API.
 
 **email** — Send individual and bulk emails
 
-- `conduyt-crm-pp-cli email send` — Send an email to a contact
+- `conduyt-crm-pp-cli email get-opt-out-list` — List email opt-out-list
+- `conduyt-crm-pp-cli email post-opt-out-list` — Create / invoke email opt-out-list
+- `conduyt-crm-pp-cli email post-opt-out-list-resubscribe` — Create / invoke email opt-out-list resubscribe
+- `conduyt-crm-pp-cli email send` — Sends one email through the account's connected Resend domain and logs it as a Message row linked to the contact.
 - `conduyt-crm-pp-cli email send-bulk` — Send bulk emails
 
 **email-domains** — Custom email domain verification (Resend)
 
 - `conduyt-crm-pp-cli email-domains add` — Add a custom email domain
+- `conduyt-crm-pp-cli email-domains delete-reply-capture` — Delete email-domains reply-capture
 - `conduyt-crm-pp-cli email-domains get` — Get email domain configuration
+- `conduyt-crm-pp-cli email-domains get-reply-capture` — List email-domains reply-capture
 - `conduyt-crm-pp-cli email-domains get-status` — List email-domains status
+- `conduyt-crm-pp-cli email-domains post-reply-capture` — Create / invoke email-domains reply-capture
+- `conduyt-crm-pp-cli email-domains post-reply-capture-verify` — Create / invoke email-domains reply-capture verify
 - `conduyt-crm-pp-cli email-domains remove` — Remove email domain
 - `conduyt-crm-pp-cli email-domains update` — Update email domain settings
 - `conduyt-crm-pp-cli email-domains verify` — Verify DNS configuration for email domain
 
+**email-signature** — Manage email signature
+
+- `conduyt-crm-pp-cli email-signature` — The 16 built-in designs and the 20 copied-style designs (the public generator's template file), each with its own accent
+
 **emails** — Send individual and bulk emails
 
-- `conduyt-crm-pp-cli emails create-sequence` — Create an email sequence
-- `conduyt-crm-pp-cli emails create-template` — Create an email template
+- `conduyt-crm-pp-cli emails create-sequence` — One model for Email and SMS sequences.
+- `conduyt-crm-pp-cli emails create-template` — Email templates built in the editor keep their builder state in hidden markers
 - `conduyt-crm-pp-cli emails delete-template` — Delete an email template
 - `conduyt-crm-pp-cli emails enroll-in-sequence` — Enroll contacts in a sequence
 - `conduyt-crm-pp-cli emails get-health` — List emails health
 - `conduyt-crm-pp-cli emails get-sequence` — Get an email sequence by ID
 - `conduyt-crm-pp-cli emails get-sequence-stats` — Get sequence performance stats
+- `conduyt-crm-pp-cli emails get-sequences-senders` — List emails sequences senders
 - `conduyt-crm-pp-cli emails get-template` — Get an email template by ID
 - `conduyt-crm-pp-cli emails get-templates-id-usage` — Get emails templates id usage
 - `conduyt-crm-pp-cli emails list` — List email messages
 - `conduyt-crm-pp-cli emails list-sequence-enrollments` — List enrollments for a sequence
 - `conduyt-crm-pp-cli emails list-sequences` — List email sequences
 - `conduyt-crm-pp-cli emails list-templates` — List email templates
+- `conduyt-crm-pp-cli emails post-sequences-id-pick-from-list` — Create / invoke emails sequences id pick-from-list
 - `conduyt-crm-pp-cli emails post-sequences-id-preflight` — Create / invoke emails sequences id preflight
 - `conduyt-crm-pp-cli emails test-send-template` — Send a test email from a template
 - `conduyt-crm-pp-cli emails unenroll-from-sequence` — Unenroll contacts from a sequence
-- `conduyt-crm-pp-cli emails update-sequence` — Update an email sequence
-- `conduyt-crm-pp-cli emails update-template` — Update an email template
+- `conduyt-crm-pp-cli emails update-sequence` — Any field but `type` (400 when sent).
+- `conduyt-crm-pp-cli emails update-template` — Email templates built in the editor keep their builder state in hidden markers
 
 **errors** — Manage errors
 
 - `conduyt-crm-pp-cli errors` — Create / invoke errors log
+
+**feature-interest** — Manage feature interest
+
+- `conduyt-crm-pp-cli feature-interest` — Create / invoke feature-interest
 
 **files** — File uploads and attachments
 
 - `conduyt-crm-pp-cli files create-record` — Create a file attachment record
 - `conduyt-crm-pp-cli files delete` — Delete a file attachment
 - `conduyt-crm-pp-cli files list` — List file attachments
+- `conduyt-crm-pp-cli files post-upload-finalize` — Create / invoke files upload finalize
+- `conduyt-crm-pp-cli files post-upload-intent` — Create / invoke files upload intent
 - `conduyt-crm-pp-cli files upload` — Upload a file
 
 **forms** — Lead capture forms and submissions
@@ -571,23 +687,39 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli imports get-users` — List imports users
 - `conduyt-crm-pp-cli imports list` — List import jobs
 - `conduyt-crm-pp-cli imports post-preflight` — Create / invoke imports preflight
+- `conduyt-crm-pp-cli imports post-upload-url` — Create / invoke imports upload-url
 - `conduyt-crm-pp-cli imports upload-file` — Upload a CSV file for import
 
 **integrations** — Third-party integrations (Zapier, etc.)
 
 - `conduyt-crm-pp-cli integrations connect` — Connect an integration
+- `conduyt-crm-pp-cli integrations create-form-intake` — Creates a per-form intake address.
 - `conduyt-crm-pp-cli integrations create-zapier-subscription` — Create a Zapier webhook subscription
 - `conduyt-crm-pp-cli integrations delete-zapier-subscription` — Delete a Zapier subscription
 - `conduyt-crm-pp-cli integrations disconnect` — Disconnect an integration
+- `conduyt-crm-pp-cli integrations get-calendly-event-types` — List integrations calendly event-types
+- `conduyt-crm-pp-cli integrations get-calendly-status` — List integrations calendly status
+- `conduyt-crm-pp-cli integrations get-form-intake-status` — Whether the account has any ACTIVE WordPress forms intake address, and how many.
 - `conduyt-crm-pp-cli integrations get-health` — List integrations health
+- `conduyt-crm-pp-cli integrations get-mailchimp-audiences` — List integrations mailchimp audiences
+- `conduyt-crm-pp-cli integrations get-mailchimp-settings` — List integrations mailchimp settings
 - `conduyt-crm-pp-cli integrations get-slack-channels` — List integrations slack channels
-- `conduyt-crm-pp-cli integrations get-slack-oauth-callback` — List integrations slack oauth callback
-- `conduyt-crm-pp-cli integrations get-slack-oauth-install` — List integrations slack oauth install
 - `conduyt-crm-pp-cli integrations get-zapier-sample-data` — Get sample data for a Zapier event
 - `conduyt-crm-pp-cli integrations list` — List active integrations
+- `conduyt-crm-pp-cli integrations list-form-intakes` — Every ACTIVE intake address of the account (newest first; at most 100 exist)
 - `conduyt-crm-pp-cli integrations list-zapier-subscriptions` — List Zapier webhook subscriptions
+- `conduyt-crm-pp-cli integrations patch-calendly-event-types` — Update integrations calendly event-types
+- `conduyt-crm-pp-cli integrations post-calendly-disconnect` — Create / invoke integrations calendly disconnect
+- `conduyt-crm-pp-cli integrations post-dpp-ingest` — Create / invoke integrations dpp ingest
+- `conduyt-crm-pp-cli integrations post-mailchimp-confirm-reconciliation` — Create / invoke integrations mailchimp confirm-reconciliation
+- `conduyt-crm-pp-cli integrations post-mailchimp-push` — Create / invoke integrations mailchimp push
+- `conduyt-crm-pp-cli integrations post-mailchimp-reconcile-statuses` — Create / invoke integrations mailchimp reconcile-statuses
+- `conduyt-crm-pp-cli integrations post-mailchimp-unsubscribes-retry` — Create / invoke integrations mailchimp unsubscribes retry
+- `conduyt-crm-pp-cli integrations post-posthog-intent` — Create / invoke integrations posthog intent
 - `conduyt-crm-pp-cli integrations post-slack-settings` — Create / invoke integrations slack settings
 - `conduyt-crm-pp-cli integrations post-slack-test` — Create / invoke integrations slack test
+- `conduyt-crm-pp-cli integrations put-mailchimp-settings` — Update integrations mailchimp settings
+- `conduyt-crm-pp-cli integrations revoke-form-intake` — Revokes the address: it answers 404 from now on. The row is kept (status 'revoked', revokedAt) for history.
 
 **invoices** — Invoice creation, sending, payments, PDF generation
 
@@ -623,13 +755,19 @@ These capabilities aren't available in any other tool for this API.
 **mailbox** — Manage mailbox
 
 - `conduyt-crm-pp-cli mailbox delete-connections-id` — Delete mailbox connections id
-- `conduyt-crm-pp-cli mailbox get-callback-microsoft` — List mailbox callback microsoft
 - `conduyt-crm-pp-cli mailbox get-connections` — List mailbox connections
+- `conduyt-crm-pp-cli mailbox post-connect-google` — Create / invoke mailbox connect google
 - `conduyt-crm-pp-cli mailbox post-connect-microsoft` — Create / invoke mailbox connect microsoft
-- `conduyt-crm-pp-cli mailbox post-webhooks-microsoft` — Create / invoke mailbox webhooks microsoft
+
+**me** — Manage me
+
+- `conduyt-crm-pp-cli me get-my-email-signature` — One signature per workspace member.
+- `conduyt-crm-pp-cli me put-my-email-signature` — Saving replaces the caller's one signature in this workspace.
 
 **messages** — SMS and email message history
 
+- `conduyt-crm-pp-cli messages check` — Grades a draft with the same check the contact composers run as the rep types (the conduyt.
+- `conduyt-crm-pp-cli messages check-links` — Checks every link in a draft live from the server, so a dead, redirected
 - `conduyt-crm-pp-cli messages create` — Create a message record
 - `conduyt-crm-pp-cli messages get-sms` — Get an SMS message by ID
 - `conduyt-crm-pp-cli messages list` — List messages
@@ -665,6 +803,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli pipelines delete` — Delete a pipeline
 - `conduyt-crm-pp-cli pipelines get` — Get a pipeline by ID
 - `conduyt-crm-pp-cli pipelines list` — List pipelines with stages
+- `conduyt-crm-pp-cli pipelines reorder` — Writes every active pipeline's position in ONE transaction.
 - `conduyt-crm-pp-cli pipelines update` — Update a pipeline
 
 **playbook-enrollments** — Manage playbook enrollments
@@ -682,6 +821,13 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli playbooks patch-id` — Update playbooks id
 - `conduyt-crm-pp-cli playbooks post` — Create / invoke playbooks
 
+**pool-filter-sets** — Manage pool filter sets
+
+- `conduyt-crm-pp-cli pool-filter-sets delete-id` — Delete pool-filter-sets id
+- `conduyt-crm-pp-cli pool-filter-sets get` — List pool-filter-sets
+- `conduyt-crm-pp-cli pool-filter-sets patch-id` — Update pool-filter-sets id
+- `conduyt-crm-pp-cli pool-filter-sets post` — Create / invoke pool-filter-sets
+
 **products** — Product catalog for invoices
 
 - `conduyt-crm-pp-cli products create` — Create a product
@@ -692,6 +838,7 @@ These capabilities aren't available in any other tool for this API.
 
 **public** — Unauthenticated public endpoints (booking, form submit)
 
+- `conduyt-crm-pp-cli public bind-booking-documents` — Public, no authentication — binds pointers minted for THIS booking.
 - `conduyt-crm-pp-cli public book-appointment` — Book an appointment via public page
 - `conduyt-crm-pp-cli public get-booking-page` — Get a public booking page by slug
 - `conduyt-crm-pp-cli public get-booking-routing-slug` — Get public booking routing slug
@@ -703,10 +850,16 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli public get-booking-slug-ical` — Get public booking slug ical
 - `conduyt-crm-pp-cli public get-branding-account-id-icon` — Get public branding accountId icon
 - `conduyt-crm-pp-cli public get-screen-share-code` — Get public screen-share code
+- `conduyt-crm-pp-cli public mint-booking-document-upload` — Public, no authentication — for a booking THIS page made.
+- `conduyt-crm-pp-cli public options-booking-document-upload` — CORS preflight for the upload mint
+- `conduyt-crm-pp-cli public options-booking-documents` — CORS preflight for the documents bind
+- `conduyt-crm-pp-cli public options-booking-slug` — OPTIONS public booking slug
+- `conduyt-crm-pp-cli public options-booking-slug-slots` — OPTIONS public booking slug slots
 - `conduyt-crm-pp-cli public post-booking-routing-slug` — Create / invoke public booking routing slug
 - `conduyt-crm-pp-cli public post-booking-slug-waitlist` — Create / invoke public booking slug waitlist
 - `conduyt-crm-pp-cli public post-contact` — Create / invoke public contact
 - `conduyt-crm-pp-cli public post-screen-share-code` — Create / invoke public screen-share code
+- `conduyt-crm-pp-cli public post-screen-share-code-state` — Create / invoke public screen-share code state
 - `conduyt-crm-pp-cli public post-subscribe` — Create / invoke public subscribe
 
 **push** — Manage push
@@ -728,6 +881,10 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli quick-notes get` — List quick-notes
 - `conduyt-crm-pp-cli quick-notes patch-id` — Update quick-notes id
 - `conduyt-crm-pp-cli quick-notes post` — Create / invoke quick-notes
+
+**realtime** — Manage realtime
+
+- `conduyt-crm-pp-cli realtime` — List realtime token
 
 **remote-assist** — Manage remote assist
 
@@ -751,33 +908,59 @@ These capabilities aren't available in any other tool for this API.
 
 - `conduyt-crm-pp-cli reports create-custom` — Create a custom report
 - `conduyt-crm-pp-cli reports delete-custom` — Delete a custom report
+- `conduyt-crm-pp-cli reports delete-subscriptions-sid` — Delete reports subscriptions sid
 - `conduyt-crm-pp-cli reports get-activity` — Activity report
-- `conduyt-crm-pp-cli reports get-bda` — List reports bda
+- `conduyt-crm-pp-cli reports get-agent-performance` — List reports agent-performance
+- `conduyt-crm-pp-cli reports get-appointments` — List reports appointments
+- `conduyt-crm-pp-cli reports get-attribution` — List reports attribution
+- `conduyt-crm-pp-cli reports get-call-performance` — List reports call-performance
 - `conduyt-crm-pp-cli reports get-calls` — List reports calls
 - `conduyt-crm-pp-cli reports get-custom` — Get a custom report by ID
+- `conduyt-crm-pp-cli reports get-custom-fields` — List reports custom fields
+- `conduyt-crm-pp-cli reports get-custom-id-subscriptions` — Get reports custom id subscriptions
+- `conduyt-crm-pp-cli reports get-deliveries-did-files-index` — Get reports deliveries did files index
 - `conduyt-crm-pp-cli reports get-dialer-agent-hourly` — List reports dialer agent-hourly
 - `conduyt-crm-pp-cli reports get-dialer-awards` — List reports dialer awards
 - `conduyt-crm-pp-cli reports get-dialer-dispositions` — List reports dialer dispositions
 - `conduyt-crm-pp-cli reports get-dialer-list-performance` — List reports dialer list-performance
 - `conduyt-crm-pp-cli reports get-email-providers` — List reports email-providers
 - `conduyt-crm-pp-cli reports get-email-templates` — List reports email-templates
+- `conduyt-crm-pp-cli reports get-funnel` — List reports funnel
 - `conduyt-crm-pp-cli reports get-pipeline` — Pipeline performance report
 - `conduyt-crm-pp-cli reports get-revenue` — Revenue report
 - `conduyt-crm-pp-cli reports get-sms-delivery` — List reports sms-delivery
+- `conduyt-crm-pp-cli reports get-sms-drip-conversion` — List reports sms-drip-conversion
 - `conduyt-crm-pp-cli reports get-sms-templates` — List reports sms-templates
+- `conduyt-crm-pp-cli reports get-speed-to-lead` — List reports speed-to-lead
+- `conduyt-crm-pp-cli reports get-subscriptions-sid` — Get reports subscriptions sid
+- `conduyt-crm-pp-cli reports get-subscriptions-sid-deliveries` — Get reports subscriptions sid deliveries
+- `conduyt-crm-pp-cli reports get-targets` — List reports targets
 - `conduyt-crm-pp-cli reports get-team` — Team performance report
 - `conduyt-crm-pp-cli reports list-custom` — List saved custom reports
+- `conduyt-crm-pp-cli reports patch-subscriptions-sid` — Update reports subscriptions sid
 - `conduyt-crm-pp-cli reports post-custom-id-export` — Create / invoke reports custom id export
+- `conduyt-crm-pp-cli reports post-custom-id-subscriptions` — Create / invoke reports custom id subscriptions
 - `conduyt-crm-pp-cli reports post-custom-preview` — Create / invoke reports custom preview
+- `conduyt-crm-pp-cli reports post-subscriptions-sid-run` — Create / invoke reports subscriptions sid run
+- `conduyt-crm-pp-cli reports put-targets` — Update reports targets
 - `conduyt-crm-pp-cli reports run-custom` — Execute a custom report and return results
 - `conduyt-crm-pp-cli reports update-custom` — Update a custom report
 
+**ring-groups** — Manage ring groups
+
+- `conduyt-crm-pp-cli ring-groups delete-id` — Delete ring-groups id
+- `conduyt-crm-pp-cli ring-groups get` — List ring-groups
+- `conduyt-crm-pp-cli ring-groups get-id` — Get ring-groups id
+- `conduyt-crm-pp-cli ring-groups patch-id` — Update ring-groups id
+- `conduyt-crm-pp-cli ring-groups post` — Create / invoke ring-groups
+- `conduyt-crm-pp-cli ring-groups post-release-number` — Create / invoke ring-groups release-number
+
 **saved-filters** — Manage saved filters
 
-- `conduyt-crm-pp-cli saved-filters delete-id` — Delete saved-filters id
+- `conduyt-crm-pp-cli saved-filters delete-id` — Saved filters are personal Smart Views now: delete the migrated view with DELETE /api/v1/smart-views/:id.
 - `conduyt-crm-pp-cli saved-filters get` — List saved-filters
-- `conduyt-crm-pp-cli saved-filters patch-id` — Update saved-filters id
-- `conduyt-crm-pp-cli saved-filters post` — Create / invoke saved-filters
+- `conduyt-crm-pp-cli saved-filters patch-id` — Saved filters are personal Smart Views now: edit the migrated view with PATCH /api/v1/smart-views/
+- `conduyt-crm-pp-cli saved-filters post` — Saved filters are personal Smart Views now: create one with POST /api/v1/smart-views (personal
 
 **schema** — Manage schema
 
@@ -806,37 +989,70 @@ These capabilities aren't available in any other tool for this API.
 
 - `conduyt-crm-pp-cli screen-share delete-session-code` — Delete screen-share session code
 - `conduyt-crm-pp-cli screen-share get-seats` — List screen-share seats
+- `conduyt-crm-pp-cli screen-share get-session-code` — Get screen-share session code
 - `conduyt-crm-pp-cli screen-share post-seats` — Create / invoke screen-share seats
 - `conduyt-crm-pp-cli screen-share post-session` — Create / invoke screen-share session
 
 **settings** — Account settings, branding, SMS/Twilio configuration
 
 - `conduyt-crm-pp-cli settings delete-ai-byo` — Delete settings ai byo
+- `conduyt-crm-pp-cli settings delete-fromk` — Delete settings fromk
+- `conduyt-crm-pp-cli settings delete-fromk-webhook` — Delete settings fromk webhook
+- `conduyt-crm-pp-cli settings delete-project-blue` — Delete settings project-blue
+- `conduyt-crm-pp-cli settings delete-project-blue-voice` — Delete settings project-blue voice
 - `conduyt-crm-pp-cli settings delete-warmy` — Delete settings warmy
-- `conduyt-crm-pp-cli settings get` — Get account settings
+- `conduyt-crm-pp-cli settings delete-whatsapp` — Delete settings whatsapp
+- `conduyt-crm-pp-cli settings delete-zoom` — Delete settings zoom
+- `conduyt-crm-pp-cli settings get` — Includes messageCheck.
 - `conduyt-crm-pp-cli settings get-ai` — List settings ai
-- `conduyt-crm-pp-cli settings get-branding` — Get white-label branding settings
+- `conduyt-crm-pp-cli settings get-ai-teammates` — List settings ai-teammates
+- `conduyt-crm-pp-cli settings get-branding` — The white-label branding (name, logo, favicon, colours, custom domain) and the account's Company details
 - `conduyt-crm-pp-cli settings get-delivery-guard` — List settings delivery-guard
 - `conduyt-crm-pp-cli settings get-dormancy` — List settings dormancy
+- `conduyt-crm-pp-cli settings get-fromk` — List settings fromk
+- `conduyt-crm-pp-cli settings get-fromk-lines` — List settings fromk lines
 - `conduyt-crm-pp-cli settings get-lead-visibility` — List settings lead-visibility
+- `conduyt-crm-pp-cli settings get-operations` — List settings operations
+- `conduyt-crm-pp-cli settings get-project-blue` — List settings project-blue
+- `conduyt-crm-pp-cli settings get-project-blue-lines` — List settings project-blue lines
+- `conduyt-crm-pp-cli settings get-project-blue-voice` — List settings project-blue voice
+- `conduyt-crm-pp-cli settings get-scheduled-export` — List settings scheduled-export
 - `conduyt-crm-pp-cli settings get-sms` — Get SMS provider settings
 - `conduyt-crm-pp-cli settings get-twilio` — Get Twilio configuration
 - `conduyt-crm-pp-cli settings get-warmy` — List settings warmy
 - `conduyt-crm-pp-cli settings get-warmy-engine` — List settings warmy-engine
+- `conduyt-crm-pp-cli settings get-whatsapp` — List settings whatsapp
+- `conduyt-crm-pp-cli settings get-whatsapp-senders` — List settings whatsapp senders
+- `conduyt-crm-pp-cli settings get-zoom` — List settings zoom
 - `conduyt-crm-pp-cli settings patch-ai` — Update settings ai
+- `conduyt-crm-pp-cli settings patch-ai-teammates` — Update settings ai-teammates
 - `conduyt-crm-pp-cli settings patch-delivery-guard` — Update settings delivery-guard
 - `conduyt-crm-pp-cli settings patch-dormancy` — Update settings dormancy
 - `conduyt-crm-pp-cli settings patch-lead-visibility` — Update settings lead-visibility
+- `conduyt-crm-pp-cli settings patch-scheduled-export` — Update settings scheduled-export
 - `conduyt-crm-pp-cli settings patch-warmy-engine` — Update settings warmy-engine
+- `conduyt-crm-pp-cli settings post-operations` — Create / invoke settings operations
+- `conduyt-crm-pp-cli settings post-zoom-test` — Create / invoke settings zoom test
 - `conduyt-crm-pp-cli settings put-ai-byo` — Update settings ai byo
+- `conduyt-crm-pp-cli settings put-fromk` — Update settings fromk
+- `conduyt-crm-pp-cli settings put-fromk-webhook` — Update settings fromk webhook
+- `conduyt-crm-pp-cli settings put-project-blue` — Update settings project-blue
+- `conduyt-crm-pp-cli settings put-project-blue-lines-line-id` — Update settings project-blue lines lineId
+- `conduyt-crm-pp-cli settings put-project-blue-voice` — Update settings project-blue voice
 - `conduyt-crm-pp-cli settings put-warmy` — Update settings warmy
+- `conduyt-crm-pp-cli settings put-whatsapp` — Update settings whatsapp
+- `conduyt-crm-pp-cli settings put-zoom` — Update settings zoom
 - `conduyt-crm-pp-cli settings test-integration` — Test an integration connection
 - `conduyt-crm-pp-cli settings test-sms` — Send a test SMS
 - `conduyt-crm-pp-cli settings test-twilio` — Test Twilio configuration
 - `conduyt-crm-pp-cli settings update` — Update account settings
-- `conduyt-crm-pp-cli settings update-branding` — Update white-label branding
+- `conduyt-crm-pp-cli settings update-branding` — Two shapes. (1) The white-label fields (JSON or multipart with a logo / favicon upload); needs the premium plan.
 - `conduyt-crm-pp-cli settings update-sms` — Update SMS provider settings
 - `conduyt-crm-pp-cli settings update-twilio` — Update Twilio configuration
+
+**short-links** — Manage short links
+
+- `conduyt-crm-pp-cli short-links` — Create / invoke short-links
 
 **smart-lists** — Static contact lists
 
@@ -849,7 +1065,11 @@ These capabilities aren't available in any other tool for this API.
 **smart-views** — Manage smart views
 
 - `conduyt-crm-pp-cli smart-views delete-id` — Delete smart-views id
+- `conduyt-crm-pp-cli smart-views get-dial-order` — List smart-views dial-order
+- `conduyt-crm-pp-cli smart-views get-id` — Get smart-views id
+- `conduyt-crm-pp-cli smart-views get-version` — List smart-views version
 - `conduyt-crm-pp-cli smart-views list` — List available smart view definitions
+- `conduyt-crm-pp-cli smart-views patch-dial-order` — Update smart-views dial-order
 - `conduyt-crm-pp-cli smart-views patch-id` — Update smart-views id
 - `conduyt-crm-pp-cli smart-views patch-reorder` — Update smart-views reorder
 - `conduyt-crm-pp-cli smart-views post` — Create / invoke smart-views
@@ -857,6 +1077,8 @@ These capabilities aren't available in any other tool for this API.
 **sms** — Manage sms
 
 - `conduyt-crm-pp-cli sms get-send-logs` — List sms send-logs
+- `conduyt-crm-pp-cli sms get-transports` — List sms transports
+- `conduyt-crm-pp-cli sms get-whatsapp-templates` — List sms whatsapp templates
 - `conduyt-crm-pp-cli sms post-send-logs` — Create / invoke sms send-logs
 
 **sms-providers** — Manage sms providers
@@ -865,13 +1087,15 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli sms-providers get` — List sms-providers
 - `conduyt-crm-pp-cli sms-providers get-health` — List sms-providers health
 - `conduyt-crm-pp-cli sms-providers get-id` — Get sms-providers id
+- `conduyt-crm-pp-cli sms-providers get-options` — Provider picker for the SMS provider dropdown
+- `conduyt-crm-pp-cli sms-providers get-template-options` — The redacted provider list the SMS Templates page loads: each ACTIVE provider's id, name and colour, ordered by name
 - `conduyt-crm-pp-cli sms-providers patch-id` — Update sms-providers id
 - `conduyt-crm-pp-cli sms-providers post` — Create / invoke sms-providers
 
 **sso** — Manage sso
 
 - `conduyt-crm-pp-cli sso delete-scim-tokens-id` — Delete sso scim-tokens id
-- `conduyt-crm-pp-cli sso get-connection` — List sso connection
+- `conduyt-crm-pp-cli sso get-connection` — Answers 200 with `data.connection` set to null when the account has no enabled SSO connection (not a 404).
 - `conduyt-crm-pp-cli sso get-scim-tokens` — List sso scim-tokens
 - `conduyt-crm-pp-cli sso post-scim-tokens` — Create / invoke sso scim-tokens
 - `conduyt-crm-pp-cli sso put-connection` — Update sso connection
@@ -889,6 +1113,11 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli status-metadata post-dry-run` — Create / invoke status-metadata dry-run
 - `conduyt-crm-pp-cli status-metadata post-import` — Create / invoke status-metadata import
 
+**support** — Manage support
+
+- `conduyt-crm-pp-cli support post-requests` — Create / invoke support requests
+- `conduyt-crm-pp-cli support post-upload-url` — Create / invoke support upload-url
+
 **tags** — Tag management and merging
 
 - `conduyt-crm-pp-cli tags create` — Create a tag
@@ -900,7 +1129,7 @@ These capabilities aren't available in any other tool for this API.
 
 **tasks** — Task management with assignment and due dates
 
-- `conduyt-crm-pp-cli tasks create` — Create a task
+- `conduyt-crm-pp-cli tasks create` — Creates a task, optionally on a contact and/or a deal.
 - `conduyt-crm-pp-cli tasks delete` — Delete a task
 - `conduyt-crm-pp-cli tasks get` — Get a task by ID
 - `conduyt-crm-pp-cli tasks get-assignment-rules` — List tasks assignment-rules
@@ -927,11 +1156,13 @@ These capabilities aren't available in any other tool for this API.
 **users** — Team member management and invitations
 
 - `conduyt-crm-pp-cli users get` — Get a team member by ID
-- `conduyt-crm-pp-cli users get-me` — List users me
+- `conduyt-crm-pp-cli users get-me` — Returns the same response as GET /auth/me — this route re-exports that handler, so the two are identical, byte for byte
+- `conduyt-crm-pp-cli users get-me-tour` — List users me tour
 - `conduyt-crm-pp-cli users invite` — Invite a team member
 - `conduyt-crm-pp-cli users list` — List team members
 - `conduyt-crm-pp-cli users patch-me` — Update users me
 - `conduyt-crm-pp-cli users post` — Create / invoke users
+- `conduyt-crm-pp-cli users post-me-tour` — Create / invoke users me tour
 - `conduyt-crm-pp-cli users remove` — Remove a team member
 - `conduyt-crm-pp-cli users update` — Update a team member
 
@@ -953,16 +1184,17 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli webhooks get` — Get a webhook by ID
 - `conduyt-crm-pp-cli webhooks inbound-contact` — Inbound webhook for contact data
 - `conduyt-crm-pp-cli webhooks inbound-deal` — Inbound webhook for deal data
+- `conduyt-crm-pp-cli webhooks inbound-form-submission` — Public: no API key; the token in the URL is the credential (create one with POST /integrations/wordpress-forms/intakes).
 - `conduyt-crm-pp-cli webhooks list` — List outbound webhooks
 - `conduyt-crm-pp-cli webhooks list-deliveries` — List deliveries for a webhook
 - `conduyt-crm-pp-cli webhooks list-endpoints` — List configured webhook endpoints (legacy alias)
 - `conduyt-crm-pp-cli webhooks list-replay-deliveries` — List webhook deliveries for replay review
 - `conduyt-crm-pp-cli webhooks messages` — Inbound webhook for message events
-- `conduyt-crm-pp-cli webhooks replay` — Re-enqueues up to 100 matching deliveries. Replaying succeeded deliveries requires explicit confirmation.
+- `conduyt-crm-pp-cli webhooks replay` — Re-enqueues up to 100 matching deliveries (oldest first). At least one of deliveryIds, eventType or status is required.
 - `conduyt-crm-pp-cli webhooks sms-inbound` — Twilio inbound SMS webhook
 - `conduyt-crm-pp-cli webhooks sms-status` — Twilio SMS status callback
 - `conduyt-crm-pp-cli webhooks stripe-invoice` — Stripe invoice webhook
-- `conduyt-crm-pp-cli webhooks test` — Send a test payload to a webhook
+- `conduyt-crm-pp-cli webhooks test` — Sends a manual test delivery (is_test true, header X-Conduyt-Test) whose payload carries the top-level key _test: true.
 - `conduyt-crm-pp-cli webhooks update` — Update a webhook
 - `conduyt-crm-pp-cli webhooks voice-inbound` — Twilio inbound voice webhook
 - `conduyt-crm-pp-cli webhooks voice-recording` — Twilio recording callback

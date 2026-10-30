@@ -13,6 +13,7 @@ import (
 )
 
 func newNotificationsReplaceProfilesCmd(flags *rootFlags) *cobra.Command {
+	var bodyProfiles string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -21,7 +22,16 @@ func newNotificationsReplaceProfilesCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli notifications replace-profiles",
 		Annotations: map[string]string{"pp:endpoint": "notifications.replace-profiles", "pp:method": "PUT", "pp:path": "/notifications/profiles"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("profiles") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "profiles")
+				}
 			}
 			path := "/notifications/profiles"
 			c, err := flags.newClient()
@@ -43,6 +53,13 @@ func newNotificationsReplaceProfilesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyProfiles != "" {
+					var parsedProfiles any
+					if err := json.Unmarshal([]byte(bodyProfiles), &parsedProfiles); err != nil {
+						return fmt.Errorf("parsing --profiles JSON: %w", err)
+					}
+					bodyMap["profiles"] = parsedProfiles
+				}
 			}
 			data, statusCode, err := c.PutWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +204,7 @@ func newNotificationsReplaceProfilesCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyProfiles, "profiles", "", "Profiles")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

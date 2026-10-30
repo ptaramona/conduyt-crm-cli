@@ -6,26 +6,33 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func newUsersAvatarPostUsersIdCmd(flags *rootFlags) *cobra.Command {
-	var stdinBody bool
+	var bodyAvatar string
 
 	cmd := &cobra.Command{
-		Use:         "post-users-id <id>",
-		Aliases:     []string{"create"},
-		Short:       "Create / invoke users id avatar",
-		Example:     "  conduyt-crm-pp-cli users avatar post-users-id 550e8400-e29b-41d4-a716-446655440000",
+		Use:     "post-users-id <id>",
+		Aliases: []string{"create"},
+		Short:   "Create / invoke users id avatar",
+		// TODO: replace placeholder example values before relying on this for live dogfood.
+		Example:     "  conduyt-crm-pp-cli users avatar post-users-id 550e8400-e29b-41d4-a716-446655440000 --avatar example-value",
 		Annotations: map[string]string{"pp:endpoint": "avatar.post-users-id", "pp:method": "POST", "pp:path": "/users/{id}/avatar"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
-			if !stdinBody {
+			if !cmd.Flags().Changed("avatar") && !flags.dryRun {
+				return fmt.Errorf("required flag \"%s\" not set", "avatar")
 			}
 			path := "/users/{id}/avatar"
 			if len(args) < 1 || args[0] == "" {
@@ -37,22 +44,13 @@ func newUsersAvatarPostUsersIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
-			var body any
-			if stdinBody {
-				stdinData, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return fmt.Errorf("reading stdin: %w", err)
-				}
-				var jsonBody map[string]any
-				if err := json.Unmarshal(stdinData, &jsonBody); err != nil {
-					return fmt.Errorf("parsing stdin JSON: %w", err)
-				}
-				body = jsonBody
-			} else {
-				bodyMap := map[string]any{}
-				body = bodyMap
+			fields := map[string]string{}
+			fileFields := map[string]string{}
+			if bodyAvatar != "" {
+				fileFields["avatar"] = bodyAvatar
 			}
-			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
+
+			data, statusCode, err := c.PostMultipartWithParams(cmd.Context(), path, params, fields, fileFields)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -195,7 +193,7 @@ func newUsersAvatarPostUsersIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
+	cmd.Flags().StringVar(&bodyAvatar, "avatar", "", "Avatar image")
 
 	return cmd
 }

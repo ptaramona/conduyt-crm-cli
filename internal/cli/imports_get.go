@@ -12,6 +12,7 @@ import (
 )
 
 func newImportsGetCmd(flags *rootFlags) *cobra.Command {
+	var flagSummary bool
 
 	cmd := &cobra.Command{
 		Use:         "get <id>",
@@ -32,6 +33,9 @@ func newImportsGetCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagSummary != false {
+				params["summary"] = formatCLIParamValue(flagSummary)
+			}
 			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "imports", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -80,6 +84,7 @@ func newImportsGetCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
+	cmd.Flags().BoolVar(&flagSummary, "summary", false, "Query parameter read by this route.")
 
 	return cmd
 }

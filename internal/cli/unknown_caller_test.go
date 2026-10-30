@@ -143,8 +143,11 @@ func TestDialerGetHistoryUnmatchedAndLine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(reqs[0].query) != 0 {
-		t.Errorf("bare history sent %v, want no query", reqs[0].query)
+	// reprint637: GET /dialer/history is paginated in the public document, so the bare read carries only the paginator's
+	// page and per_page; it never sends unmatched or line
+	q := reqs[0].query
+	if q.Has("unmatched") || q.Has("line") || len(q) != 2 || q.Get("page") != "1" || q.Get("per_page") != "50" {
+		t.Errorf("bare history sent %v, want only page=1 and per_page=50", q)
 	}
 }
 

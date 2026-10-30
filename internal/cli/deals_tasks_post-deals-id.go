@@ -13,19 +13,35 @@ import (
 )
 
 func newDealsTasksPostDealsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAssignedTo string
+	var bodyDescription string
+	var bodyDueDate string
+	var bodyPriority string
+	var bodyTitle string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-deals-id <id>",
 		Aliases:     []string{"create"},
 		Short:       "Create / invoke deals id tasks",
-		Example:     "  conduyt-crm-pp-cli deals tasks post-deals-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli deals tasks post-deals-id 550e8400-e29b-41d4-a716-446655440000 --title example-resource",
 		Annotations: map[string]string{"pp:endpoint": "tasks.post-deals-id", "pp:method": "POST", "pp:path": "/deals/{id}/tasks"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("title") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "title")
+				}
 			}
 			path := "/deals/{id}/tasks"
 			if len(args) < 1 || args[0] == "" {
@@ -37,6 +53,12 @@ func newDealsTasksPostDealsIdCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -51,6 +73,21 @@ func newDealsTasksPostDealsIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAssignedTo != "" {
+					bodyMap["assignedTo"] = bodyAssignedTo
+				}
+				if bodyDescription != "" {
+					bodyMap["description"] = bodyDescription
+				}
+				if bodyDueDate != "" {
+					bodyMap["dueDate"] = bodyDueDate
+				}
+				if bodyPriority != "" {
+					bodyMap["priority"] = bodyPriority
+				}
+				if bodyTitle != "" {
+					bodyMap["title"] = bodyTitle
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -195,6 +232,13 @@ func newDealsTasksPostDealsIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAssignedTo, "assigned-to", "", "Assigned to")
+	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
+	cmd.Flags().StringVar(&bodyDueDate, "due-date", "", "An ISO 8601 date or date-time the runtime can parse; anything else is refused with `Invalid dueDate`.")
+	cmd.Flags().StringVar(&bodyPriority, "priority", "", "Priority")
+	cmd.Flags().StringVar(&bodyTitle, "title", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

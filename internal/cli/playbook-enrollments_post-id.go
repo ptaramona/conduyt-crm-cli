@@ -13,18 +13,29 @@ import (
 )
 
 func newPlaybookEnrollmentsPostIdCmd(flags *rootFlags) *cobra.Command {
+	var bodyAction string
+	var bodyNote string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-id <id>",
 		Short:       "Create / invoke playbook-enrollments id",
-		Example:     "  conduyt-crm-pp-cli playbook-enrollments post-id 550e8400-e29b-41d4-a716-446655440000",
+		Example:     "  conduyt-crm-pp-cli playbook-enrollments post-id 550e8400-e29b-41d4-a716-446655440000 --action complete",
 		Annotations: map[string]string{"pp:endpoint": "playbook-enrollments.post-id", "pp:method": "POST", "pp:path": "/playbook-enrollments/{id}"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("action") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "action")
+				}
 			}
 			path := "/playbook-enrollments/{id}"
 			if len(args) < 1 || args[0] == "" {
@@ -50,6 +61,12 @@ func newPlaybookEnrollmentsPostIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAction != "" {
+					bodyMap["action"] = bodyAction
+				}
+				if bodyNote != "" {
+					bodyMap["note"] = bodyNote
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -194,6 +211,8 @@ func newPlaybookEnrollmentsPostIdCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAction, "action", "", "Action")
+	cmd.Flags().StringVar(&bodyNote, "note", "", "Note")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

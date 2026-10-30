@@ -13,16 +13,30 @@ import (
 )
 
 func newQuickNotesPostCmd(flags *rootFlags) *cobra.Command {
+	var bodyBody string
+	var bodyContactId string
+	var bodyDealId string
+	var bodyRemindAt string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
-		Use:         "post",
-		Aliases:     []string{"create"},
-		Short:       "Create / invoke quick-notes",
-		Example:     "  conduyt-crm-pp-cli quick-notes post",
+		Use:     "post",
+		Aliases: []string{"create"},
+		Short:   "Create / invoke quick-notes",
+		// TODO: replace placeholder example values before relying on this for live dogfood.
+		Example:     "  conduyt-crm-pp-cli quick-notes post --body example-value",
 		Annotations: map[string]string{"pp:endpoint": "quick-notes.post", "pp:method": "POST", "pp:path": "/quick-notes"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bare invocation of a command with required input prints help
+			// instead of pflag's terse "required flag not set" error. Optional-
+			// only read commands fall through so a bare call still executes.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
 			if !stdinBody {
+				if !cmd.Flags().Changed("body") && !flags.dryRun {
+					return fmt.Errorf("required flag \"%s\" not set", "body")
+				}
 			}
 			path := "/quick-notes"
 			c, err := flags.newClient()
@@ -44,6 +58,18 @@ func newQuickNotesPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBody != "" {
+					bodyMap["body"] = bodyBody
+				}
+				if bodyContactId != "" {
+					bodyMap["contactId"] = bodyContactId
+				}
+				if bodyDealId != "" {
+					bodyMap["dealId"] = bodyDealId
+				}
+				if bodyRemindAt != "" {
+					bodyMap["remindAt"] = bodyRemindAt
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -188,6 +214,10 @@ func newQuickNotesPostCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyBody, "body", "", "Leading and trailing whitespace is trimmed before the length check, so a blank value is refused.")
+	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
+	cmd.Flags().StringVar(&bodyDealId, "deal-id", "", "Deal id")
+	cmd.Flags().StringVar(&bodyRemindAt, "remind-at", "", "Remind at")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

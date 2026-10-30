@@ -14,7 +14,9 @@ import (
 
 func newCallsUpdateCmd(flags *rootFlags) *cobra.Command {
 	var bodyDuration int
+	var bodyEndedAt string
 	var bodyNotes string
+	var bodyStatus string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -55,8 +57,14 @@ func newCallsUpdateCmd(flags *rootFlags) *cobra.Command {
 				if bodyDuration != 0 {
 					bodyMap["duration"] = bodyDuration
 				}
+				if bodyEndedAt != "" {
+					bodyMap["endedAt"] = bodyEndedAt
+				}
 				if bodyNotes != "" {
 					bodyMap["notes"] = bodyNotes
+				}
+				if bodyStatus != "" {
+					bodyMap["status"] = bodyStatus
 				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
@@ -203,7 +211,9 @@ func newCallsUpdateCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().IntVar(&bodyDuration, "duration", 0, "Duration")
+	cmd.Flags().StringVar(&bodyEndedAt, "ended-at", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyNotes, "notes", "", "Notes")
+	cmd.Flags().StringVar(&bodyStatus, "status", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

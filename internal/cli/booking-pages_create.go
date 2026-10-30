@@ -13,13 +13,61 @@ import (
 )
 
 func newBookingPagesCreateCmd(flags *rootFlags) *cobra.Command {
+	var flagDryRun bool
+	var flagSandbox bool
+	var bodyAvailabilityRules string
+	var bodyBrandName string
 	var bodyBufferAfter int
 	var bodyBufferBefore int
+	var bodyCampaign string
+	var bodyColor string
 	var bodyCustomQuestions string
 	var bodyDescription string
+	var bodyDistributionMethod string
+	var bodyDocumentsEnabled bool
+	var bodyDocumentsPageUrl string
 	var bodyDurationMinutes int
+	var bodyDurationOptions string
+	var bodyEmbedAllowedOrigins string
+	var bodyEmbedEnabled string
+	var bodyEventType string
+	var bodyFieldMappings string
+	var bodyFormFields string
+	var bodyGdprEnabled string
+	var bodyGdprLinkUrl string
+	var bodyGdprText string
+	var bodyHideBranding string
+	var bodyHostGroupId string
+	var bodyHostPriorities string
+	var bodyHostUserIds string
+	var bodyHyrosTag string
+	var bodyIsActive string
+	var bodyLeadSource string
+	var bodyLocation string
+	var bodyLogoUrl string
+	var bodyMaxAdvanceDays string
+	var bodyMaxAttendees string
+	var bodyMaxBookingsPerDay string
+	var bodyMinimumNotice string
+	var bodyMorningOfReminderEnabled bool
+	var bodyPaymentAmount string
+	var bodyPaymentCurrency string
+	var bodyPaymentEnabled string
+	var bodyRedirectUrl string
+	var bodyReminders string
+	var bodyRequirePhone string
+	var bodyReviewsBadges string
+	var bodyReviewsTestimonials string
 	var bodySlug string
+	var bodyStripePriceId string
+	var bodyStripeProductId string
+	var bodyTemplate string
+	var bodyThankYouMessage string
 	var bodyTitle string
+	var bodyUserId string
+	var bodyVideoHostEmail string
+	var bodyVideoProvider string
+	var bodyWaitlistEnabled string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -49,6 +97,12 @@ func newBookingPagesCreateCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
+			if flagDryRun != false {
+				params["dry_run"] = formatCLIParamValue(flagDryRun)
+			}
+			if flagSandbox != false {
+				params["sandbox"] = formatCLIParamValue(flagSandbox)
+			}
 			var body any
 			if stdinBody {
 				stdinData, err := io.ReadAll(os.Stdin)
@@ -63,11 +117,27 @@ func newBookingPagesCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAvailabilityRules != "" {
+					var parsedAvailabilityRules any
+					if err := json.Unmarshal([]byte(bodyAvailabilityRules), &parsedAvailabilityRules); err != nil {
+						return fmt.Errorf("parsing --availability-rules JSON: %w", err)
+					}
+					bodyMap["availabilityRules"] = parsedAvailabilityRules
+				}
+				if bodyBrandName != "" {
+					bodyMap["brandName"] = bodyBrandName
+				}
 				if bodyBufferAfter != 0 {
 					bodyMap["bufferAfter"] = bodyBufferAfter
 				}
 				if bodyBufferBefore != 0 {
 					bodyMap["bufferBefore"] = bodyBufferBefore
+				}
+				if bodyCampaign != "" {
+					bodyMap["campaign"] = bodyCampaign
+				}
+				if bodyColor != "" {
+					bodyMap["color"] = bodyColor
 				}
 				if bodyCustomQuestions != "" {
 					var parsedCustomQuestions any
@@ -79,14 +149,170 @@ func newBookingPagesCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
+				if bodyDistributionMethod != "" {
+					bodyMap["distributionMethod"] = bodyDistributionMethod
+				}
+				if cmd.Flags().Changed("documents-enabled") {
+					bodyMap["documentsEnabled"] = bodyDocumentsEnabled
+				}
+				if bodyDocumentsPageUrl != "" {
+					bodyMap["documentsPageUrl"] = bodyDocumentsPageUrl
+				}
 				if bodyDurationMinutes != 0 {
 					bodyMap["durationMinutes"] = bodyDurationMinutes
+				}
+				if bodyDurationOptions != "" {
+					var parsedDurationOptions any
+					if err := json.Unmarshal([]byte(bodyDurationOptions), &parsedDurationOptions); err != nil {
+						return fmt.Errorf("parsing --duration-options JSON: %w", err)
+					}
+					bodyMap["durationOptions"] = parsedDurationOptions
+				}
+				if bodyEmbedAllowedOrigins != "" {
+					bodyMap["embedAllowedOrigins"] = bodyEmbedAllowedOrigins
+				}
+				if bodyEmbedEnabled != "" {
+					bodyMap["embedEnabled"] = bodyEmbedEnabled
+				}
+				if bodyEventType != "" {
+					bodyMap["eventType"] = bodyEventType
+				}
+				if bodyFieldMappings != "" {
+					var parsedFieldMappings any
+					if err := json.Unmarshal([]byte(bodyFieldMappings), &parsedFieldMappings); err != nil {
+						return fmt.Errorf("parsing --field-mappings JSON: %w", err)
+					}
+					bodyMap["fieldMappings"] = parsedFieldMappings
+				}
+				if bodyFormFields != "" {
+					var parsedFormFields any
+					if err := json.Unmarshal([]byte(bodyFormFields), &parsedFormFields); err != nil {
+						return fmt.Errorf("parsing --form-fields JSON: %w", err)
+					}
+					bodyMap["formFields"] = parsedFormFields
+				}
+				if bodyGdprEnabled != "" {
+					bodyMap["gdprEnabled"] = bodyGdprEnabled
+				}
+				if bodyGdprLinkUrl != "" {
+					bodyMap["gdprLinkUrl"] = bodyGdprLinkUrl
+				}
+				if bodyGdprText != "" {
+					bodyMap["gdprText"] = bodyGdprText
+				}
+				if bodyHideBranding != "" {
+					bodyMap["hideBranding"] = bodyHideBranding
+				}
+				if bodyHostGroupId != "" {
+					bodyMap["hostGroupId"] = bodyHostGroupId
+				}
+				if bodyHostPriorities != "" {
+					bodyMap["hostPriorities"] = bodyHostPriorities
+				}
+				if bodyHostUserIds != "" {
+					bodyMap["hostUserIds"] = bodyHostUserIds
+				}
+				if bodyHyrosTag != "" {
+					bodyMap["hyrosTag"] = bodyHyrosTag
+				}
+				if bodyIsActive != "" {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyLeadSource != "" {
+					bodyMap["leadSource"] = bodyLeadSource
+				}
+				if bodyLocation != "" {
+					bodyMap["location"] = bodyLocation
+				}
+				if bodyLogoUrl != "" {
+					bodyMap["logoUrl"] = bodyLogoUrl
+				}
+				if bodyMaxAdvanceDays != "" {
+					bodyMap["maxAdvanceDays"] = bodyMaxAdvanceDays
+				}
+				if bodyMaxAttendees != "" {
+					bodyMap["maxAttendees"] = bodyMaxAttendees
+				}
+				if bodyMaxBookingsPerDay != "" {
+					bodyMap["maxBookingsPerDay"] = bodyMaxBookingsPerDay
+				}
+				if bodyMinimumNotice != "" {
+					bodyMap["minimumNotice"] = bodyMinimumNotice
+				}
+				if cmd.Flags().Changed("morning-of-reminder-enabled") {
+					bodyMap["morningOfReminderEnabled"] = bodyMorningOfReminderEnabled
+				}
+				if bodyPaymentAmount != "" {
+					bodyMap["paymentAmount"] = bodyPaymentAmount
+				}
+				if bodyPaymentCurrency != "" {
+					bodyMap["paymentCurrency"] = bodyPaymentCurrency
+				}
+				if bodyPaymentEnabled != "" {
+					bodyMap["paymentEnabled"] = bodyPaymentEnabled
+				}
+				if bodyRedirectUrl != "" {
+					bodyMap["redirectUrl"] = bodyRedirectUrl
+				}
+				if bodyReminders != "" {
+					var parsedReminders any
+					if err := json.Unmarshal([]byte(bodyReminders), &parsedReminders); err != nil {
+						return fmt.Errorf("parsing --reminders JSON: %w", err)
+					}
+					bodyMap["reminders"] = parsedReminders
+				}
+				if bodyRequirePhone != "" {
+					bodyMap["requirePhone"] = bodyRequirePhone
+				}
+				{
+					nestedReviews := map[string]any{}
+					if bodyReviewsBadges != "" {
+						var parsedReviewsBadges any
+						if err := json.Unmarshal([]byte(bodyReviewsBadges), &parsedReviewsBadges); err != nil {
+							return fmt.Errorf("parsing --reviews-badges JSON: %w", err)
+						}
+						nestedReviews["badges"] = parsedReviewsBadges
+					}
+					if bodyReviewsTestimonials != "" {
+						var parsedReviewsTestimonials any
+						if err := json.Unmarshal([]byte(bodyReviewsTestimonials), &parsedReviewsTestimonials); err != nil {
+							return fmt.Errorf("parsing --reviews-testimonials JSON: %w", err)
+						}
+						nestedReviews["testimonials"] = parsedReviewsTestimonials
+					}
+					if len(nestedReviews) > 0 {
+						bodyMap["reviews"] = nestedReviews
+					}
 				}
 				if bodySlug != "" {
 					bodyMap["slug"] = bodySlug
 				}
+				if bodyStripePriceId != "" {
+					bodyMap["stripePriceId"] = bodyStripePriceId
+				}
+				if bodyStripeProductId != "" {
+					bodyMap["stripeProductId"] = bodyStripeProductId
+				}
+				if bodyTemplate != "" {
+					bodyMap["template"] = bodyTemplate
+				}
+				if bodyThankYouMessage != "" {
+					bodyMap["thankYouMessage"] = bodyThankYouMessage
+				}
 				if bodyTitle != "" {
 					bodyMap["title"] = bodyTitle
+				}
+				if bodyUserId != "" {
+					bodyMap["userId"] = bodyUserId
+				}
+				if bodyVideoHostEmail != "" {
+					bodyMap["videoHostEmail"] = bodyVideoHostEmail
+				}
+				if bodyVideoProvider != "" {
+					bodyMap["videoProvider"] = bodyVideoProvider
+				}
+				if bodyWaitlistEnabled != "" {
+					bodyMap["waitlistEnabled"] = bodyWaitlistEnabled
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -232,13 +458,61 @@ func newBookingPagesCreateCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
+	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
+	cmd.Flags().StringVar(&bodyAvailabilityRules, "availability-rules", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyBrandName, "brand-name", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().IntVar(&bodyBufferAfter, "buffer-after", 0, "Buffer after")
 	cmd.Flags().IntVar(&bodyBufferBefore, "buffer-before", 0, "Buffer before")
+	cmd.Flags().StringVar(&bodyCampaign, "campaign", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyColor, "color", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyCustomQuestions, "custom-questions", "", "Custom questions")
 	cmd.Flags().StringVar(&bodyDescription, "description", "", "Description")
+	cmd.Flags().StringVar(&bodyDistributionMethod, "distribution-method", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&bodyDocumentsEnabled, "documents-enabled", false, "Turns the documents step on for this page's bookings (the public upload-url and documents operations answer 404 while")
+	cmd.Flags().StringVar(&bodyDocumentsPageUrl, "documents-page-url", "", "The https page on the customer's site that hosts the upload step (the confirmation email links to it)")
 	cmd.Flags().IntVar(&bodyDurationMinutes, "duration-minutes", 30, "Duration minutes")
+	cmd.Flags().StringVar(&bodyDurationOptions, "duration-options", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEmbedAllowedOrigins, "embed-allowed-origins", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEmbedEnabled, "embed-enabled", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyEventType, "event-type", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFieldMappings, "field-mappings", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyFormFields, "form-fields", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGdprEnabled, "gdpr-enabled", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGdprLinkUrl, "gdpr-link-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyGdprText, "gdpr-text", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyHideBranding, "hide-branding", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyHostGroupId, "host-group-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyHostPriorities, "host-priorities", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyHostUserIds, "host-user-ids", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyHyrosTag, "hyros-tag", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyIsActive, "is-active", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLeadSource, "lead-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLocation, "location", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyLogoUrl, "logo-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMaxAdvanceDays, "max-advance-days", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMaxAttendees, "max-attendees", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMaxBookingsPerDay, "max-bookings-per-day", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyMinimumNotice, "minimum-notice", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().BoolVar(&bodyMorningOfReminderEnabled, "morning-of-reminder-enabled", true, "The 9 AM (prospect-local) 'your appointment is today' email on the appointment day.")
+	cmd.Flags().StringVar(&bodyPaymentAmount, "payment-amount", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPaymentCurrency, "payment-currency", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyPaymentEnabled, "payment-enabled", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyRedirectUrl, "redirect-url", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReminders, "reminders", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyRequirePhone, "require-phone", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReviewsBadges, "reviews-badges", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyReviewsTestimonials, "reviews-testimonials", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodySlug, "slug", "", "Slug")
+	cmd.Flags().StringVar(&bodyStripePriceId, "stripe-price-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyStripeProductId, "stripe-product-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyTemplate, "template", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyThankYouMessage, "thank-you-message", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")
+	cmd.Flags().StringVar(&bodyUserId, "user-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyVideoHostEmail, "video-host-email", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyVideoProvider, "video-provider", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyWaitlistEnabled, "waitlist-enabled", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

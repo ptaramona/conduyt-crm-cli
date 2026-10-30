@@ -26,6 +26,7 @@ func newCompaniesCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newCompaniesPostMergeCmd(flags))
 	cmd.AddCommand(newCompaniesUpdateCompanyCmd(flags))
 	cmd.AddCommand(newCompaniesIntelligenceCmd(flags))
+	cmd.AddCommand(newCompaniesRelatedCmd(flags))
 	cmd.AddCommand(newCompaniesTagsCmd(flags))
 	cmd.AddCommand(newCompaniesTimelineCmd(flags))
 	return cmd
