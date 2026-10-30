@@ -9,6 +9,7 @@
   Hand-fixes a reprint must keep (pinned by `internal/cli/conduyt_auth_register_test.go`):
   - without the flag (or `--terms-accepted=false`) and without `--stdin`, the command returns a local error naming the Terms of Service and the
     Privacy Policy and sends no request; `--dry-run` skips the check like the other required flags.
+  - any positional argument is refused locally (`Args`), with a message naming `--terms-accepted` / `--terms-accepted=true`: pflag parses `--terms-accepted false` as the bare flag plus a stray `false`, which would register with termsAccepted true.
   - with the flag the body carries `"termsAccepted": true`.
   - `Long` and the flag usage explain the consent; `--stdin` reads `cmd.InOrStdin()` and is passed through untouched (the body must carry
     `termsAccepted` itself, else the API answers 400).

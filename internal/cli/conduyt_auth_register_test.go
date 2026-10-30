@@ -70,6 +70,19 @@ func TestRegisterWithoutTermsRefusesLocally(t *testing.T) {
 	}
 }
 
+func TestRegisterPositionalArgumentIsRefusedWithoutARequest(t *testing.T) {
+	// pflag parses `--terms-accepted false` as the bare flag (true) plus a positional "false": it must never create the account
+	for _, extra := range [][]string{{"--terms-accepted", "false"}, {"--terms-accepted", "0"}, {"--terms-accepted", "no"}, {"--terms-accepted", "true"}, {"stray"}} {
+		_, hits, err := runRegister(t, "", append(append([]string{}, registerBase...), extra...)...)
+		if err == nil || hits != 0 {
+			t.Fatalf("%v: err=%v hits=%d, want a local refusal and no request", extra, err, hits)
+		}
+		if !strings.Contains(err.Error(), "positional") || !strings.Contains(err.Error(), "--terms-accepted") {
+			t.Errorf("%v: error %q does not name the flag syntax", extra, err)
+		}
+	}
+}
+
 func TestRegisterStdinPassesThroughUntouched(t *testing.T) {
 	in := `{"email":"a@b.co","password":"pw123456","accountName":"Acme","termsAccepted":true}`
 	body, hits, err := runRegister(t, in, "--stdin")

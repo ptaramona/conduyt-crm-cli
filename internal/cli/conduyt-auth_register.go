@@ -25,8 +25,15 @@ func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 		Use:   "register",
 		Short: "Creates a new user and account. Rate limited to 3 requests per hour per IP.",
 		// PATCH(register-terms-accepted-601): Long states that --terms-accepted is required; see .printing-press-patches.json.
-		Long:        "Creates a new user and account. Rate limited to 3 requests per hour per IP.\n\nRegistering requires --terms-accepted, your consent to the Terms of Service (https://conduyt.app/terms) and the Privacy Policy (https://conduyt.app/privacy). Without it the CLI refuses locally and sends nothing; the API answers 400 (field termsAccepted) to a request without it. With --stdin the body is passed through untouched, so it must carry \"termsAccepted\": true itself.",
-		Example:     "  conduyt-crm-pp-cli conduyt-auth register --account-name example-resource --email you@example.com --password '...' --terms-accepted",
+		Long:    "Creates a new user and account. Rate limited to 3 requests per hour per IP.\n\nRegistering requires --terms-accepted, your consent to the Terms of Service (https://conduyt.app/terms) and the Privacy Policy (https://conduyt.app/privacy). Without it the CLI refuses locally and sends nothing; the API answers 400 (field termsAccepted) to a request without it. With --stdin the body is passed through untouched, so it must carry \"termsAccepted\": true itself.",
+		Example: "  conduyt-crm-pp-cli conduyt-auth register --account-name example-resource --email you@example.com --password '...' --terms-accepted",
+		// PATCH(register-terms-accepted-601): pflag reads `--terms-accepted false` as --terms-accepted=true plus a stray "false"; refuse every positional so that spelling can never register
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return fmt.Errorf("unexpected argument %q: registering takes no positional arguments. Accepting the terms is the bare flag --terms-accepted (or --terms-accepted=true); a spaced value such as `--terms-accepted false` is NOT read as false. Nothing was sent", args[0])
+			}
+			return nil
+		},
 		Annotations: map[string]string{"pp:endpoint": "conduyt-auth.register", "pp:method": "POST", "pp:path": "/auth/register"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bare invocation of a command with required input prints help
