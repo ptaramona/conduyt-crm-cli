@@ -15,6 +15,7 @@ import (
 func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
 	var flagDryRun bool
 	var flagSandbox bool
+	var bodyMetadata string // PATCH(reprint-637-freeform-json-flags)
 	var bodyCompanyId string
 	var bodyContactId string
 	var bodyDealId string
@@ -103,6 +104,17 @@ func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
 					if len(nestedMetadata) > 0 {
 						bodyMap["metadata"] = nestedMetadata
 					}
+				}
+				// PATCH(reprint-637-freeform-json-flags): --metadata sends the whole metadata object as JSON, as before the reprint
+				if bodyMetadata != "" {
+					if _, both := bodyMap["metadata"]; both {
+						return usageErr(fmt.Errorf("--metadata cannot be combined with the --metadata-* flags"))
+					}
+					var parsedMetadata any
+					if err := json.Unmarshal([]byte(bodyMetadata), &parsedMetadata); err != nil {
+						return fmt.Errorf("parsing --metadata JSON: %w", err)
+					}
+					bodyMap["metadata"] = parsedMetadata
 				}
 				if bodyTitle != "" {
 					bodyMap["title"] = bodyTitle
@@ -266,6 +278,7 @@ func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyMetadataSource, "metadata-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyTitle, "title", "", "Title")
 	cmd.Flags().StringVar(&bodyType, "type", "", "One of the activity types the server knows (call, email, sms and meeting are stored as manual activities)")
+	cmd.Flags().StringVar(&bodyMetadata, "metadata", "", "Metadata. A JSON object sent as the whole metadata (not with the --metadata-* flags)") // PATCH(reprint-637-freeform-json-flags)
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

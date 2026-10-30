@@ -15,6 +15,7 @@ import (
 func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 	var flagDryRun bool
 	var flagSandbox bool
+	var bodySettings string // PATCH(reprint-637-freeform-json-flags)
 	var bodyDescription string
 	var bodyFields string
 	var bodyHyrosTag string
@@ -112,6 +113,17 @@ func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 					if len(nestedSettings) > 0 {
 						bodyMap["settings"] = nestedSettings
 					}
+				}
+				// PATCH(reprint-637-freeform-json-flags): --settings sends the whole settings object as JSON, as before the reprint
+				if bodySettings != "" {
+					if _, both := bodyMap["settings"]; both {
+						return usageErr(fmt.Errorf("--settings cannot be combined with the --settings-* flags"))
+					}
+					var parsedSettings any
+					if err := json.Unmarshal([]byte(bodySettings), &parsedSettings); err != nil {
+						return fmt.Errorf("parsing --settings JSON: %w", err)
+					}
+					bodyMap["settings"] = parsedSettings
 				}
 				if bodySlug != "" {
 					bodyMap["slug"] = bodySlug
@@ -278,6 +290,7 @@ func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodySlug, "slug", "", "Slug")
 	cmd.Flags().StringVar(&bodyTemplate, "template", "", "Hosted page template. null (default) renders the standard card; 'bda' renders the BDA split panel.")
 	cmd.Flags().StringVar(&bodyThankYouMessage, "thank-you-message", "", "Thank you message")
+	cmd.Flags().StringVar(&bodySettings, "settings", "", "Settings. A JSON object sent as the whole settings (not with the --settings-* flags)") // PATCH(reprint-637-freeform-json-flags)
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

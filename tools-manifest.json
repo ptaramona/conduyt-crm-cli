@@ -9461,12 +9461,6 @@
           "type": "string",
           "location": "query",
           "description": "Query parameter read by this route."
-        },
-        {
-          "name": "cf[\u003ckey\u003e]",
-          "type": "string",
-          "location": "query",
-          "description": "string — filter by contact custom field key."
         }
       ]
     },
@@ -9636,12 +9630,6 @@
           "type": "string",
           "location": "query",
           "description": "Query parameter read by this route."
-        },
-        {
-          "name": "cf[\u003ckey\u003e]",
-          "type": "string",
-          "location": "query",
-          "description": "string — filter by contact custom field key."
         }
       ]
     },
@@ -9885,12 +9873,6 @@
           "type": "string",
           "location": "query",
           "description": "Query parameter read by this route."
-        },
-        {
-          "name": "cf[\u003ckey\u003e]",
-          "type": "string",
-          "location": "query",
-          "description": "string — filter by contact custom field key."
         }
       ]
     },

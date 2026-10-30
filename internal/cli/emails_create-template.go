@@ -16,6 +16,15 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 	var flagDryRun bool
 	var flagSandbox bool
 	var flagBodyJSON string
+	// PATCH(reprint-637-freeform-json-flags): the typed flags the pre-reprint print had (the body is now a oneOf, which the
+	// generator only offers as --body-json)
+	var bodyBody string
+	var bodyBodyHtml string
+	var bodyCategory string
+	var bodyChannel string
+	var bodyIsActive bool
+	var bodyName string
+	var bodySubject string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -31,8 +40,26 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("body-json") && !flags.dryRun {
+				// PATCH(reprint-637-freeform-json-flags): either --body-json (any documented shape) or the typed flags of the
+				// blocks/plain shape, whose required flags are body, channel and name as before the reprint
+				typed := false
+				for _, name := range []string{"body", "body-html", "category", "channel", "is-active", "name", "subject"} {
+					if cmd.Flags().Changed(name) {
+						typed = true
+					}
+				}
+				if typed && cmd.Flags().Changed("body-json") {
+					return usageErr(fmt.Errorf("--body-json cannot be combined with --body, --body-html, --category, --channel, --is-active, --name or --subject"))
+				}
+				if !typed && !cmd.Flags().Changed("body-json") && !flags.dryRun {
 					return fmt.Errorf("required flag \"%s\" not set", "body-json")
+				}
+				if typed && !flags.dryRun {
+					for _, name := range []string{"body", "channel", "name"} {
+						if !cmd.Flags().Changed(name) {
+							return fmt.Errorf("required flag \"%s\" not set", name)
+						}
+					}
 				}
 			}
 			path := "/emails/templates"
@@ -61,6 +88,27 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyBody != "" {
+					bodyMap["body"] = bodyBody
+				}
+				if bodyBodyHtml != "" {
+					bodyMap["bodyHtml"] = bodyBodyHtml
+				}
+				if bodyCategory != "" {
+					bodyMap["category"] = bodyCategory
+				}
+				if bodyChannel != "" {
+					bodyMap["channel"] = bodyChannel
+				}
+				if cmd.Flags().Changed("is-active") {
+					bodyMap["isActive"] = bodyIsActive
+				}
+				if bodyName != "" {
+					bodyMap["name"] = bodyName
+				}
+				if bodySubject != "" {
+					bodyMap["subject"] = bodySubject
+				}
 				if flagBodyJSON != "" {
 					var parsedBodyJSON any
 					if err := json.Unmarshal([]byte(flagBodyJSON), &parsedBodyJSON); err != nil {
@@ -219,6 +267,13 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&flagDryRun, "dry-run", false, "Validate the mutation without persisting changes.")
 	cmd.Flags().BoolVar(&flagSandbox, "sandbox", false, "Run the mutation in sandbox mode.")
 	cmd.Flags().StringVar(&flagBodyJSON, "body-json", "", "Provide the full request body as a JSON object string (this endpoint accepts a polymorphic schema: oneOf/anyOf)")
+	cmd.Flags().StringVar(&bodyBody, "body", "", "Body (typed flags: the blocks/plain shape; --body, --channel and --name are required with them)") // PATCH(reprint-637-freeform-json-flags)
+	cmd.Flags().StringVar(&bodyBodyHtml, "body-html", "", "Body html")
+	cmd.Flags().StringVar(&bodyCategory, "category", "", "Category")
+	cmd.Flags().StringVar(&bodyChannel, "channel", "", "Channel")
+	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
+	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
+	cmd.Flags().StringVar(&bodySubject, "subject", "", "Subject")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

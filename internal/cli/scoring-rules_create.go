@@ -15,6 +15,7 @@ import (
 func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
 	var flagDryRun bool
 	var flagSandbox bool
+	var bodyCondition string // PATCH(reprint-637-freeform-json-flags)
 	var bodyConditionField string
 	var bodyConditionFieldKey string
 	var bodyConditionOperator string
@@ -87,6 +88,17 @@ func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
 					if len(nestedCondition) > 0 {
 						bodyMap["condition"] = nestedCondition
 					}
+				}
+				// PATCH(reprint-637-freeform-json-flags): --condition sends the whole condition object as JSON, as before the reprint
+				if bodyCondition != "" {
+					if _, both := bodyMap["condition"]; both {
+						return usageErr(fmt.Errorf("--condition cannot be combined with the --condition-* flags"))
+					}
+					var parsedCondition any
+					if err := json.Unmarshal([]byte(bodyCondition), &parsedCondition); err != nil {
+						return fmt.Errorf("parsing --condition JSON: %w", err)
+					}
+					bodyMap["condition"] = parsedCondition
 				}
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
@@ -250,6 +262,7 @@ func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&bodyIsActive, "is-active", true, "Is active")
 	cmd.Flags().StringVar(&bodyName, "name", "", "Name")
 	cmd.Flags().IntVar(&bodyPoints, "points", 0, "Points")
+	cmd.Flags().StringVar(&bodyCondition, "condition", "", "Rule condition: { field, operator, value }. A JSON object sent as the whole condition (not with the --condition-* flags)") // PATCH(reprint-637-freeform-json-flags)
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

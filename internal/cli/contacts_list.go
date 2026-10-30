@@ -38,12 +38,11 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 	var flagSmartListId string
 	var flagSort string
 	var flagSource string
-	var flagTag string
-	var flagTagId string
+	var flagTag []string
+	var flagTagId []string
 	var flagTags string
 	var flagUpdatedFrom string
 	var flagUpdatedTo string
-	var flagCfKey string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -62,6 +61,22 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 			c, err := flags.newClient()
 			if err != nil {
 				return err
+			}
+			// PATCH(reprint-637-repeatable-array-query-params): every exploded array query parameter is a repeatable flag sent as one
+			// key per value (appendRepeatableArrayQueryParam), never one comma-joined value
+			if cmd.Flags().Changed("tag") {
+				var err error
+				path, err = appendRepeatableArrayQueryParam(path, "tag", flagTag)
+				if err != nil {
+					return usageErr(err)
+				}
+			}
+			if cmd.Flags().Changed("tag-id") {
+				var err error
+				path, err = appendRepeatableArrayQueryParam(path, "tagId", flagTagId)
+				if err != nil {
+					return usageErr(err)
+				}
 			}
 			if cmd.Flags().Changed("email") {
 				var err error
@@ -103,12 +118,9 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 				"smartListId":           formatCLIParamValue(flagSmartListId),
 				"sort":                  formatCLIParamValue(flagSort),
 				"source":                formatCLIParamValue(flagSource),
-				"tag":                   formatCLIParamValue(flagTag),
-				"tagId":                 formatCLIParamValue(flagTagId),
 				"tags":                  formatCLIParamValue(flagTags),
 				"updated_from":          formatCLIParamValue(flagUpdatedFrom),
 				"updated_to":            formatCLIParamValue(flagUpdatedTo),
-				"cf[<key>]":             formatCLIParamValue(flagCfKey),
 			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -183,12 +195,11 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&flagSmartListId, "smart-list-id", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagSort, "sort", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagSource, "source", "", "Query parameter read by this route.")
-	cmd.Flags().StringVar(&flagTag, "tag", "", "Tag name filter, repeatable (?tag=a&tag=b; form style, exploded).")
-	cmd.Flags().StringVar(&flagTagId, "tag-id", "", "Tag id filter, repeatable (?tagId=<uuid>&tagId=<uuid>; form style, exploded). The contact carries ANY of the given tags.")
+	cmd.Flags().StringArrayVar(&flagTag, "tag", nil, "Tag name filter, repeatable (--tag a --tag b; a comma list or JSON array is also accepted, a JSON array keeps a name that contains a comma). The contact carries ANY of the named tags.")
+	cmd.Flags().StringArrayVar(&flagTagId, "tag-id", nil, "Tag id filter, repeatable (--tag-id <uuid> --tag-id <uuid>; a comma list or JSON array is also accepted). The contact carries ANY of the given tags.")
 	cmd.Flags().StringVar(&flagTags, "tags", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagUpdatedFrom, "updated-from", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagUpdatedTo, "updated-to", "", "Query parameter read by this route.")
-	cmd.Flags().StringVar(&flagCfKey, "cf-key", "", "string — filter by contact custom field key.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

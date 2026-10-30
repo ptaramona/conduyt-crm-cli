@@ -13,6 +13,7 @@ import (
 )
 
 func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
+	var bodyTriggerConditions string // PATCH(reprint-637-freeform-json-flags)
 	var bodyActions string
 	var bodyActiveRunPolicy string
 	var bodyConfirmTriggerEventChange bool
@@ -178,6 +179,17 @@ func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 					if len(nestedTriggerConditions) > 0 {
 						bodyMap["triggerConditions"] = nestedTriggerConditions
 					}
+				}
+				// PATCH(reprint-637-freeform-json-flags): --trigger-conditions sends the whole triggerConditions object as JSON, as before the reprint
+				if bodyTriggerConditions != "" {
+					if _, both := bodyMap["triggerConditions"]; both {
+						return usageErr(fmt.Errorf("--trigger-conditions cannot be combined with the --trigger-conditions-* flags"))
+					}
+					var parsedTriggerConditions any
+					if err := json.Unmarshal([]byte(bodyTriggerConditions), &parsedTriggerConditions); err != nil {
+						return fmt.Errorf("parsing --trigger-conditions JSON: %w", err)
+					}
+					bodyMap["triggerConditions"] = parsedTriggerConditions
 				}
 				if bodyTriggerEvent != "" {
 					bodyMap["triggerEvent"] = bodyTriggerEvent
@@ -351,6 +363,7 @@ func newAutomationsUpdateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyTriggerConditionsWebhookId, "trigger-conditions-webhook-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyTriggerConditionsWebhookSecret, "trigger-conditions-webhook-secret", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyTriggerEvent, "trigger-event", "", "Event that triggers this automation (e.g., contact.created, deal.stage_changed)")
+	cmd.Flags().StringVar(&bodyTriggerConditions, "trigger-conditions", "", "Trigger conditions. A JSON object sent as the whole triggerConditions (not with the --trigger-conditions-* flags)") // PATCH(reprint-637-freeform-json-flags)
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

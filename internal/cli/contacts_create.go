@@ -16,6 +16,7 @@ import (
 func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 	var flagDryRun bool
 	var flagSandbox bool
+	var bodyCustomFields string // PATCH(reprint-637-freeform-json-flags)
 	var bodyAddressLine1 string
 	var bodyAddressLine2 string
 	var bodyAssignedTo string
@@ -167,6 +168,17 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 					if len(nestedCustomFields) > 0 {
 						bodyMap["customFields"] = nestedCustomFields
 					}
+				}
+				// PATCH(reprint-637-freeform-json-flags): --custom-fields sends the whole customFields object as JSON, as before the reprint
+				if bodyCustomFields != "" {
+					if _, both := bodyMap["customFields"]; both {
+						return usageErr(fmt.Errorf("--custom-fields cannot be combined with the --custom-fields-* flags"))
+					}
+					var parsedCustomFields any
+					if err := json.Unmarshal([]byte(bodyCustomFields), &parsedCustomFields); err != nil {
+						return fmt.Errorf("parsing --custom-fields JSON: %w", err)
+					}
+					bodyMap["customFields"] = parsedCustomFields
 				}
 				if bodyDoNotContact != "" {
 					bodyMap["doNotContact"] = bodyDoNotContact
@@ -407,6 +419,7 @@ func newContactsCreateCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyTags, "tags", "", "Tags")
 	cmd.Flags().StringVar(&bodyTimezone, "timezone", "", "A valid IANA time zone identifier (e.g. America/New_York); any other value is refused.")
 	cmd.Flags().StringVar(&bodyZip, "zip", "", "Zip")
+	cmd.Flags().StringVar(&bodyCustomFields, "custom-fields", "", "Key-value pairs for custom fields. Max 100KB. A JSON object sent as the whole customFields (not with the --custom-fields-* flags)") // PATCH(reprint-637-freeform-json-flags)
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

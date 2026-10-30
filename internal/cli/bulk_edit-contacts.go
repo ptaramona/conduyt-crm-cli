@@ -16,6 +16,7 @@ import (
 func newBulkEditContactsCmd(flags *rootFlags) *cobra.Command {
 	var flagDryRun bool
 	var flagSandbox bool
+	var bodyUpdates string // PATCH(reprint-637-freeform-json-flags)
 	var bodyIds string
 	var bodyUpdatesAddressLine1 string
 	var bodyUpdatesAddressLine2 string
@@ -150,6 +151,17 @@ func newBulkEditContactsCmd(flags *rootFlags) *cobra.Command {
 					if len(nestedUpdates) > 0 {
 						bodyMap["updates"] = nestedUpdates
 					}
+				}
+				// PATCH(reprint-637-freeform-json-flags): --updates sends the whole updates object as JSON, as before the reprint
+				if bodyUpdates != "" {
+					if _, both := bodyMap["updates"]; both {
+						return usageErr(fmt.Errorf("--updates cannot be combined with the --updates-* flags"))
+					}
+					var parsedUpdates any
+					if err := json.Unmarshal([]byte(bodyUpdates), &parsedUpdates); err != nil {
+						return fmt.Errorf("parsing --updates JSON: %w", err)
+					}
+					bodyMap["updates"] = parsedUpdates
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -317,6 +329,7 @@ func newBulkEditContactsCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyUpdatesSource, "updates-source", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyUpdatesState, "updates-state", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyUpdatesZip, "updates-zip", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyUpdates, "updates", "", "Updates. A JSON object sent as the whole updates (not with the --updates-* flags)") // PATCH(reprint-637-freeform-json-flags)
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

@@ -13,6 +13,8 @@ import (
 )
 
 func newIntegrationsConnectCmd(flags *rootFlags) *cobra.Command {
+	var bodyCredentials string // PATCH(reprint-637-freeform-json-flags)
+	var bodyConfig string      // PATCH(reprint-637-freeform-json-flags)
 	var bodyConfigChannel string
 	var bodyCredentialsApiKey string
 	var bodyExternalAccountId string
@@ -64,6 +66,17 @@ func newIntegrationsConnectCmd(flags *rootFlags) *cobra.Command {
 						bodyMap["config"] = nestedConfig
 					}
 				}
+				// PATCH(reprint-637-freeform-json-flags): --config sends the whole config object as JSON, as before the reprint
+				if bodyConfig != "" {
+					if _, both := bodyMap["config"]; both {
+						return usageErr(fmt.Errorf("--config cannot be combined with the --config-* flags"))
+					}
+					var parsedConfig any
+					if err := json.Unmarshal([]byte(bodyConfig), &parsedConfig); err != nil {
+						return fmt.Errorf("parsing --config JSON: %w", err)
+					}
+					bodyMap["config"] = parsedConfig
+				}
 				{
 					nestedCredentials := map[string]any{}
 					if bodyCredentialsApiKey != "" {
@@ -72,6 +85,17 @@ func newIntegrationsConnectCmd(flags *rootFlags) *cobra.Command {
 					if len(nestedCredentials) > 0 {
 						bodyMap["credentials"] = nestedCredentials
 					}
+				}
+				// PATCH(reprint-637-freeform-json-flags): --credentials sends the whole credentials object as JSON, as before the reprint
+				if bodyCredentials != "" {
+					if _, both := bodyMap["credentials"]; both {
+						return usageErr(fmt.Errorf("--credentials cannot be combined with the --credentials-* flags"))
+					}
+					var parsedCredentials any
+					if err := json.Unmarshal([]byte(bodyCredentials), &parsedCredentials); err != nil {
+						return fmt.Errorf("parsing --credentials JSON: %w", err)
+					}
+					bodyMap["credentials"] = parsedCredentials
 				}
 				if bodyExternalAccountId != "" {
 					bodyMap["externalAccountId"] = bodyExternalAccountId
@@ -223,6 +247,8 @@ func newIntegrationsConnectCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyConfigChannel, "config-channel", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyCredentialsApiKey, "credentials-api-key", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyExternalAccountId, "external-account-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyConfig, "config", "", "Config. A JSON object sent as the whole config (not with the --config-* flags)")                          // PATCH(reprint-637-freeform-json-flags)
+	cmd.Flags().StringVar(&bodyCredentials, "credentials", "", "Credentials. A JSON object sent as the whole credentials (not with the --credentials-* flags)") // PATCH(reprint-637-freeform-json-flags)
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd
