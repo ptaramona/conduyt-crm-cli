@@ -185,6 +185,16 @@
       ],
       "validated_outcome": "943/943 spec operations reachable through exactly one command; no duplicate sibling names or aliases. TestEverySpecOperationHasExactlyOneCommand, TestSiblingCommandNamesAreUnique.",
       "upstream_issue": "For the press board (not filed): an endpoint whose name equals a sub-resource group must become the group command (or a named child), never vanish."
+    },
+    {
+      "id": "dialer-initiate-call-contract-pin-930",
+      "summary": "POST /dialer/call (initiateCall) is pinned by Go tests: the CLI body keys, the MCP execute path body keys and route, and spec.yaml/upstream properties must equal a hard-coded list (to required); a reprint that renames a key or drops the required-to guard fails.",
+      "reason": "The live API reads `to`; Codex small926-r1 saw a stale `toNumber` copy of this command and there was no test that would catch the next drift.",
+      "files": [
+        "internal/cli/dialer_initiate_call_contract_test.go",
+        "internal/mcp/dialer_initiate_call_contract_test.go"
+      ],
+      "validated_outcome": "Red when the command body key is renamed to toNumber, when the required-to guard is removed, and when the MCP route/query binding changes; green on main."
     }
   ]
 }

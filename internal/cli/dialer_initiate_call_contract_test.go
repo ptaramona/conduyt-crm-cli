@@ -1,8 +1,13 @@
 package cli
 
-// Contract pin for POST /dialer/call (operationId initiateCall, board #930): the body keys the generated command sends, and the
-// params the MCP mirror declares, must be exactly the properties of the request schema in upstream/openapi.yaml. A reprint or hand
-// edit that renames a key (the live API reads `to`, not `toNumber`) fails here.
+// PATCH(dialer-initiate-call-contract-pin-930): contract pin for POST /dialer/call (operationId initiateCall, board #930).
+// The body keys the generated command sends must be exactly the request schema's properties, and `to` must stay required in the
+// command's behaviour. The expected list is HARD-CODED below and also compared to spec.yaml (the print input) and
+// upstream/openapi.yaml (the recorded live snapshot), so a property renamed in code, manifest and snapshot together still fails.
+// The MCP runtime path is pinned in internal/mcp/dialer_initiate_call_contract_test.go; tools-manifest.json is checked here only
+// as a secondary mirror (the MCP binary does not load it).
+// Not covered by design: initiateCall declares no dry_run query parameter, so there is no server-side preview to pin; the global
+// --dry-run is covered by the subtest below.
 
 import (
 	"encoding/json"
@@ -19,9 +24,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func initiateCallSchema(t *testing.T) (props []string, required []string) {
+var initiateCallProps = []string{"autoDialer", "callerIdStrategy", "contactId", "dncOverride", "to", "vendorBridgeNonce", "vendorBridgeable"}
+
+func initiateCallSchema(t *testing.T, file string) (props []string, required []string) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "upstream", "openapi.yaml"))
+	raw, err := os.ReadFile(filepath.Join("..", "..", file))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,42 +50,88 @@ func initiateCallSchema(t *testing.T) (props []string, required []string) {
 	}
 	op, ok := doc.Paths["/dialer/call"]["post"]
 	if !ok || op.OperationID != "initiateCall" {
-		t.Fatalf("upstream/openapi.yaml has no initiateCall at POST /dialer/call (got %+v)", op.OperationID)
+		t.Fatalf(file+" has no initiateCall at POST /dialer/call (got %+v)", op.OperationID)
 	}
 	s := op.RequestBody.Content["application/json"].Schema
 	for k := range s.Properties {
 		props = append(props, k)
 	}
 	sort.Strings(props)
-	if len(props) == 0 {
-		t.Fatal("initiateCall request schema has no properties")
-	}
 	return props, s.Required
 }
 
-func TestInitiateCallBodyKeysMatchUpstreamSchema(t *testing.T) {
-	props, required := initiateCallSchema(t)
-	if !reflect.DeepEqual(required, []string{"to"}) {
-		t.Errorf("upstream required = %v, this pin expects [to]; review the command's required-flag check", required)
+func TestInitiateCallSchemaSnapshotsMatchPinnedList(t *testing.T) {
+	for _, f := range []string{"spec.yaml", "upstream/openapi.yaml"} {
+		props, required := initiateCallSchema(t, f)
+		if !reflect.DeepEqual(props, initiateCallProps) || !reflect.DeepEqual(required, []string{"to"}) {
+			t.Errorf("%s initiateCall properties %v required %v, pinned %v / [to]; if the API changed on purpose, reprint and update this pin", f, props, required, initiateCallProps)
+		}
 	}
+}
 
-	var got map[string]any
+func initiateCallServer(t *testing.T, hits *int, got *map[string]any) {
+	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*hits++
 		if r.Method != "POST" || r.URL.Path != "/api/v1/dialer/call" {
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
 		}
 		raw, _ := io.ReadAll(r.Body)
-		got = map[string]any{}
-		if err := json.Unmarshal(raw, &got); err != nil {
+		*got = map[string]any{}
+		if err := json.Unmarshal(raw, got); err != nil {
 			t.Errorf("body is not JSON: %q", raw)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"data":{}}`))
 	}))
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
 	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
 	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+}
+
+func TestInitiateCallRequiresTo(t *testing.T) {
+	var hits int
+	var got map[string]any
+	initiateCallServer(t, &hits, &got)
+	cmd := newDialerInitiateCallCmd(&rootFlags{noCache: true})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--contact-id", "00000000-0000-0000-0000-000000000000"})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), `required flag "to" not set`) {
+		t.Fatalf("err = %v, want required flag \"to\" not set", err)
+	}
+	if hits != 0 {
+		t.Errorf("%d requests sent without --to", hits)
+	}
+}
+
+func TestInitiateCallGlobalDryRunSendsNothing(t *testing.T) {
+	var hits int
+	var got map[string]any
+	initiateCallServer(t, &hits, &got)
+	cmd := newDialerInitiateCallCmd(&rootFlags{noCache: true, dryRun: true})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--to", "+15555550100"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if hits != 0 {
+		t.Errorf("%d requests sent under --dry-run", hits)
+	}
+}
+
+func TestInitiateCallBodyKeysMatchUpstreamSchema(t *testing.T) {
+	props, _ := initiateCallSchema(t, "upstream/openapi.yaml")
+	if !reflect.DeepEqual(props, initiateCallProps) {
+		t.Fatalf("upstream properties %v != pinned %v", props, initiateCallProps)
+	}
+
+	var hits int
+	var got map[string]any
+	initiateCallServer(t, &hits, &got)
 
 	// Every body flag set, so every key the command can emit appears in the body.
 	cmd := newDialerInitiateCallCmd(&rootFlags{noCache: true})
@@ -100,15 +153,15 @@ func TestInitiateCallBodyKeysMatchUpstreamSchema(t *testing.T) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	if !reflect.DeepEqual(keys, props) {
-		t.Errorf("command body keys %v != upstream initiateCall properties %v", keys, props)
+	if hits != 1 || !reflect.DeepEqual(keys, initiateCallProps) {
+		t.Errorf("hits %d, command body keys %v != pinned initiateCall properties %v", hits, keys, initiateCallProps)
 	}
 }
 
-// The MCP mirror: tools-manifest.json declares the body params of dialer_initiate-call, and the code-orchestration entry must
-// still route dialer.initiate-call to POST /dialer/call (its params pass through as the body, so the manifest is the key list).
-func TestInitiateCallMCPMirrorMatchesUpstreamSchema(t *testing.T) {
-	props, required := initiateCallSchema(t)
+// Secondary mirror only: tools-manifest.json is documentation the MCP binary does not load (the runtime path is pinned in
+// internal/mcp). It must still list the same body params.
+func TestInitiateCallToolsManifestMatchesUpstreamSchema(t *testing.T) {
+	props, required := initiateCallSchema(t, "upstream/openapi.yaml")
 	raw, err := readRepoFile("tools-manifest.json")
 	if err != nil {
 		t.Fatal(err)
@@ -158,12 +211,15 @@ func TestInitiateCallMCPMirrorMatchesUpstreamSchema(t *testing.T) {
 	if !found {
 		t.Fatal("tools-manifest.json has no dialer_initiate-call")
 	}
-	src, err := readRepoFile("internal/mcp/code_orch.go")
-	if err != nil {
-		t.Fatal(err)
+}
+
+// The pin must survive a reprint: its durable record and index entry (AGENTS.md "Local Customizations") must stay present.
+func TestInitiateCallPinHasPatchRecord(t *testing.T) {
+	if _, err := readRepoFile(".printing-press-patches/dialer-initiate-call-contract-pin-930.json"); err != nil {
+		t.Errorf("patch record missing: %v", err)
 	}
-	i := strings.Index(src, `ID:             "dialer.initiate-call"`)
-	if i < 0 || !strings.Contains(src[i:i+200], `Path:           "/dialer/call"`) || !strings.Contains(src[i:i+200], `Method:         "POST"`) {
-		t.Error("internal/mcp/code_orch.go dialer.initiate-call no longer routes to POST /dialer/call")
+	idx, err := readRepoFile(".printing-press-patches.json")
+	if err != nil || !strings.Contains(idx, `"id": "dialer-initiate-call-contract-pin-930"`) {
+		t.Errorf("index entry missing from .printing-press-patches.json (err=%v)", err)
 	}
 }
