@@ -73,6 +73,9 @@ func initiateCallServer(t *testing.T, hits *int, got *map[string]any) {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		*hits++
+		if r.URL.RawQuery != "" {
+			t.Errorf("unexpected query string %q", r.URL.RawQuery)
+		}
 		if r.Method != "POST" || r.URL.Path != "/api/v1/dialer/call" {
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
 		}
@@ -139,10 +142,10 @@ func TestInitiateCallBodyKeysMatchUpstreamSchema(t *testing.T) {
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs([]string{
 		"--to", "+15555550100",
-		"--contact-id", "00000000-0000-0000-0000-000000000000",
-		"--dnc-override", "--auto-dialer",
-		"--caller-id-strategy", "did",
-		"--vendor-bridge-nonce", "n",
+		"--contact-id", "11111111-1111-4111-8111-111111111111",
+		"--dnc-override", "--auto-dialer=false",
+		"--caller-id-strategy", "iphone",
+		"--vendor-bridge-nonce", "nonce-sentinel",
 		"--vendor-bridgeable",
 	})
 	if err := cmd.Execute(); err != nil {
@@ -155,6 +158,12 @@ func TestInitiateCallBodyKeysMatchUpstreamSchema(t *testing.T) {
 	sort.Strings(keys)
 	if hits != 1 || !reflect.DeepEqual(keys, initiateCallProps) {
 		t.Errorf("hits %d, command body keys %v != pinned initiateCall properties %v", hits, keys, initiateCallProps)
+	}
+	// Each key carries ITS value (a reprint that swaps contactId into `to` fails here).
+	want := map[string]any{"to": "+15555550100", "contactId": "11111111-1111-4111-8111-111111111111", "dncOverride": true, "autoDialer": false,
+		"callerIdStrategy": "iphone", "vendorBridgeNonce": "nonce-sentinel", "vendorBridgeable": true}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("body = %v, want %v", got, want)
 	}
 }
 
@@ -213,13 +222,16 @@ func TestInitiateCallToolsManifestMatchesUpstreamSchema(t *testing.T) {
 	}
 }
 
-// The pin must survive a reprint: its durable record and index entry (AGENTS.md "Local Customizations") must stay present.
+// The pin must survive a reprint: its standalone per-patch record (the source of truth the library normalizes to) must stay
+// present. The legacy .printing-press-patches.json index is deliberately NOT asserted: the library deletes it after merge.
 func TestInitiateCallPinHasPatchRecord(t *testing.T) {
 	if _, err := readRepoFile(".printing-press-patches/dialer-initiate-call-contract-pin-930.json"); err != nil {
 		t.Errorf("patch record missing: %v", err)
 	}
-	idx, err := readRepoFile(".printing-press-patches.json")
-	if err != nil || !strings.Contains(idx, `"id": "dialer-initiate-call-contract-pin-930"`) {
-		t.Errorf("index entry missing from .printing-press-patches.json (err=%v)", err)
+	for _, f := range []string{"internal/cli/dialer_initiate_call_contract_test.go", "internal/mcp/dialer_initiate_call_contract_test.go"} {
+		src, err := readRepoFile(f)
+		if err != nil || !strings.Contains(src, "PATCH(dialer-initiate-call-contract-pin-930)") {
+			t.Errorf("%s lacks the PATCH marker (err=%v)", f, err)
+		}
 	}
 }

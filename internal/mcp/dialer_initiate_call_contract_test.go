@@ -6,21 +6,47 @@ package mcp
 // (see internal/cli/dialer_initiate_call_contract_test.go, which also compares it to spec.yaml and upstream/openapi.yaml).
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
+
+	mcplib "github.com/mark3labs/mcp-go/mcp"
 )
 
 func TestCodeOrchInitiateCallSendsExactlySchemaKeys(t *testing.T) {
 	want := []string{"autoDialer", "callerIdStrategy", "contactId", "dncOverride", "to", "vendorBridgeNonce", "vendorBridgeable"}
 	params := map[string]any{
-		"to": "+15555550100", "contactId": "00000000-0000-0000-0000-000000000000", "dncOverride": true, "autoDialer": true,
-		"callerIdStrategy": "did", "vendorBridgeNonce": "n", "vendorBridgeable": true,
+		"to": "+15555550100", "contactId": "11111111-1111-4111-8111-111111111111", "dncOverride": true, "autoDialer": false,
+		"callerIdStrategy": "iphone", "vendorBridgeNonce": "nonce-sentinel", "vendorBridgeable": true,
 	}
-	hits, body, rawQuery, res := execGuard(t, "dialer.initiate-call", params)
-	if hits != 1 || res.IsError {
-		t.Fatalf("hits=%d isError=%v", hits, res.IsError)
+	var hits int
+	var method, path, rawQuery, body string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		method, path, rawQuery = r.Method, r.URL.Path, r.URL.RawQuery
+		b, _ := io.ReadAll(r.Body)
+		body = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":{},"meta":{}}`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
+	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
+	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+	res, err := handleCodeOrchExecute(context.Background(), mcplib.CallToolRequest{Params: mcplib.CallToolParams{
+		Arguments: map[string]any{"endpoint_id": "dialer.initiate-call", "params": params},
+	}})
+	if err != nil || res.IsError || hits != 1 {
+		t.Fatalf("err=%v isError=%v hits=%d", err, res != nil && res.IsError, hits)
+	}
+	if method != "POST" || path != "/api/v1/dialer/call" || rawQuery != "" {
+		t.Errorf("on the wire: %s %s ?%s, want POST /api/v1/dialer/call with no query", method, path, rawQuery)
 	}
 	var sent map[string]any
 	if err := json.Unmarshal([]byte(body), &sent); err != nil {
@@ -34,8 +60,8 @@ func TestCodeOrchInitiateCallSendsExactlySchemaKeys(t *testing.T) {
 	if !reflect.DeepEqual(keys, want) {
 		t.Errorf("MCP body keys %v != schema properties %v", keys, want)
 	}
-	if rawQuery != "" {
-		t.Errorf("no body key may move to the query string, got %q", rawQuery)
+	if !reflect.DeepEqual(sent, params) {
+		t.Errorf("body = %v, want each key with its own value %v", sent, params)
 	}
 }
 
