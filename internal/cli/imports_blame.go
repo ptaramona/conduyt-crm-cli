@@ -17,7 +17,7 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 	var flagRows int
 
 	cmd := &cobra.Command{
-		Use:   "blame [jobId | --latest]",
+		Use:   "blame [jobId]",
 		Short: "Who got in, who was skipped, and why — for one import job",
 		Long:  "Joins the import job's row outcomes (created/updated/skipped/error, grouped by reason) with the account's SMS delivery report (provider rejections + Conduyt skips like landline_skipped/no_phone_skipped) so a bulk push can be blamed end-to-end in one call — the reconstruction the Kloudi incident required by hand.",
 		Example: strings.Trim(`

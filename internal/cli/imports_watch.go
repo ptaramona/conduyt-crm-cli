@@ -20,7 +20,7 @@ func newNovelImportsWatchCmd(flags *rootFlags) *cobra.Command {
 	var flagTimeout int
 
 	cmd := &cobra.Command{
-		Use:   "watch [jobId | --latest]",
+		Use:   "watch [jobId]",
 		Short: "Poll an import job to completion, then render the outcome recap",
 		Long:  "Polls the import job until it reaches a terminal state, then prints the row-outcome recap (created/updated/skipped/errors). With --verify, also fetches the SMS delivery report so provider rejections and Conduyt skips are visible in the same breath. Typed exit codes: 0 completed clean, 2 completed with error rows, 4 failed/timeout — drop it straight into n8n or cron.",
 		Example: strings.Trim(`
