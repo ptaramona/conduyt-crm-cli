@@ -16,7 +16,7 @@ func newContactsDncGetContactVerdictsCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "get-contact-verdicts <id>",
-		Aliases:     []string{"get"},
+		Aliases:     []string{"get", "get-contacts-id"}, // PATCH(reprint-637-renamed-command-aliases): the pre-11-08 name keeps working
 		Short:       "Board #32 and #632.",
 		Example:     "  conduyt-crm-pp-cli contacts dnc get-contact-verdicts 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "dnc.get-contact-verdicts", "pp:method": "GET", "pp:path": "/contacts/{id}/dnc", "mcp:read-only": "true"},

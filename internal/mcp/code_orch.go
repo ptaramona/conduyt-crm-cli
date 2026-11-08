@@ -10232,4 +10232,5 @@ func (m codeOrchLegacyIDs) resolve(id string) string {
 var codeOrchLegacyEndpointIDs = codeOrchLegacyIDs{
 	"contacts.duplicate-proposals.get-contacts-id":              "contacts.duplicate-proposals.list-contact",
 	"contacts.duplicate-proposals.post-contacts-id-proposal-id": "contacts.duplicate-proposals.decide-contact",
+	"contacts.dnc.get-contacts-id":                              "contacts.dnc.get-contact-verdicts", // PATCH(reprint-637-renamed-command-aliases): renamed by the 11-08 reprint (upstream operationId)
 }
