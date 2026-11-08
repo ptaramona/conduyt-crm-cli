@@ -69,7 +69,8 @@ func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 					return fmt.Errorf("required flag \"%s\" not set", "password")
 				}
 				// PATCH(register-terms-accepted-601): refuse locally, never a 400 round trip; --terms-accepted=false is a refusal too
-				if !bodyTermsAccepted && !flags.dryRun {
+				// an explicit --terms-accepted=false is refused under --dry-run too (Codex reprint637-r4 P3)
+				if !bodyTermsAccepted && (!flags.dryRun || cmd.Flags().Changed("terms-accepted")) {
 					return fmt.Errorf("registering requires --terms-accepted: pass it to confirm you accept the Terms of Service (https://conduyt.app/terms) and the Privacy Policy (https://conduyt.app/privacy)")
 				}
 			}

@@ -53,7 +53,7 @@ func newAutomationsPostValidateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if flagBodyJSON != "" {
+				if cmd.Flags().Changed("body-json") { // PATCH(reprint-637-required-on-changed)
 					var parsedBodyJSON any
 					if err := json.Unmarshal([]byte(flagBodyJSON), &parsedBodyJSON); err != nil {
 						return fmt.Errorf("parsing --body-json: %w", err)

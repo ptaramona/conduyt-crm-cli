@@ -88,7 +88,7 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyBody != "" {
+				if cmd.Flags().Changed("body") { // PATCH(reprint-637-required-on-changed): hand-shaped required set (typed shape), see the check above
 					bodyMap["body"] = bodyBody
 				}
 				if bodyBodyHtml != "" {
@@ -97,19 +97,19 @@ func newEmailsCreateTemplateCmd(flags *rootFlags) *cobra.Command {
 				if bodyCategory != "" {
 					bodyMap["category"] = bodyCategory
 				}
-				if bodyChannel != "" {
+				if cmd.Flags().Changed("channel") { // PATCH(reprint-637-required-on-changed): hand-shaped required set (typed shape), see the check above
 					bodyMap["channel"] = bodyChannel
 				}
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed): hand-shaped required set (typed shape), see the check above
 					bodyMap["name"] = bodyName
 				}
 				if bodySubject != "" {
 					bodyMap["subject"] = bodySubject
 				}
-				if flagBodyJSON != "" {
+				if cmd.Flags().Changed("body-json") { // PATCH(reprint-637-required-on-changed)
 					var parsedBodyJSON any
 					if err := json.Unmarshal([]byte(flagBodyJSON), &parsedBodyJSON); err != nil {
 						return fmt.Errorf("parsing --body-json: %w", err)

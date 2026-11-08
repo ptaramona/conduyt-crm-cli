@@ -146,7 +146,7 @@ func TestEveryRequiredBodyFlagSerializesItsZeroValue(t *testing.T) {
 	var unmapped []string
 	for _, tool := range manifest.Tools {
 		cmd := byOp[tool.Method+" "+tool.Path]
-		if cmd == nil || tool.Method == "GET" || tool.Method == "DELETE" {
+		if cmd == nil || tool.Method == "GET" {
 			continue
 		}
 		for _, p := range tool.Params {
@@ -161,6 +161,10 @@ func TestEveryRequiredBodyFlagSerializesItsZeroValue(t *testing.T) {
 			}
 			key := cmd.CommandPath() + " --" + flagName
 			if _, skip := requiredZeroValueExceptions[strings.TrimPrefix(key, "conduyt-crm-pp-cli ")]; skip {
+				// an exception never drops the value silently: it refuses locally, also under --dry-run
+				if _, err := dryRunBody(t, cmd, "--"+flagName+"="+z); err == nil {
+					t.Errorf("%s=%q --dry-run: documented as refused, but it previewed a request", key, z)
+				}
 				skipped++
 				continue
 			}
@@ -183,5 +187,64 @@ func TestEveryRequiredBodyFlagSerializesItsZeroValue(t *testing.T) {
 	t.Logf("checked %d required scalar body params, %d documented exceptions; %d without a same-named flag (renamed or hand-shaped): %v", checked, skipped, len(unmapped), unmapped)
 	if checked < 200 {
 		t.Fatalf("only %d required body params checked: the manifest walk is broken", checked)
+	}
+}
+
+// Required inputs the manifest walk cannot see: the whole-body --body-json of the seven anyOf/oneOf bodies (the manifest
+// lists no body params for them) and the hand-shaped typed set of emails create-template. An empty --body-json is
+// refused locally (it used to send {}); an empty --body / --channel / --name is sent as "".
+func TestRequiredFlagsOutsideTheManifestWalk(t *testing.T) {
+	var hits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"data":{}}`)
+	}))
+	defer srv.Close()
+	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL)
+	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
+	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+	t.Setenv("CONDUYT_CRM_NO_LEARN", "true")
+	t.Setenv("HOME", t.TempDir())
+	root := newRootCmd(&rootFlags{})
+	find := func(path ...string) *cobra.Command {
+		c, _, err := root.Find(path)
+		if err != nil || c == root {
+			t.Fatalf("%v: %v", path, err)
+		}
+		return c
+	}
+	for _, path := range [][]string{
+		{"ai", "post-tasks"},
+		{"automations", "post-validate"},
+		{"batch-operations", "post"},
+		{"chat", "post-agents-me-inbox-ack"},
+		{"chat", "post-agents-me-inbox-claim"},
+		{"conduyt-auth", "post-signup-events"},
+		{"emails", "create-template"},
+	} {
+		c := find(path...)
+		if _, err := dryRunBody(t, c, "--body-json="); err == nil {
+			t.Errorf("%v --body-json= --dry-run previewed a request, want a local refusal", path)
+		}
+		if _, err := dryRunBody(t, c, "--body-json={}"); err != nil {
+			t.Errorf("%v --body-json={} --dry-run: %v", path, err)
+		}
+	}
+	tmpl := find("emails", "create-template")
+	for _, flag := range []string{"body", "channel", "name"} {
+		args := map[string]string{"body": "--body=hello", "channel": "--channel=email", "name": "--name=t1"}
+		args[flag] = "--" + flag + "="
+		got, err := dryRunBody(t, tmpl, args["body"], args["channel"], args["name"])
+		if err != nil {
+			t.Fatalf("emails create-template %s --dry-run: %v", args[flag], err)
+		}
+		key := flag
+		if !strings.Contains(got, `"`+key+`":""`) {
+			t.Errorf("emails create-template %s: body %s, want %q sent as empty", args[flag], got, key)
+		}
+	}
+	if n := atomic.LoadInt32(&hits); n != 0 {
+		t.Errorf("--dry-run sent %d request(s)", n)
 	}
 }

@@ -7,8 +7,10 @@
 # rule is applied here, once, to every generated command. A body flag is REQUIRED when the file checks it with
 # `required flag "%s" not set", "<flag>"` (the generator's own list) or when tools-manifest.json marks the body
 # param of the command's operation required (a required param with a spec default, which gets no check). Its
-# serializer guard becomes `if cmd.Flags().Changed("<flag>") {`. Optional flags and query flags keep the
-# generator's guard. Idempotent.
+# serializer guard becomes `if cmd.Flags().Changed("<flag>") {`; that includes the whole-body `--body-json`
+# (flagBodyJSON) of anyOf/oneOf bodies, whose empty value now fails to parse locally instead of sending {}.
+# Optional flags and query flags keep the generator's guard. Hand-shaped required sets (emails create-template
+# --body/--channel/--name) carry the same marker by hand. Idempotent.
 # Pinned by TestEveryRequiredBodyFlagSerializesItsZeroValue (internal/cli/required_on_changed_test.go).
 #
 # Usage (repo root): perl .printing-press-patches/required-on-changed.pl internal/cli/*.go
@@ -46,7 +48,7 @@ for my $file (@ARGV) {
     my %var;
     while ($src =~ /Flags\(\)\.(?:String|Int|Int64|Float64|Bool)Var\(&(\w+), "([a-z0-9-]+)"/g) {
         my ($v, $f) = ($1, $2);
-        $var{$v} = $f if $required{$f} && $v =~ /^body[A-Z]/; # body fields only: a required QUERY flag keeps the generator guard
+        $var{$v} = $f if $required{$f} && ($v =~ /^body[A-Z]/ || $v eq "flagBodyJSON"); # body fields (and the whole-body --body-json) only: a required QUERY flag keeps the generator guard
     }
     my $n = 0;
     for my $v (keys %var) {
