@@ -77,7 +77,7 @@ func newNovelContactsVerifyLineTypeCmd(flags *rootFlags) *cobra.Command {
 			for batches = 0; batches < flagMaxBatches; batches++ {
 				data, _, err := c.Post(cmd.Context(), "/contacts/verify-line-type", body)
 				if err != nil {
-					return classifyAPIError(err, flags)
+					return classifyAPIError(cmd.OutOrStdout(), err, flags)
 				}
 				var envelope map[string]any
 				if err := json.Unmarshal(data, &envelope); err != nil {

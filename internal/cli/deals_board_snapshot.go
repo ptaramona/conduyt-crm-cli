@@ -85,7 +85,7 @@ func runDealsBoardSnapshot(cmd *cobra.Command, flags *rootFlags, snapshot bool, 
 	}
 	data, err := c.GetWithHeadersNoCache(cmd.Context(), "/deals", params, nil)
 	if err != nil {
-		return classifyAPIError(err, flags)
+		return classifyAPIError(cmd.OutOrStdout(), err, flags)
 	}
 	if c.DryRun {
 		return nil

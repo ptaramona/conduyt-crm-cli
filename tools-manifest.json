@@ -459,6 +459,12 @@
           "location": "query",
           "description": "string — an activity type; task and deal_update also match their task_* and deal_* variants."
         }
+      ],
+      "header_overrides": [
+        {
+          "name": "Accept",
+          "value": "text/csv"
+        }
       ]
     },
     {
@@ -3490,10 +3496,16 @@
     },
     {
       "name": "billing_patch-addons",
-      "description": "Update billing addons. Optional: expectedQuantity, quantity, subscriptionId. Returns the updated BillingPatchAddonsResponse.",
+      "description": "Update billing addons. Optional: Idempotency-Key, expectedQuantity, quantity (plus 1 more). Returns the updated BillingPatchAddonsResponse.",
       "method": "PATCH",
       "path": "/billing/addons",
       "params": [
+        {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "Recommended: one key per quantity change (8-64 characters of [A-Za-z0-9_-]), reused only to retry the same request. With the required body field expectedQuantity, a different key from the same base is refused as stale (409 stale_quantity) instead of being reported as done."
+        },
         {
           "name": "expectedQuantity",
           "type": "string",
@@ -3516,10 +3528,17 @@
     },
     {
       "name": "billing_post-addons",
-      "description": "Create / invoke billing addons. Optional: addonKey, quantity. Returns the new BillingPostAddonsResponse.",
+      "description": "Create / invoke billing addons. Required: Idempotency-Key. Optional: addonKey, quantity. Returns the new BillingPostAddonsResponse.",
       "method": "POST",
       "path": "/billing/addons",
       "params": [
+        {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "One key per purchase attempt (8-64 characters of [A-Za-z0-9_-]). Reuse it only to retry the SAME request after an ambiguous answer; the server completes or replays your own attempt and refuses a different key that meets an add-on someone else already bought (409 addon_already_active with the live quantity: add more with PATCH). Missing or malformed: 400 idempotency_key_required.",
+          "required": true
+        },
         {
           "name": "addonKey",
           "type": "string",
@@ -5262,10 +5281,16 @@
     },
     {
       "name": "bulk_tag-contacts",
-      "description": "Bulk add/remove tags on contacts. Optional: contactIds, tagId. Returns the new DataEnvelope.",
+      "description": "Bulk add/remove tags on contacts. Optional: Idempotency-Key, contactIds, tagId. Returns the new DataEnvelope.",
       "method": "POST",
       "path": "/bulk/contacts/tag",
       "params": [
+        {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "Optional: one key per bulk tag operation (1-255 printable ASCII characters, not blank), reused only to retry the SAME request. Same key + same request body replays the original response (Idempotent-Replay: true); same key + a different body is refused with 422 code idempotency_request_conflict (the key is bound to the first request for good: verify it, then use a NEW key). Two DISTINCT 409s under this key, never interchangeable: (1) the ORIGINAL attempt is still being processed (code idempotency_in_progress) — wait for the Retry-After seconds given, then retry with the SAME key; (2) the key was already SPENT by a prior attempt that failed or has an unknown outcome (code idempotency_key_spent) — verify whether that attempt took effect BEFORE sending a brand-new key; resending the SAME key here only replays this 409 again, it never re-runs the request. A third, rare 409 (code idempotency_conflict_retry) means a concurrent claim of this key could not be resolved and nothing was run or stored: retry with the SAME key. If the wrapper's OWN write to RELEASE a failed attempt's claim cannot be confirmed, the SAME key instead answers 503 idempotency_claim_held until the held claim expires — retry with a NEW key, never the same one. If the wrapper's OWN write to confirm a SUCCESSFUL completion cannot be confirmed, the mutation may have gone through anyway: the SAME key instead answers 503 idempotency_outcome_unknown — verify the outcome before any new-key retry, exactly as case (2) above. A blank or malformed key is refused with 400 idempotency_key_invalid, on dry_run requests too (a dry run never records the key)."
+        },
         {
           "name": "contactIds",
           "type": "string",
@@ -8181,13 +8206,6 @@
           "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
         },
         {
-          "name": "metadata-links",
-          "wire_name": "metadata.links",
-          "type": "array",
-          "location": "body",
-          "description": "(#613) server-derived, never accepted: the messages of other channels this message quotes through their Team Chat links in `body` (/chat?message=\u003cid\u003e), resolved under the author's access. Only a relative link or one on the app's own address counts, its path exactly /chat and its one message parameter a whole UUID. A client's metadata.links is ignored; the stored message carries the derived list (it drives the channel's cross-channel pointer)."
-        },
-        {
           "name": "parentId",
           "type": "string",
           "location": "body",
@@ -8279,7 +8297,7 @@
         },
         {
           "name": "annualRevenue",
-          "type": "string",
+          "type": "float",
           "location": "body",
           "description": "Annual revenue"
         },
@@ -8366,7 +8384,7 @@
           "name": "website",
           "type": "string",
           "location": "body",
-          "description": "Website"
+          "description": "The server parses the value with the WHATWG URL parser (Zod's .url()), not RFC 3986: it accepts a space (percent-encoded), a non-ASCII host, a second '#', an invalid percent escape and a bare scheme such as `x:`, which a strict `format: uri` validator refuses, and it refuses an empty host such as `http://` and a port above 65535, which that validator accepts."
         },
         {
           "name": "zip",
@@ -8661,7 +8679,7 @@
         },
         {
           "name": "annualRevenue",
-          "type": "string",
+          "type": "float",
           "location": "body",
           "description": "Annual revenue"
         },
@@ -8747,7 +8765,7 @@
           "name": "website",
           "type": "string",
           "location": "body",
-          "description": "Website"
+          "description": "The server parses the value with the WHATWG URL parser (Zod's .url()), not RFC 3986: it accepts a space (percent-encoded), a non-ASCII host, a second '#', an invalid percent escape and a bare scheme such as `x:`, which a strict `format: uri` validator refuses, and it refuses an empty host such as `http://` and a port above 65535, which that validator accepts."
         },
         {
           "name": "zip",
@@ -9784,10 +9802,16 @@
     },
     {
       "name": "contacts_create",
-      "description": "Creates a new contact. Rate limited to 30 requests per minute. With `callId` (the unknown-caller prompt's 'Create new lead'), the new contact is linked to that contact-less INBOUND call in the SAME transaction: the phone is the call's own caller number (a submitted `phone` must be omitted or strictly the same number, else 422 `phone_not_call_number`), stored under the account's country; `firstName` is required (400 `first_name_required`) and, for this lead only, the account's form-required contact fields and required custom fields are not required (values that are sent are still validated). The caller needs `dialer.create` (an API key also needs the `calls` scope; a `dialer` key covers it). A call that does not exist is 404 `call_not_found`; a call already linked is 409 `call_already_linked` (or 404 `call_not_found` when its contact is hidden from the caller); an outbound call is 422 `call_not_inbound`; a call with no usable caller number is 422 `number_unusable`. The lead's `source` (always 'Inbound Call') and owner are derived from the call, so a request with `callId` must NOT carry `source` or `assignedTo` (any value, null included): it is refused with 422 `call_derived_fields`. Nothing is created on any refusal. callId derives the owner: the call taker, else the signed-in session user; an API-key request, an inactive call taker or an inactive fallback user derive no owner. A contact that derives no owner is then subject to the workspace's normal lead routing and Smart View assignment like any other create, so it may still end up assigned. Optional: dry_run, sandbox, addressLine1 (plus 25 more). Returns the new ContactsCreateResponse.",
+      "description": "Creates a new contact. Rate limited to 30 requests per minute. With `callId` (the unknown-caller prompt's 'Create new lead'), the new contact is linked to that contact-less INBOUND call in the SAME transaction: the phone is the call's own caller number (a submitted `phone` must be omitted or strictly the same number, else 422 `phone_not_call_number`), stored under the account's country; `firstName` is required (400 `first_name_required`) and, for this lead only, the account's form-required contact fields and required custom fields are not required (values that are sent are still validated). The caller needs `dialer.create` (an API key also needs the `calls` scope; a `dialer` key covers it). A call that does not exist is 404 `call_not_found`; a call already linked is 409 `call_already_linked` (or 404 `call_not_found` when its contact is hidden from the caller); an outbound call is 422 `call_not_inbound`; a call with no usable caller number is 422 `number_unusable`. The lead's `source` (always 'Inbound Call') and owner are derived from the call, so a request with `callId` must NOT carry `source` or `assignedTo` (any value, null included): it is refused with 422 `call_derived_fields`. Nothing is created on any refusal. callId derives the owner: the call taker, else the signed-in session user; an API-key request, an inactive call taker or an inactive fallback user derive no owner. A contact that derives no owner is then subject to the workspace's normal lead routing and Smart View assignment like any other create, so it may still end up assigned. Optional: Idempotency-Key, dry_run, sandbox (plus 26 more). Returns the new ContactsCreateResponse.",
       "method": "POST",
       "path": "/contacts",
       "params": [
+        {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "Optional: one key per creation attempt (1-255 printable ASCII characters, not blank), reused..."
+        },
         {
           "name": "dry_run",
           "type": "bool",
@@ -9934,7 +9958,7 @@
         },
         {
           "name": "doNotContact",
-          "type": "string",
+          "type": "bool",
           "location": "body",
           "description": "Do not contact"
         },
@@ -9948,11 +9972,11 @@
           "name": "email",
           "type": "string",
           "location": "body",
-          "description": "Email"
+          "description": "The pattern above is the server's rule (Zod's email check)."
         },
         {
           "name": "externalBackend",
-          "type": "string",
+          "type": "bool",
           "location": "body",
           "description": "External backend"
         },
@@ -10207,6 +10231,12 @@
           "location": "query",
           "description": "Query parameter read by this route."
         }
+      ],
+      "header_overrides": [
+        {
+          "name": "Accept",
+          "value": "text/csv"
+        }
       ]
     },
     {
@@ -10404,7 +10434,13 @@
       "description": "Download CSV import template.",
       "method": "GET",
       "path": "/contacts/import/template",
-      "params": []
+      "params": [],
+      "header_overrides": [
+        {
+          "name": "Accept",
+          "value": "text/csv"
+        }
+      ]
     },
     {
       "name": "contacts_get-sources",
@@ -11011,7 +11047,7 @@
           "name": "avatarUrl",
           "type": "string",
           "location": "body",
-          "description": "Avatar url"
+          "description": "The server parses the value with the WHATWG URL parser (Zod's .url()), not RFC 3986: it accepts a space (percent-encoded), a non-ASCII host, a second '#', an invalid percent escape and a bare scheme such as `x:`, which a strict `format: uri` validator refuses, and it refuses an empty host such as `http://` and a port above 65535, which that validator accepts."
         },
         {
           "name": "city",
@@ -11051,7 +11087,7 @@
         },
         {
           "name": "doNotContact",
-          "type": "string",
+          "type": "bool",
           "location": "body",
           "description": "Do not contact"
         },
@@ -11065,7 +11101,7 @@
           "name": "email",
           "type": "string",
           "location": "body",
-          "description": "Email"
+          "description": "The pattern above is the server's rule (Zod's email check)."
         },
         {
           "name": "expectedRevision",
@@ -11075,7 +11111,7 @@
         },
         {
           "name": "externalBackend",
-          "type": "string",
+          "type": "bool",
           "location": "body",
           "description": "External backend"
         },
@@ -12563,10 +12599,16 @@
     },
     {
       "name": "deals_create",
-      "description": "Creates a new deal in a pipeline stage. Rate limited to 30 requests per minute. Required: pipelineId, stageId, title. Optional: dry_run, sandbox, appointmentAt (plus 13 more). Returns the new DealsCreateResponse.",
+      "description": "Creates a new deal in a pipeline stage. Rate limited to 30 requests per minute. Required: pipelineId, stageId, title. Optional: Idempotency-Key, dry_run, sandbox (plus 14 more). Returns the new DealsCreateResponse.",
       "method": "POST",
       "path": "/deals",
       "params": [
+        {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "Optional: one key per creation attempt (1-255 printable ASCII characters, not blank), reused..."
+        },
         {
           "name": "dry_run",
           "type": "bool",
@@ -12642,7 +12684,7 @@
         },
         {
           "name": "probability",
-          "type": "string",
+          "type": "float",
           "location": "body",
           "description": "Win probability as a 0–1 fraction (e.g. 0.75 = 75%), not a percentage"
         },
@@ -13532,7 +13574,7 @@
         },
         {
           "name": "probability",
-          "type": "string",
+          "type": "float",
           "location": "body",
           "description": "Win probability as a 0–1 fraction (e.g. 0.75 = 75%), not a percentage"
         },
@@ -16386,6 +16428,12 @@
       "path": "/email/send",
       "params": [
         {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "Optional: one key per send (1-255 printable ASCII characters, not blank), reused only to retry the SAME request. Same key + same request body replays the original response (Idempotent-Replay: true); same key + a different body is refused with 422 code idempotency_request_conflict (the key is bound to the first request for good: verify it, then use a NEW key). Two DISTINCT 409s under this key, never interchangeable: (1) the ORIGINAL attempt is still being processed (code idempotency_in_progress) — wait for the Retry-After seconds given, then retry with the SAME key; (2) the key was already SPENT by a prior attempt that failed or has an unknown outcome (code idempotency_key_spent) — verify whether that attempt took effect BEFORE sending a brand-new key; resending the SAME key here only replays this 409 again, it never re-runs the request. A third, rare 409 (code idempotency_conflict_retry) means a concurrent claim of this key could not be resolved and nothing was run or stored: retry with the SAME key. If the wrapper's OWN write to RELEASE a failed attempt's claim cannot be confirmed, the SAME key instead answers 503 idempotency_claim_held until the held claim expires — retry with a NEW key, never the same one. If the wrapper's OWN write to confirm a SUCCESSFUL completion cannot be confirmed, the mutation may have gone through anyway: the SAME key instead answers 503 idempotency_outcome_unknown — verify the outcome before any new-key retry, exactly as case (2) above. Any executed attempt spends the key, success or not, so a failed attempt usually lands in case (2) above. A refusal that fires BEFORE anything is read or written for the request itself — a validation error on the body, a lookup that comes back empty, mismatched, or inaccessible, or a lookup that fails outright — is not an executed attempt: it releases the key instead of spending it, and the SAME key may be retried immediately once the request is corrected. Further exceptions, released instead of spent: pre_wire_failure_unrecorded (a proven pre-wire refusal whose settlement failed, released ONLY once the row is confirmed disarmed (failed status + its replay envelope stripped) — an unconfirmed disarm keeps the key spent, as idempotency_outcome_unknown, instead) — the SAME key may be retried immediately after one of these. A blank or malformed key is refused with 400 idempotency_key_invalid, on dry_run requests too (a dry run never records the key)."
+        },
+        {
           "name": "dry_run",
           "type": "bool",
           "location": "query",
@@ -16463,6 +16511,12 @@
       "path": "/email/send-bulk",
       "params": [
         {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "Optional: one key per bulk send (1-255 printable ASCII characters, not blank), reused only to retry the SAME request. Same key + same request body replays the original response (Idempotent-Replay: true); same key + a different body is refused with 422 code idempotency_request_conflict (the key is bound to the first request for good: verify it, then use a NEW key). Two DISTINCT 409s under this key, never interchangeable: (1) the ORIGINAL attempt is still being processed (code idempotency_in_progress) — wait for the Retry-After seconds given, then retry with the SAME key; (2) the key was already SPENT by a prior attempt that failed or has an unknown outcome (code idempotency_key_spent) — verify whether that attempt took effect BEFORE sending a brand-new key; resending the SAME key here only replays this 409 again, it never re-runs the request. A third, rare 409 (code idempotency_conflict_retry) means a concurrent claim of this key could not be resolved and nothing was run or stored: retry with the SAME key. If the wrapper's OWN write to RELEASE a failed attempt's claim cannot be confirmed, the SAME key instead answers 503 idempotency_claim_held until the held claim expires — retry with a NEW key, never the same one. If the wrapper's OWN write to confirm a SUCCESSFUL completion cannot be confirmed, the mutation may have gone through anyway: the SAME key instead answers 503 idempotency_outcome_unknown — verify the outcome before any new-key retry, exactly as case (2) above. Any executed attempt spends the key, success or not, so a failed attempt usually lands in case (2) above. A blank or malformed key is refused with 400 idempotency_key_invalid, on dry_run requests too (a dry run never records the key)."
+        },
+        {
           "name": "dry_run",
           "type": "bool",
           "location": "query",
@@ -16476,7 +16530,7 @@
         },
         {
           "name": "batchDelayMs",
-          "type": "string",
+          "type": "float",
           "location": "body",
           "description": "Milliseconds between sends, clamped to 0..1000 (default 100)."
         },
@@ -17989,7 +18043,7 @@
     },
     {
       "name": "forms_submit_form",
-      "description": "Idempotent retries: send a random UUID v4 per attempt as _submissionKey. A lost response or a 409 submission_unconfirmed answer is retried with the same payload and the submissionKey that answer carries (it can differ from the key sent). A key whose submission committed answers 201 with replayed: true and runs nothing twice. Retrying without a key creates a second submission. Required: id, data. Optional: _hp_field, _submissionKey, attribution (plus 3 more). Returns array of SubmitFormItem. (public)",
+      "description": "Idempotent retries: send a random UUID v4 per attempt as _submissionKey. A lost response or a 409 submission_unconfirmed answer is retried with the same payload and the submissionKey that answer carries (it can differ from the key sent). A key whose submission committed answers 201 with replayed: true and runs nothing twice. Retrying without a key creates a second submission. Required: id, data. Optional: _hp_field, _submissionKey, attribution (plus 3 more). Returns the new SubmitFormResponse. (public)",
       "method": "POST",
       "path": "/forms/{id}/submit",
       "no_auth": true,
@@ -18758,7 +18812,7 @@
         },
         {
           "name": "verifyLineType",
-          "type": "string",
+          "type": "bool",
           "location": "body",
           "description": "Opt-in Twilio line-type verification of the imported contacts (tenant-paid, ~$0.008/number). Only honored on a contacts import into an EMPTY smart list; requires the account's lineTypeVerificationEnabled Twilio setting. Verification runs after completion (foreground wizard loop or the verify-line-types cron)."
         }
@@ -20455,13 +20509,13 @@
         },
         {
           "name": "claimWindowMinutes",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Claim window minutes"
         },
         {
           "name": "dailyLeadCap",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Daily lead cap"
         },
@@ -20486,7 +20540,7 @@
         },
         {
           "name": "redistributeAfterDays",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Redistribute after days"
         },
@@ -20707,13 +20761,13 @@
         },
         {
           "name": "claimWindowMinutes",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Claim window minutes"
         },
         {
           "name": "dailyLeadCap",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Daily lead cap"
         },
@@ -20737,7 +20791,7 @@
         },
         {
           "name": "redistributeAfterDays",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Redistribute after days"
         },
@@ -20941,10 +20995,16 @@
     },
     {
       "name": "messages_create",
-      "description": "Create a message record. Required: body, channel, contactId, direction. Optional: dry_run, sandbox, bcc (plus 16 more). Returns the new DataEnvelope.",
+      "description": "Create a message record. Required: body, channel, contactId, direction. Optional: Idempotency-Key, dry_run, sandbox (plus 17 more). Returns the new DataEnvelope.",
       "method": "POST",
       "path": "/messages",
       "params": [
+        {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "Optional: one key per message (1-255 printable ASCII characters, not blank), reused only to retry the SAME request. Same key + same request body replays the original response (Idempotent-Replay: true); same key + a different body is refused with 422 code idempotency_request_conflict (the key is bound to the first request for good: verify it, then use a NEW key). Two DISTINCT 409s under this key, never interchangeable: (1) the ORIGINAL attempt is still being processed (code idempotency_in_progress) — wait for the Retry-After seconds given, then retry with the SAME key; (2) the key was already SPENT by a prior attempt that failed or has an unknown outcome (code idempotency_key_spent) — verify whether that attempt took effect BEFORE sending a brand-new key; resending the SAME key here only replays this 409 again, it never re-runs the request. A third, rare 409 (code idempotency_conflict_retry) means a concurrent claim of this key could not be resolved and nothing was run or stored: retry with the SAME key. If the wrapper's OWN write to RELEASE a failed attempt's claim cannot be confirmed, the SAME key instead answers 503 idempotency_claim_held until the held claim expires — retry with a NEW key, never the same one. If the wrapper's OWN write to confirm a SUCCESSFUL completion cannot be confirmed, the mutation may have gone through anyway: the SAME key instead answers 503 idempotency_outcome_unknown — verify the outcome before any new-key retry, exactly as case (2) above. Any executed attempt spends the key, success or not, so a failed attempt usually lands in case (2) above. A blank or malformed key is refused with 400 idempotency_key_invalid, on dry_run requests too (a dry run never records the key)."
+        },
         {
           "name": "dry_run",
           "type": "bool",
@@ -21007,7 +21067,7 @@
           "name": "fromEmail",
           "type": "string",
           "location": "body",
-          "description": "From email"
+          "description": "The pattern above is the server's rule (Zod's email check). It accepts a domain label that ends in a hyphen (a@b-.co), which an RFC `format: email` validator such as ajv-formats refuses."
         },
         {
           "name": "fromNumber",
@@ -21037,13 +21097,13 @@
           "name": "replyTo",
           "type": "string",
           "location": "body",
-          "description": "Reply to"
+          "description": "The pattern above is the server's rule (Zod's email check). It accepts a domain label that ends in a hyphen (a@b-.co), which an RFC `format: email` validator such as ajv-formats refuses."
         },
         {
           "name": "scheduledAt",
           "type": "string",
           "location": "body",
-          "description": "Scheduled at"
+          "description": "The pattern above is the server's rule (Zod's ISO date-time check). It also accepts minute precision without seconds (2026-12-01T10:00Z), which an RFC 3339 `format: date-time` validator refuses; send seconds for portability."
         },
         {
           "name": "signature",
@@ -21079,7 +21139,7 @@
           "name": "toEmail",
           "type": "string",
           "location": "body",
-          "description": "To email"
+          "description": "The pattern above is the server's rule (Zod's email check). It accepts a domain label that ends in a hyphen (a@b-.co), which an RFC `format: email` validator such as ajv-formats refuses."
         },
         {
           "name": "toNumber",
@@ -23892,7 +23952,7 @@
           "name": "remindAt",
           "type": "string",
           "location": "body",
-          "description": "Remind at"
+          "description": "The pattern above is the server's rule (Zod's ISO date-time check). It also accepts minute precision without seconds (2026-12-01T10:00Z), which an RFC 3339 `format: date-time` validator refuses; send seconds for portability."
         }
       ]
     },
@@ -25657,7 +25717,7 @@
     },
     {
       "name": "saved-filters_delete-id",
-      "description": "Saved filters are personal Smart Views now: delete the migrated view with DELETE /api/v1/smart-views/:id. Every call answers 410 saved_filters_retired. Required: id. Destructive.",
+      "description": "Saved filters are personal Smart Views now: delete the migrated view with DELETE /api/v1/smart-views/:id. Every call answers 410 saved_filters_retired. Required: id. Destructive. Deprecated.",
       "method": "DELETE",
       "path": "/saved-filters/{id}",
       "params": [
@@ -25686,7 +25746,7 @@
     },
     {
       "name": "saved-filters_patch-id",
-      "description": "Saved filters are personal Smart Views now: edit the migrated view with PATCH /api/v1/smart-views/:id (its id is listed by GET /api/v1/smart-views). Every call answers 410 saved_filters_retired. Required: id. Partial update.",
+      "description": "Saved filters are personal Smart Views now: edit the migrated view with PATCH /api/v1/smart-views/:id (its id is listed by GET /api/v1/smart-views). Every call answers 410 saved_filters_retired. Required: id. Partial update. Deprecated.",
       "method": "PATCH",
       "path": "/saved-filters/{id}",
       "params": [
@@ -25701,7 +25761,7 @@
     },
     {
       "name": "saved-filters_post",
-      "description": "Saved filters are personal Smart Views now: create one with POST /api/v1/smart-views (personal: true keeps it private for an admin key). Every call answers 410 saved_filters_retired.",
+      "description": "Saved filters are personal Smart Views now: create one with POST /api/v1/smart-views (personal: true keeps it private for an admin key). Every call answers 410 saved_filters_retired. Deprecated.",
       "method": "POST",
       "path": "/saved-filters",
       "params": []
@@ -27410,6 +27470,14 @@
           "required": true
         },
         {
+          "name": "message-check-minimum-grade-channel",
+          "wire_name": "messageCheck.minimumGrade.channel",
+          "type": "object",
+          "location": "body",
+          "description": "The minimum per channel: a grade letter (A, B, C, D, F), a score from 0 to 100, or null for no minimum.",
+          "required": true
+        },
+        {
           "name": "message-check-minimum-grade-enabled",
           "wire_name": "messageCheck.minimumGrade.enabled",
           "type": "bool",
@@ -27483,7 +27551,7 @@
         {
           "name": "pool-filter-created-within-days",
           "wire_name": "poolFilter.createdWithinDays",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Created within days"
         },
@@ -27498,14 +27566,14 @@
         {
           "name": "pool-filter-max-score",
           "wire_name": "poolFilter.maxScore",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Max score"
         },
         {
           "name": "pool-filter-min-score",
           "wire_name": "poolFilter.minScore",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Min score"
         },
@@ -27531,6 +27599,14 @@
           "description": "After hours broadcast"
         },
         {
+          "name": "pool-pages-lead-pool-claim-limit",
+          "wire_name": "poolPages.lead_pool.claimLimit",
+          "type": "object",
+          "location": "body",
+          "description": "Claim limit",
+          "required": true
+        },
+        {
           "name": "pool-pages-lead-pool-displayed-custom-fields",
           "wire_name": "poolPages.lead_pool.displayedCustomFields",
           "type": "string_csv_array",
@@ -27546,11 +27622,26 @@
           "required": true
         },
         {
+          "name": "pool-pages-lead-pool-push-rule",
+          "wire_name": "poolPages.lead_pool.pushRule",
+          "type": "object",
+          "location": "body",
+          "description": "Push rule"
+        },
+        {
           "name": "pool-pages-up-for-grabs-after-hours-broadcast",
           "wire_name": "poolPages.up_for_grabs.afterHoursBroadcast",
           "type": "bool",
           "location": "body",
           "description": "After hours broadcast"
+        },
+        {
+          "name": "pool-pages-up-for-grabs-claim-limit",
+          "wire_name": "poolPages.up_for_grabs.claimLimit",
+          "type": "object",
+          "location": "body",
+          "description": "Claim limit",
+          "required": true
         },
         {
           "name": "pool-pages-up-for-grabs-displayed-custom-fields",
@@ -27566,6 +27657,13 @@
           "location": "body",
           "description": "Displayed fields",
           "required": true
+        },
+        {
+          "name": "pool-pages-up-for-grabs-push-rule",
+          "wire_name": "poolPages.up_for_grabs.pushRule",
+          "type": "object",
+          "location": "body",
+          "description": "Push rule"
         },
         {
           "name": "project-blue-recording-consent-greeting",
@@ -28804,7 +28902,7 @@
           "name": "webhookUrl",
           "type": "string",
           "location": "body",
-          "description": "Webhook url"
+          "description": "The server parses the value with the WHATWG URL parser (Zod's .url()), not RFC 3986: it accepts a space (percent-encoded), a non-ASCII host, a second '#', an invalid percent escape and a bare scheme such as `x:`, which a strict `format: uri` validator refuses, and it refuses an empty host such as `http://` and a port above 65535, which that validator accepts."
         }
       ]
     },
@@ -28969,7 +29067,7 @@
           "name": "idpSsoUrl",
           "type": "string",
           "location": "body",
-          "description": "Idp sso url"
+          "description": "The server parses the value with the WHATWG URL parser (Zod's .url()), not RFC 3986: it accepts a space (percent-encoded), a non-ASCII host, a second '#', an invalid percent escape and a bare scheme such as `x:`, which a strict `format: uri` validator refuses, and it refuses an empty host such as `http://` and a port above 65535, which that validator accepts."
         },
         {
           "name": "oidcClientId",
@@ -28987,7 +29085,7 @@
           "name": "oidcIssuer",
           "type": "string",
           "location": "body",
-          "description": "Oidc issuer"
+          "description": "The server parses the value with the WHATWG URL parser (Zod's .url()), not RFC 3986: it accepts a space (percent-encoded), a non-ASCII host, a second '#', an invalid percent escape and a bare scheme such as `x:`, which a strict `format: uri` validator refuses, and it refuses an empty host such as `http://` and a port above 65535, which that validator accepts."
         },
         {
           "name": "protocol",
@@ -29607,10 +29705,16 @@
     },
     {
       "name": "tasks_create",
-      "description": "Creates a task, optionally on a contact and/or a deal. As a Pipeline health quick fix ('Set next action'), send `checkOrigin` + `expectedDealUpdatedAt` with `dealId`: the task is created only while the deal still needs it (see TaskCreate.checkOrigin); the database allows at most one non-done quick-fix task per deal (a second is refused 409 `deal_has_next_action`). Ordinary tasks are unconstrained: they may coexist with a quick-fix task, and may race one. Required: title. Optional: dry_run, sandbox, assignedTo (plus 8 more). Returns the new DataEnvelope.",
+      "description": "Creates a task, optionally on a contact and/or a deal. As a Pipeline health quick fix ('Set next action'), send `checkOrigin` + `expectedDealUpdatedAt` with `dealId`: the task is created only while the deal still needs it (see TaskCreate.checkOrigin); the database allows at most one non-done quick-fix task per deal (a second is refused 409 `deal_has_next_action`). Ordinary tasks are unconstrained: they may coexist with a quick-fix task, and may race one. Required: title. Optional: Idempotency-Key, dry_run, sandbox (plus 9 more). Returns the new DataEnvelope.",
       "method": "POST",
       "path": "/tasks",
       "params": [
+        {
+          "name": "Idempotency-Key",
+          "type": "string",
+          "location": "header",
+          "description": "Optional: one key per creation attempt (1-255 printable ASCII characters, not blank), reused..."
+        },
         {
           "name": "dry_run",
           "type": "bool",
@@ -30271,13 +30375,13 @@
       "params": [
         {
           "name": "birthdayDay",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Birthday day"
         },
         {
           "name": "birthdayMonth",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Birthday month"
         },
@@ -30422,7 +30526,7 @@
           "name": "avatarUrl",
           "type": "string",
           "location": "body",
-          "description": "Avatar url"
+          "description": "The server parses the value with the WHATWG URL parser (Zod's .url()), not RFC 3986: it accepts a space (percent-encoded), a non-ASCII host, a second '#', an invalid percent escape and a bare scheme such as `x:`, which a strict `format: uri` validator refuses, and it refuses an empty host such as `http://` and a port above 65535, which that validator accepts."
         },
         {
           "name": "custom1",
@@ -30516,7 +30620,7 @@
         },
         {
           "name": "poolClaimDailyLimit",
-          "type": "string",
+          "type": "int",
           "location": "body",
           "description": "Pool claim daily limit"
         },
@@ -31513,7 +31617,7 @@
     },
     {
       "name": "webhooks_inbound-form-submission",
-      "description": "Public: no API key; the token in the URL is the credential (create one with POST /integrations/wordpress-forms/intakes). For Gravity Forms (Webhooks Add-On), WPForms (Webhooks addon) and Elementor Pro (Webhook action). Accepts JSON, application/x-www-form-urlencoded (Elementor's default and 'Advanced Data' bracket forms) and multipart without files, up to 64 KB. Field names match case-insensitively with spaces and punctuation ignored: first name (firstName, first_name, first, 'First Name'), last name, a single name / full_name / 'Your name' (split on the first space), email ('E-mail', 'Email Address'), phone (tel, telephone, 'Phone Number'), company, message (comments, notes), utm_source / utm_medium / utm_campaign / utm_term / utm_content, 'Page URL' and 'Page Title' (attribution), tags (an array or a comma-separated string), source, form_name (names the timeline entry). Elementor's form_id, Date, Time, User Agent, Remote IP and Powered by are dropped. Any other field is saved to the contact custom field whose key or label matches it; every field is on the contact's timeline entry 'Submitted \u003cform name\u003e'. Creates or updates the contact by email then phone (a resend never creates a second contact or a second timeline entry) and applies the intake's default tag, source and owner (explicit source / tags in the body win). Required: token. Optional: Page Title, Page URL, company (plus 14 more). Returns the new WebhooksInboundFormSubmissionResponse. (public)",
+      "description": "Public: no API key; the token in the URL is the credential (create one with POST /integrations/wordpress-forms/intakes). For Gravity Forms (Webhooks Add-On), WPForms (Webhooks addon) and Elementor Pro (Webhook action). Accepts JSON, application/x-www-form-urlencoded (Elementor's default and 'Advanced Data' bracket forms) and multipart without files, up to 64 KB. Field names match case-insensitively with spaces and punctuation ignored: first name (firstName, first_name, first, 'First Name'), last name, a single name / full_name / 'Your name' (split on the first space), email ('E-mail', 'Email Address'), phone (tel, telephone, 'Phone Number'), company, message (comments, notes), utm_source / utm_medium / utm_campaign / utm_term / utm_content, 'Page URL' and 'Page Title' (attribution), tags (an array or a comma-separated string), source, form_name (names the timeline entry). Elementor's form_id, Date, Time, User Agent, Remote IP and Powered by are dropped. Any other field is saved to the contact custom field whose key or label matches it; every field is on the contact's timeline entry 'Submitted \u003cform name\u003e'. Creates or updates the contact by email then phone (a resend never creates a second contact or a second timeline entry) and applies the intake's default tag, source and owner (explicit source / tags in the body win). Required: token. Optional: Page_Title, Page_URL, company (plus 14 more). Returns the new WebhooksInboundFormSubmissionResponse. (public)",
       "method": "POST",
       "path": "/webhooks/inbound/forms/{token}",
       "no_auth": true,
@@ -31526,13 +31630,15 @@
           "required": true
         },
         {
-          "name": "Page Title",
+          "name": "Page_Title",
+          "wire_name": "Page Title",
           "type": "string",
           "location": "body",
           "description": "Attribution: that page's title"
         },
         {
-          "name": "Page URL",
+          "name": "Page_URL",
+          "wire_name": "Page URL",
           "type": "string",
           "location": "body",
           "description": "Attribution: the page the lead was on"

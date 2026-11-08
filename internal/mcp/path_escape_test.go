@@ -42,7 +42,7 @@ func TestCodeOrchExecuteEscapesPathParamsAndMasksThem(t *testing.T) {
 		"endpoint_id": "public.post-screen-share-code",
 		"params":      map[string]any{"code": "SECRET/part?x=1-ABC123456"},
 	}
-	res, err := handleCodeOrchExecute(context.Background(), req)
+	res, err := codeOrchTestInvoke(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
 	}

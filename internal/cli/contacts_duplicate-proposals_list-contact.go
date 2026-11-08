@@ -63,9 +63,9 @@ func newContactsDuplicateProposalsListContactCmd(flags *rootFlags) *cobra.Comman
 					params[wire] = cmd.Flags().Lookup(flag).Value.String()
 				}
 			}
-			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "live", "duplicate-proposals", path, params, nil, false, "cursor", "cursor", "limit", 50, "", "", cmd.ErrOrStderr())
+			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "live", "duplicate-proposals", path, params, nil, false, "cursor", "cursor", "limit", 50, "", "", "", cmd.ErrOrStderr())
 			if err != nil {
-				return classifyAPIError(err, flags)
+				return classifyAPIError(cmd.OutOrStdout(), err, flags)
 			}
 			// Print provenance to stderr for human-facing output only.
 			// Machine-format flags (--json, --csv, --compact, --quiet, --plain,

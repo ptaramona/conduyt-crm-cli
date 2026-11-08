@@ -8,6 +8,8 @@ builds:
     binary: conduyt-crm-pp-cli
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
     ldflags:
       - -s -w -X github.com/ptaramona/conduyt-crm-cli/internal/cli.version={{ .Version }}
     targets:
@@ -22,6 +24,8 @@ builds:
     binary: conduyt-crm-pp-mcp
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
     ldflags:
       - -s -w -X main.version={{ .Version }}
     targets:

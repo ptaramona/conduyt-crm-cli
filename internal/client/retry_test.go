@@ -1373,7 +1373,17 @@ func TestCrossHostRedirectDropsEveryCredentialHeader(t *testing.T) {
 	}
 	c := newRetryClient(origin.URL, nil)
 	if _, _, err := c.do(context.Background(), "GET", "/start", nil, nil, creds); err != nil {
-		t.Fatal(err)
+		// gocli1219: Printing Press 4.34.2 refuses a cross-origin hop to a loopback/private literal outright (stricter
+		// than dropping the credentials): nothing reaches the target.
+		if !errors.Is(err, ErrRedirectPrivateDestination) {
+			t.Fatal(err)
+		}
+		mu.Lock()
+		if got != nil {
+			t.Fatalf("refused redirect still reached the target: %v", got)
+		}
+		got = http.Header{"X-Request-Id": {"req-1"}} // nothing was sent: the allowlist question does not arise
+		mu.Unlock()
 	}
 	mu.Lock()
 	for name := range creds {
@@ -1546,7 +1556,16 @@ func TestHTTPSToHTTPRedirectOnTheSameHostDropsEverything(t *testing.T) {
 		"X-CSRFToken": "csrf-dddd-4444", "X-APIToken": "apit-eeee-5555", "X-Request-Id": "req-9",
 	}
 	if _, _, err := c.do(context.Background(), "GET", "/start", nil, nil, creds); err != nil {
-		t.Fatal(err)
+		// gocli1219: Printing Press 4.34.2 refuses an https -> http downgrade outright: nothing reaches the plain server.
+		if !errors.Is(err, ErrRedirectProtocolDowngrade) {
+			t.Fatal(err)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if got != nil {
+			t.Fatalf("refused downgrade still reached the plain server: %v", got)
+		}
+		return
 	}
 	mu.Lock()
 	defer mu.Unlock()

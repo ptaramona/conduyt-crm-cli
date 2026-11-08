@@ -93,20 +93,20 @@ func newNovelSendCheckCmd(flags *rootFlags) *cobra.Command {
 			case flagContact != "":
 				data, err := c.Get(cmd.Context(), "/contacts/"+flagContact, nil)
 				if err != nil {
-					return classifyAPIError(err, flags)
+					return classifyAPIError(cmd.OutOrStdout(), err, flags)
 				}
 				collect(data)
 			case flagList != "":
 				data, err := c.Get(cmd.Context(), "/smart-lists/"+flagList+"/contacts", map[string]string{"per_page": fmt.Sprint(flagLimit)})
 				if err != nil {
-					return classifyAPIError(err, flags)
+					return classifyAPIError(cmd.OutOrStdout(), err, flags)
 				}
 				collect(data)
 			default:
 				for _, tag := range flagTag {
 					data, err := c.Get(cmd.Context(), "/contacts", map[string]string{"tag": tag, "per_page": fmt.Sprint(flagLimit)})
 					if err != nil {
-						return classifyAPIError(err, flags)
+						return classifyAPIError(cmd.OutOrStdout(), err, flags)
 					}
 					collect(data)
 				}

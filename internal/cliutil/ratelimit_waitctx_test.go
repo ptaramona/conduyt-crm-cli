@@ -9,8 +9,8 @@ import (
 )
 
 func TestWaitContextReleasesReservationOnCancel(t *testing.T) {
-	l := NewAdaptiveLimiter(1) // one request per second
-	l.Wait()                   // consume the free slot
+	l := NewAdaptiveLimiter(1)   // one request per second
+	l.Wait(context.Background()) // consume the free slot
 	before := l.lastRequest
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
@@ -46,7 +46,7 @@ func TestWaitContextAlreadyCancelledFreeSlotKeepsNoReservation(t *testing.T) {
 
 func TestWaitContextCancelledBeforeReservingLeavesNoSlot(t *testing.T) {
 	l := NewAdaptiveLimiter(1)
-	l.Wait()
+	l.Wait(context.Background())
 	l.mu.Lock()
 	before := l.lastRequest
 	l.mu.Unlock()

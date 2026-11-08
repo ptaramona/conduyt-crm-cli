@@ -77,8 +77,12 @@ func TestBulkUpdateDealsRequestBody(t *testing.T) {
 	if body != `{"updates":`+arr+`}` {
 		t.Fatalf("body = %s", body)
 	}
-	// non-array and 0 items go through untouched; the API answers 400/422
-	for _, v := range []string{`{"id":"x"}`, `[]`} {
+	// gocli1219: under 4.34.2 a non-array --updates is refused locally (the spec types it an array), nothing sent
+	if _, hits, err = runBulkUpdateDeals(t, &rootFlags{}, okResp, 200, "--updates", `{"id":"x"}`); err == nil || hits != 0 {
+		t.Fatalf("non-array --updates: hits=%d err=%v, want a local refusal", hits, err)
+	}
+	// 0 items go through untouched; the API answers 400/422
+	for _, v := range []string{`[]`} {
 		body, hits, _ = runBulkUpdateDeals(t, &rootFlags{}, okResp, 200, "--updates", v)
 		if hits != 1 || body != `{"updates":`+v+`}` {
 			t.Fatalf("%s: hits=%d body=%s", v, hits, body)

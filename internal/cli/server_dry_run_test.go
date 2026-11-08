@@ -4,6 +4,7 @@ package cli
 // dry_run query parameter is the local flag --server-dry-run (the request IS sent); no command registers a local --dry-run.
 
 import (
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -65,6 +66,9 @@ func specDryRunOperations(t *testing.T) map[string]bool {
 }
 
 func TestNoLocalDryRunAndServerDryRunIsBound(t *testing.T) {
+	// gocli1219: the preview sweep runs bare commands; under 4.34.2 only the verify / dogfood harnesses waive the
+	// required flags under --dry-run (requiredInputWaived), so the sweep runs as the dogfood harness does.
+	t.Setenv(cliutil.DogfoodEnvVar, "1")
 	ops := specDryRunOperations(t)
 	if len(ops) < 100 {
 		t.Fatalf("spec.yaml shows only %d operations with a dry_run query parameter; the scan is blind", len(ops))

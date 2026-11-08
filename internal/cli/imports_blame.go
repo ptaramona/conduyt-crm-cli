@@ -37,7 +37,7 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 			}
 			data, err := c.Get(cmd.Context(), "/imports/"+jobID, nil)
 			if err != nil {
-				return classifyAPIError(err, flags)
+				return classifyAPIError(cmd.OutOrStdout(), err, flags)
 			}
 			var envelope map[string]any
 			if err := json.Unmarshal(data, &envelope); err != nil {

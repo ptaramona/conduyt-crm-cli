@@ -43,7 +43,7 @@ func newNovelImportsWatchCmd(flags *rootFlags) *cobra.Command {
 			for {
 				data, err := c.GetNoCache(cmd.Context(), "/imports/"+jobID, nil)
 				if err != nil {
-					return classifyAPIError(err, flags)
+					return classifyAPIError(cmd.OutOrStdout(), err, flags)
 				}
 				var envelope map[string]any
 				if err := json.Unmarshal(data, &envelope); err != nil {

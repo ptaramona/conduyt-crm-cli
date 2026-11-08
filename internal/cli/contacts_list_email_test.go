@@ -155,7 +155,7 @@ func TestContactsListPagesOnPerPageNotLimit(t *testing.T) {
 		perPage   string
 		limitSent bool
 	}{
-		{nil, "50", false},
+		{nil, "", false}, // gocli1219: 4.34.2 sends only the flags passed (retainCLIQueryParams); the API defaults per_page
 		{[]string{"--per-page", "100"}, "100", false},
 		{[]string{"--per-page", "100", "--limit", "100"}, "100", true},
 	} {

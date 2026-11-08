@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-08T05:21:51.123922Z",
-  "printing_press_version": "4.28.0",
+  "generated_at": "2026-11-08T14:08:38.979411Z",
+  "printing_press_version": "4.34.2",
   "api_name": "conduyt-crm",
   "display_name": "Conduyt CRM",
   "cli_name": "conduyt-crm-pp-cli",
@@ -14,6 +14,8 @@
   "printer_name": "Paul Taramona",
   "spec_format": "openapi3",
   "spec_checksum": "sha256:9e6eb974c2d72cfe15c8869deede425768cabd7a44efde2e295e8eaeba6ef824",
+  "spec_path": "spec.yaml",
+  "spec_source": "official",
   "spec_url": "https://conduyt.app/openapi.yaml",
   "upstream_spec_checksum": "sha256:f4ac1e3b2c4519f9d2a01d2f51d035f6ab856ec20739fa8d63511b64cd2e5cac",
   "run_id": "20261108-052151",

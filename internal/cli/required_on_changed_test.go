@@ -6,6 +6,7 @@ package cli
 // until .printing-press-patches/required-on-changed.pl is run again.
 
 import (
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -74,13 +75,18 @@ var requiredZeroValueExceptions = map[string]string{
 	"email send --to":                     "email-send-live-keys-cli-324: hand-written required set (to, contact-id, subject) checked together",
 	"email send --contact-id":             "email-send-live-keys-cli-324: hand-written required set",
 	"email send --subject":                "email-send-live-keys-cli-324: hand-written required set",
-	"call-flows post-audio --file":        "multipart file path: an empty path cannot be uploaded (local open error, nothing sent)",
-	"users avatar post-users-id --avatar": "multipart file path: an empty path cannot be uploaded (local open error, nothing sent)",
+	// gocli1219: the two multipart file paths (call-flows post-audio --file, users avatar post-users-id --avatar) are no
+	// longer exceptions: under 4.34.2 the --dry-run preview opens no file (it shows "@<path>"), so their zero value is
+	// serialized like any other required flag; a real call still fails locally on the empty path.
 }
 
 // dryRunBody runs the command under the global --dry-run with extra flags and returns the previewed JSON body as text.
 func dryRunBody(t *testing.T, cmd *cobra.Command, extra ...string) (string, error) {
 	t.Helper()
+	// gocli1219: under Printing Press 4.34.2 a user's --dry-run still enforces the OTHER required flags (only the
+	// verify / dogfood harnesses waive them, requiredInputWaived). This probe sends one flag at a time, so it runs
+	// as the dogfood harness does.
+	t.Setenv(cliutil.DogfoodEnvVar, "1")
 	root := newRootCmd(&rootFlags{})
 	args := strings.Fields(strings.TrimPrefix(cmd.CommandPath(), root.Name()+" "))
 	for i := 0; i < strings.Count(cmd.Use, "<"); i++ {

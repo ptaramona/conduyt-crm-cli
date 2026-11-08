@@ -164,9 +164,9 @@ func newDealsListCmd(flags *rootFlags) *cobra.Command {
 				"view":             formatCLIParamValue(flagView),
 				"view_id":          formatCLIParamValue(flagViewId),
 				"viewId":           formatCLIParamValue(flagViewId2),
-			}, nil, flagAll, "page", "page", "per_page", 50, "", "", cmd.ErrOrStderr())
+			}, nil, flagAll, "page", "page", "per_page", 50, "", "", "", cmd.ErrOrStderr())
 			if err != nil {
-				return classifyAPIError(err, flags)
+				return classifyAPIError(cmd.OutOrStdout(), err, flags)
 			}
 			// Print provenance to stderr for human-facing output only.
 			// Machine-format flags (--json, --csv, --compact, --quiet, --plain,

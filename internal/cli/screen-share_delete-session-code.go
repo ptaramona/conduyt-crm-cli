@@ -86,7 +86,7 @@ func newScreenShareDeleteSessionCodeCmd(flags *rootFlags) *cobra.Command {
 			}
 			data, statusCode, err := c.DeleteWithBody(cmd.Context(), path, body)
 			if err != nil {
-				return classifyDeleteError(err, flags)
+				return classifyDeleteError(cmd.OutOrStdout(), err, flags)
 			}
 			// Inspect the mutate response body for a partial-failure-shaped
 			// field (e.g. Google Ads `partialFailureError`). Several Google

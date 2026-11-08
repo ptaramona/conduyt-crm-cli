@@ -28,7 +28,7 @@ func execGuard(t *testing.T, endpoint string, params map[string]any) (hits int, 
 	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
 	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
 	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
-	res, err := handleCodeOrchExecute(context.Background(), mcplib.CallToolRequest{Params: mcplib.CallToolParams{
+	res, err := codeOrchTestInvoke(context.Background(), mcplib.CallToolRequest{Params: mcplib.CallToolParams{
 		Arguments: map[string]any{"endpoint_id": endpoint, "params": params},
 	}})
 	if err != nil {
