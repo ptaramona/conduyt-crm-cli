@@ -151,10 +151,11 @@ func (c *Client) httpClientFor(replaySafe bool) *http.Client {
 // PATCH(retry-policy) gocli1219 r2: mutationCarriesCallKey reports a mutation sent with a per-call key header (a
 // spec-declared --idempotency-key flag). Such a request is sent but never replayed: not by the CLI (it is not
 // replay-safe) and not by Go's transport, which replays a keyed request on a dead reused connection.
+//
+// gocli1219 r4: method-independent. The caller decides whether the call is replay-safe (the intent flag); this only
+// reports the key, so a mutating GET carrying a key counts too.
 func mutationCarriesCallKey(method string, headerOverrides map[string]string) bool {
-	if isReadMethod(method) {
-		return false
-	}
+	_ = method
 	for _, h := range []string{"Idempotency-Key", "X-Idempotency-Key"} {
 		for k, v := range headerOverrides {
 			if strings.EqualFold(k, h) && strings.TrimSpace(v) != "" {
@@ -175,7 +176,10 @@ func mutationCarriesCallKey(method string, headerOverrides map[string]string) bo
 // streamIdle is the idle window of a streaming read (0 when the call does not stream).
 func (c *Client) attemptHTTPClient(method string, headerOverrides map[string]string, replaySafe, binaryResponse bool) (*http.Client, time.Duration, error) {
 	httpClient := c.httpClientFor(replaySafe)
-	if !replaySafe && mutationCarriesCallKey(method, headerOverrides) {
+	// gocli1219 r4: a call that is not replay-safe takes the no-reuse client when it carries a per-call key OR its wire
+	// method is one Go's transport resends on its own after a dead reused connection (GET, HEAD, OPTIONS, TRACE): a
+	// mutating GET is replayed by the transport with or without a key.
+	if !replaySafe && (mutationCarriesCallKey(method, headerOverrides) || goTransportReplaysMethod(method)) {
 		keyed, err := c.noReuseMutationClient()
 		if err != nil {
 			return nil, 0, err
@@ -190,6 +194,16 @@ func (c *Client) attemptHTTPClient(method string, headerOverrides map[string]str
 		httpClient = StreamingHTTPClient(httpClient, streamIdle)
 	}
 	return httpClient, streamIdle, nil
+}
+
+// goTransportReplaysMethod reports the methods net/http treats as idempotent and so may resend on a dead reused
+// connection without any key (gocli1219 r4).
+func goTransportReplaysMethod(method string) bool {
+	switch strings.ToUpper(strings.TrimSpace(method)) {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace, "":
+		return true
+	}
+	return false
 }
 
 // standardTransport returns the *http.Transport behind rt; a nil transport is net/http's DefaultTransport (callers
@@ -208,7 +222,7 @@ func standardTransport(rt http.RoundTripper) (*http.Transport, bool) {
 type errKeyedMutationTransport struct{ transport string }
 
 func (e errKeyedMutationTransport) Error() string {
-	return fmt.Sprintf("refusing to send a mutation with an Idempotency-Key: the HTTP transport (%s) is not the standard transport, so it cannot be proven not to reuse a connection and silently resend the request; nothing was sent (drop the key or use the default transport)", e.transport)
+	return fmt.Sprintf("refusing to send a call that is not safe to replay (a mutation with an Idempotency-Key, or a state-changing GET): the HTTP transport (%s) is not the standard transport, so it cannot be proven not to reuse a connection and silently resend the request; nothing was sent (use the default transport)", e.transport)
 }
 
 // noReuseMutationClient is the HTTP/1-only mutation client with keep-alives off: every keyed mutation dials a fresh

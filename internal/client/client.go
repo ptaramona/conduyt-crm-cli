@@ -1248,7 +1248,9 @@ func New(cfg *config.Config, timeout time.Duration, rateLimit float64) *Client {
 		}
 		// PATCH(retry-policy): a mutation is never redirected to another origin (307/308 included), and a
 		// method-preserving redirect of a call that is not replay-safe is refused (Go would resend the body inside Do).
-		if origin := via[0]; !sameOrigin(req.URL, origin.URL) && !isReadMethod(origin.Method) {
+		// gocli1219 r4: "mutation" is the call's intent (replay-safe context), not the wire method, so a mutating GET is
+		// never sent to another origin either.
+		if origin := via[0]; !sameOrigin(req.URL, origin.URL) && (!isReadMethod(origin.Method) || !replaySafeFromContext(req.Context())) {
 			return redirectPolicyRefusal{fmt.Sprintf("refusing to follow a cross-origin redirect for %s %s: a mutation is never sent to another origin", origin.Method, origin.URL.Path)}
 		} else if !replaySafeFromContext(req.Context()) && req.Method == origin.Method {
 			return redirectPolicyRefusal{fmt.Sprintf("refusing to follow redirect for %s %s: the request is not safe to replay", origin.Method, origin.URL.Path)}
@@ -2383,7 +2385,7 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 	// PATCH(retry-policy): a mutation is replayed only when the CLI generated the Idempotency-Key itself for an endpoint
 	// known to honour it (idempotentEndpoints in retry.go).
 	cliKey := ""
-	if !isReadMethod(method) && endpointHonoursIdempotencyKey(method, path) {
+	if !canRetryAmbiguousFailure && endpointHonoursIdempotencyKey(method, path) { // gocli1219 r4: by intent, not method
 		cliKey = newIdempotencyKey()
 		canRetryAmbiguousFailure = true
 	}
@@ -2475,7 +2477,7 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 			if vals, ok := req.Header[http.CanonicalHeaderKey(h)]; ok && strings.TrimSpace(strings.Join(vals, "")) == "" {
 				req.Header.Del(h)
 			}
-			if !isReadMethod(method) && strings.TrimSpace(headerOverrides[h]) == "" {
+			if !canRetryAmbiguousFailure && strings.TrimSpace(headerOverrides[h]) == "" { // gocli1219 r4: by intent, not method
 				req.Header.Del(h)
 			}
 		}
