@@ -14,6 +14,7 @@ import (
 
 func newUsersNotificationsUpdateUserPreferencesCmd(flags *rootFlags) *cobra.Command {
 	var bodyPreferences string
+	var bodySoundsTeamChat bool
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -23,19 +24,10 @@ func newUsersNotificationsUpdateUserPreferencesCmd(flags *rootFlags) *cobra.Comm
 		Example:     "  conduyt-crm-pp-cli users notifications update-user-preferences 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "notifications.update-user-preferences", "pp:method": "PATCH", "pp:path": "/users/{id}/notifications"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Bare invocation of a command with required input prints help
-			// instead of pflag's terse "required flag not set" error. Optional-
-			// only read commands fall through so a bare call still executes.
-			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
-				return cmd.Help()
-			}
 			if len(args) == 0 {
 				return cmd.Help()
 			}
 			if !stdinBody {
-				if !cmd.Flags().Changed("preferences") && !flags.dryRun {
-					return fmt.Errorf("required flag \"%s\" not set", "preferences")
-				}
 			}
 			path := "/users/{id}/notifications"
 			if len(args) < 1 || args[0] == "" {
@@ -67,6 +59,15 @@ func newUsersNotificationsUpdateUserPreferencesCmd(flags *rootFlags) *cobra.Comm
 						return fmt.Errorf("parsing --preferences JSON: %w", err)
 					}
 					bodyMap["preferences"] = parsedPreferences
+				}
+				{
+					nestedSounds := map[string]any{}
+					if cmd.Flags().Changed("sounds-team-chat") {
+						nestedSounds["teamChat"] = bodySoundsTeamChat
+					}
+					if len(nestedSounds) > 0 {
+						bodyMap["sounds"] = nestedSounds
+					}
 				}
 			}
 			data, statusCode, err := c.PatchWithParams(cmd.Context(), path, params, body)
@@ -213,6 +214,7 @@ func newUsersNotificationsUpdateUserPreferencesCmd(flags *rootFlags) *cobra.Comm
 		},
 	}
 	cmd.Flags().StringVar(&bodyPreferences, "preferences", "", "Preferences")
+	cmd.Flags().BoolVar(&bodySoundsTeamChat, "sounds-team-chat", false, "Team chat")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

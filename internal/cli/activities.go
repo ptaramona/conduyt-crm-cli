@@ -17,6 +17,7 @@ func newActivitiesCmd(flags *rootFlags) *cobra.Command {
 	}
 
 	cmd.AddCommand(newActivitiesCreateActivityCmd(flags))
+	cmd.AddCommand(newActivitiesGetAssignmentReasonsCmd(flags))
 	cmd.AddCommand(newActivitiesGetIdCmd(flags))
 	cmd.AddCommand(newActivitiesListCmd(flags))
 	return cmd

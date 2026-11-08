@@ -146,6 +146,8 @@ In local mode: searches locally synced data only.`,
 
 			var results []json.RawMessage
 			switch resourceType {
+			case "tags":
+				results, err = db.SearchTags(query, limit)
 			case "":
 				// Search every FTS-enabled source — typed per-resource tables
 				// AND the generic resources_fts — and dedup by raw JSON so a
@@ -155,6 +157,19 @@ In local mode: searches locally synced data only.`,
 				// populated only the generic index) silently return zero.
 				seen := make(map[string]bool)
 				_ = seen // prevent unused error when no FTS tables exist
+				{
+					partial, searchErr := db.SearchTags(query, limit)
+					if searchErr != nil {
+						return fmt.Errorf("search tags failed: %w", searchErr)
+					}
+					for _, r := range partial {
+						key := string(r)
+						if !seen[key] {
+							seen[key] = true
+							results = append(results, r)
+						}
+					}
+				}
 				{
 					partial, searchErr := db.Search(query, limit)
 					if searchErr != nil {

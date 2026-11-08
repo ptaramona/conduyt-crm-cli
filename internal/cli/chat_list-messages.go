@@ -4,8 +4,10 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -16,7 +18,11 @@ func newChatListMessagesCmd(flags *rootFlags) *cobra.Command {
 	var flagCursor string
 	var flagLimit int
 	var flagMarkRead bool
+	var flagPointersCursor string
+	var flagPointersFrom string
+	var flagPointersTo string
 	var flagReadUpTo string
+	var flagTopLevel string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -28,6 +34,19 @@ func newChatListMessagesCmd(flags *rootFlags) *cobra.Command {
 			if len(args) == 0 {
 				return cmd.Help()
 			}
+			if cmd.Flags().Changed("top-level") {
+				allowedTopLevel := []string{"true"}
+				validTopLevel := false
+				for _, v := range allowedTopLevel {
+					if flagTopLevel == v {
+						validTopLevel = true
+						break
+					}
+				}
+				if !validTopLevel {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagTopLevel, "top-level", allowedTopLevel)
+				}
+			}
 			path := "/chat/channels/{id}/messages"
 			if len(args) < 1 || args[0] == "" {
 				return usageErr(fmt.Errorf("id is required\nUsage: %s <%s>", cmd.CommandPath(), "id"))
@@ -38,11 +57,15 @@ func newChatListMessagesCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "chat", path, map[string]string{
-				"afterSeq": formatCLIParamValue(flagAfterSeq),
-				"cursor":   formatCLIParamValue(flagCursor),
-				"limit":    formatCLIParamValue(flagLimit),
-				"markRead": formatCLIParamValue(flagMarkRead),
-				"readUpTo": formatCLIParamValue(flagReadUpTo),
+				"afterSeq":       formatCLIParamValue(flagAfterSeq),
+				"cursor":         formatCLIParamValue(flagCursor),
+				"limit":          formatCLIParamValue(flagLimit),
+				"markRead":       formatCLIParamValue(flagMarkRead),
+				"pointersCursor": formatCLIParamValue(flagPointersCursor),
+				"pointersFrom":   formatCLIParamValue(flagPointersFrom),
+				"pointersTo":     formatCLIParamValue(flagPointersTo),
+				"readUpTo":       formatCLIParamValue(flagReadUpTo),
+				"topLevel":       formatCLIParamValue(flagTopLevel),
 			}, nil, flagAll, "cursor", "cursor", "limit", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -95,8 +118,29 @@ func newChatListMessagesCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
 	cmd.Flags().IntVar(&flagLimit, "limit", 50, "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagMarkRead, "mark-read", false, "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagPointersCursor, "pointers-cursor", "", "(#613) the pointersCursor of a pointer read that was cut")
+	cmd.Flags().StringVar(&flagPointersFrom, "pointers-from", "", "(#613) an ISO time.")
+	cmd.Flags().StringVar(&flagPointersTo, "pointers-to", "", "(#613) an ISO time, read only with pointersCursor")
 	cmd.Flags().StringVar(&flagReadUpTo, "read-up-to", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagTopLevel, "top-level", "", "(#684, only while the workspace's thread view is on; 409 code team_chat_threads_off otherwise) (one of: true)")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
+}
+
+// fetchFullChatListMessagesData returns every item
+// in the "data" sub-resource of GET /chat/channels/{id}/messages. The parent
+// response embeds at most the first page of this sub-resource, so any
+// caller that treats the embed as complete silently truncates; this
+// companion calls the dedicated child endpoint and paginates until
+// exhausted. pathParams must include every {placeholder} in the parent
+// path (e.g. {"id": "<value>"}).
+func fetchFullChatListMessagesData(ctx context.Context, c interface {
+	GetWithHeadersValues(ctx context.Context, path string, params url.Values, headers map[string]string) (json.RawMessage, error)
+}, pathParams map[string]string) ([]json.RawMessage, error) {
+	childPath := "/chat/channels/{id}/messages/data"
+	for name, val := range pathParams {
+		childPath = replacePathParam(childPath, name, val)
+	}
+	return fetchEmbeddedPagedSubresource(ctx, c, childPath, "nextCursor", false, false)
 }

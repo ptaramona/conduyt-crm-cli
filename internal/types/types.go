@@ -9,6 +9,10 @@ type AccountExportsGetResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type AccountExportsPostResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type AccountGetReadinessResponse struct {
 	Data json.RawMessage `json:"data"`
 }
@@ -26,6 +30,10 @@ type AccountsPostResponse struct {
 }
 
 type ActiveEnrollmentsGetContactsIdResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ActivitiesGetAssignmentReasonsResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -230,8 +238,97 @@ type AutomationFoldersPostResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type AutomationListRow struct {
+	AccountId                    string          `json:"accountId"`
+	Actions                      string          `json:"actions"`
+	ActiveRunPolicy              string          `json:"activeRunPolicy"`
+	ConfigRevision               int             `json:"configRevision"`
+	CooldownDays                 int             `json:"cooldownDays"`
+	CreatedAt                    string          `json:"createdAt"`
+	CreatedBy                    string          `json:"createdBy"`
+	Creator                      json.RawMessage `json:"creator"`
+	Description                  string          `json:"description"`
+	ExecutionTimezone            string          `json:"executionTimezone"`
+	ExecutionWindowEnd           int             `json:"executionWindowEnd"`
+	ExecutionWindowStart         int             `json:"executionWindowStart"`
+	FolderId                     string          `json:"folderId"`
+	GraphVersion                 int             `json:"graphVersion"`
+	Id                           string          `json:"id"`
+	IsActive                     bool            `json:"isActive"`
+	Kind                         string          `json:"kind"`
+	LastRun                      json.RawMessage `json:"lastRun"`
+	LastScheduledRun             string          `json:"lastScheduledRun"`
+	LastTriggeredAt              string          `json:"lastTriggeredAt"`
+	N8nWebhookUrl                string          `json:"n8nWebhookUrl"`
+	N8nWorkflowId                string          `json:"n8nWorkflowId"`
+	Name                         string          `json:"name"`
+	NextScheduledRun             string          `json:"nextScheduledRun"`
+	PublishedActions             string          `json:"publishedActions"`
+	PublishedAt                  string          `json:"publishedAt"`
+	QuarantinePendingAt          string          `json:"quarantinePendingAt"`
+	QuarantinePendingLastTriedAt string          `json:"quarantinePendingLastTriedAt"`
+	QuarantinePendingReason      string          `json:"quarantinePendingReason"`
+	QuarantinePendingRevision    int             `json:"quarantinePendingRevision"`
+	ReenrollmentRule             string          `json:"reenrollmentRule"`
+	Schedule                     string          `json:"schedule"`
+	ScheduleClaimedAt            string          `json:"scheduleClaimedAt"`
+	ScheduleTimezone             string          `json:"scheduleTimezone"`
+	StopOnResponse               bool            `json:"stopOnResponse"`
+	TriggerConditions            string          `json:"triggerConditions"`
+	TriggerCount                 int             `json:"triggerCount"`
+	TriggerEvent                 string          `json:"triggerEvent"`
+	UpdatedAt                    string          `json:"updatedAt"`
+}
+
+type AutomationPickerRow struct {
+	Enrollable   bool   `json:"enrollable"`
+	Id           string `json:"id"`
+	Name         string `json:"name"`
+	TriggerEvent string `json:"triggerEvent"`
+}
+
 type AutomationPreflightRefusal struct {
 	Data json.RawMessage `json:"data"`
+}
+
+type AutomationSnapshotRow struct {
+	AccountId                    string          `json:"accountId"`
+	ActiveRunPolicy              string          `json:"activeRunPolicy"`
+	ConfigRevision               int             `json:"configRevision"`
+	CooldownDays                 int             `json:"cooldownDays"`
+	CreatedAt                    string          `json:"createdAt"`
+	CreatedBy                    string          `json:"createdBy"`
+	Creator                      json.RawMessage `json:"creator"`
+	Description                  string          `json:"description"`
+	Enrollable                   bool            `json:"enrollable"`
+	ExecutionTimezone            string          `json:"executionTimezone"`
+	ExecutionWindowEnd           int             `json:"executionWindowEnd"`
+	ExecutionWindowStart         int             `json:"executionWindowStart"`
+	FolderId                     string          `json:"folderId"`
+	GraphVersion                 int             `json:"graphVersion"`
+	Id                           string          `json:"id"`
+	IsActive                     bool            `json:"isActive"`
+	Kind                         string          `json:"kind"`
+	LastRun                      json.RawMessage `json:"lastRun"`
+	LastScheduledRun             string          `json:"lastScheduledRun"`
+	LastTriggeredAt              string          `json:"lastTriggeredAt"`
+	N8nWebhookUrl                string          `json:"n8nWebhookUrl"`
+	N8nWorkflowId                string          `json:"n8nWorkflowId"`
+	Name                         string          `json:"name"`
+	NextScheduledRun             string          `json:"nextScheduledRun"`
+	PublishedAt                  string          `json:"publishedAt"`
+	QuarantinePendingAt          string          `json:"quarantinePendingAt"`
+	QuarantinePendingLastTriedAt string          `json:"quarantinePendingLastTriedAt"`
+	QuarantinePendingReason      string          `json:"quarantinePendingReason"`
+	QuarantinePendingRevision    int             `json:"quarantinePendingRevision"`
+	ReenrollmentRule             string          `json:"reenrollmentRule"`
+	Schedule                     string          `json:"schedule"`
+	ScheduleClaimedAt            string          `json:"scheduleClaimedAt"`
+	ScheduleTimezone             string          `json:"scheduleTimezone"`
+	StopOnResponse               bool            `json:"stopOnResponse"`
+	TriggerCount                 int             `json:"triggerCount"`
+	TriggerEvent                 string          `json:"triggerEvent"`
+	UpdatedAt                    string          `json:"updatedAt"`
 }
 
 type AutomationsCreateFromTemplateResponse struct {
@@ -243,6 +340,10 @@ type AutomationsCreateResponse struct {
 }
 
 type AutomationsDeleteResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type AutomationsGetDistributionStepsResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -592,6 +693,14 @@ type CallFlowsPostTombstonesReleaseResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type CallSuppressionFlag struct {
+	Blocking     bool   `json:"blocking"`
+	Code         string `json:"code"`
+	Label        string `json:"label"`
+	Overrideable bool   `json:"overrideable"`
+	Reason       string `json:"reason"`
+}
+
 type CallsCountUnknownCallersResponse struct {
 	Data json.RawMessage `json:"data"`
 }
@@ -624,6 +733,16 @@ type CancelPostWebhookLogsIdResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type ChannelPointer struct {
+	ChannelId   string `json:"channelId"`
+	ChannelName string `json:"channelName"`
+	CreatedAt   string `json:"createdAt"`
+	Excerpt     string `json:"excerpt"`
+	Id          string `json:"id"`
+	MessageId   string `json:"messageId"`
+	SenderName  string `json:"senderName"`
+}
+
 type ChatAddMemberResponse struct {
 	Data json.RawMessage `json:"data"`
 }
@@ -636,12 +755,44 @@ type ChatDeleteAgentsIdResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type ChatDeleteAgentsIdWebhookResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type ChatDeleteMessageResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type ChatFollowThreadResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ChatGetAgentsIdWebhookResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ChatGetAgentsItem struct {
+	AgentHandle      string          `json:"agentHandle"`
+	AgentProvider    string          `json:"agentProvider"`
+	Connected        bool            `json:"connected"`
+	Connection       string          `json:"connection"`
+	CreatedAt        string          `json:"createdAt"`
+	FirstName        string          `json:"firstName"`
+	Handle           string          `json:"handle"`
+	Id               string          `json:"id"`
+	Knowledge        json.RawMessage `json:"knowledge"`
+	KnowledgeFolders int             `json:"knowledgeFolders"`
+	Name             string          `json:"name"`
+	Provider         string          `json:"provider"`
+	State            string          `json:"state"`
+}
+
 type ChatGetAgentsMeInboxResponse struct {
 	Data json.RawMessage `json:"data"`
+}
+
+type ChatGetChannelsIdLinkedRecordResponse struct {
+	Data string `json:"data"`
 }
 
 type ChatGetChannelsIdNotificationsResponse struct {
@@ -661,6 +812,14 @@ type ChatGetPresenceResponse struct {
 }
 
 type ChatGetSearchResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ChatGetThreadFilesResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ChatGetThreadResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -684,7 +843,15 @@ type ChatPatchChannelsIdNotificationsResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type ChatPostAgentsIdConnectResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type ChatPostAgentsIdPairCodeResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ChatPostAgentsIdWebhookTestResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -698,6 +865,13 @@ type ChatPostAgentsMeInboxAckResponse struct {
 
 type ChatPostAgentsMeInboxClaimResponse struct {
 	Data string `json:"data"`
+}
+
+type ChatPostAgentsMeMcpResponse struct {
+	Error   json.RawMessage `json:"error"`
+	Id      string          `json:"id"`
+	Jsonrpc string          `json:"jsonrpc"`
+	Result  json.RawMessage `json:"result"`
 }
 
 type ChatPostAgentsPairResponse struct {
@@ -732,6 +906,14 @@ type ChatPostHandoffResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type ChatPutAgentsIdWebhookResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ChatPutAgentsMeKnowledgeResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type ChatRemoveMemberResponse struct {
 	Data json.RawMessage `json:"data"`
 }
@@ -741,6 +923,24 @@ type ChatSendMessageResponse struct {
 }
 
 type ChatSendTypingIndicatorResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ChatThreadReplyMarker struct {
+	Reason string `json:"reason"`
+	Root   string `json:"root"`
+}
+
+type ChatThreadSummary struct {
+	Following    bool            `json:"following"`
+	LastReplyAt  string          `json:"lastReplyAt"`
+	NewCount     int             `json:"newCount"`
+	ReplierCount int             `json:"replierCount"`
+	Repliers     json.RawMessage `json:"repliers"`
+	ReplyCount   int             `json:"replyCount"`
+}
+
+type ChatUnfollowThreadResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -839,6 +1039,20 @@ type CompanyDetailsPatch struct {
 	Phone      string `json:"phone"`
 	Website    string `json:"website"`
 	Youtube    string `json:"youtube"`
+}
+
+type CompanyListRow struct {
+	AnnualRevenue  float64         `json:"annualRevenue"`
+	ContactCount   int             `json:"contactCount"`
+	DealCount      int             `json:"dealCount"`
+	Domain         string          `json:"domain"`
+	HealthScore    int             `json:"healthScore"`
+	Id             string          `json:"id"`
+	Industry       string          `json:"industry"`
+	LifecycleStage string          `json:"lifecycleStage"`
+	Name           string          `json:"name"`
+	Owner          json.RawMessage `json:"owner"`
+	TotalValue     float64         `json:"totalValue"`
 }
 
 type ComplianceGetConversationsContactIdResponse struct {
@@ -1013,6 +1227,7 @@ type ContactRead struct {
 	JobTitle               string          `json:"jobTitle"`
 	Language               string          `json:"language"`
 	LastActionAt           string          `json:"lastActionAt"`
+	LastActivityAt         string          `json:"lastActivityAt"`
 	LastCallDisposition    string          `json:"lastCallDisposition"`
 	LastContactAttemptAt   string          `json:"lastContactAttemptAt"`
 	LastContactedAt        string          `json:"lastContactedAt"`
@@ -1029,6 +1244,7 @@ type ContactRead struct {
 	OptedOutEmail          bool            `json:"optedOutEmail"`
 	OptedOutSms            bool            `json:"optedOutSms"`
 	Phone                  string          `json:"phone"`
+	PhoneReachability      json.RawMessage `json:"phoneReachability"`
 	PooledAt               string          `json:"pooledAt"`
 	PooledAttemptFloor     string          `json:"pooledAttemptFloor"`
 	PooledFrom             string          `json:"pooledFrom"`
@@ -1164,6 +1380,21 @@ type CustomFieldCreate struct {
 	Label      string          `json:"label"`
 	Options    json.RawMessage `json:"options"`
 	SortOrder  int             `json:"sortOrder"`
+}
+
+type CustomFieldListRow struct {
+	AccountId  string `json:"accountId"`
+	CreatedAt  string `json:"createdAt"`
+	EntityType string `json:"entityType"`
+	FieldKey   string `json:"fieldKey"`
+	FieldType  string `json:"fieldType"`
+	Id         string `json:"id"`
+	IsRequired bool   `json:"isRequired"`
+	IsSystem   bool   `json:"isSystem"`
+	Label      string `json:"label"`
+	Options    string `json:"options"`
+	Section    string `json:"section"`
+	SortOrder  int    `json:"sortOrder"`
 }
 
 type CustomFieldsDeleteResponse struct {
@@ -1323,6 +1554,8 @@ type DialerCallAddedLeg struct {
 }
 
 type DialerCallListItem struct {
+	AnsweredAt           string          `json:"answeredAt"`
+	AnsweredAtSource     string          `json:"answeredAtSource"`
 	ConferenceSid        string          `json:"conferenceSid"`
 	Contact              json.RawMessage `json:"contact"`
 	ContactId            string          `json:"contactId"`
@@ -1455,6 +1688,10 @@ type DialerGetStatusLogTeamResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type DialerGetStatusLogTimelineResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type DialerHistoryPage struct {
 	Data  json.RawMessage `json:"data"`
 	Meta  json.RawMessage `json:"meta"`
@@ -1482,6 +1719,10 @@ type DialerPostCallIdSuperviseResponse struct {
 }
 
 type DialerPostCallIdVmDropResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type DialerPostHeartbeatResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -1521,7 +1762,15 @@ type DialerPostStatusLogRollupResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
-type DncGetContactsIdResponse struct {
+type DistributionGetAutomationsIdResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type DistributionPostAutomationsIdResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type DncGetContactVerdictsResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -1598,6 +1847,10 @@ type EmailDomainsGetStatusResponse struct {
 }
 
 type EmailDomainsPostReplyCaptureResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type EmailPostOptOutListCheckResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -1835,6 +2088,36 @@ type IcalFeedPostBookingPagesIdRevealResponse struct {
 }
 
 type ImpactGetCustomFieldsIdResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type ImportIssueLogEntry struct {
+	Code             string          `json:"code"`
+	Deferred         json.RawMessage `json:"deferred"`
+	Error            string          `json:"error"`
+	Field            string          `json:"field"`
+	MatchedContactId string          `json:"matchedContactId"`
+	Row              int             `json:"row"`
+}
+
+type ImportJobRead struct {
+	CreatedRows              int             `json:"createdRows"`
+	DownloadEndpoint         string          `json:"downloadEndpoint"`
+	DuplicateRows            int             `json:"duplicateRows"`
+	ErrorLog                 json.RawMessage `json:"errorLog"`
+	ErrorRows                int             `json:"errorRows"`
+	FailedRows               int             `json:"failedRows"`
+	Id                       string          `json:"id"`
+	OpenSettlements          int             `json:"openSettlements"`
+	OpenSettlementsTruncated bool            `json:"openSettlementsTruncated"`
+	SkippedRows              int             `json:"skippedRows"`
+	SourceFileAvailable      bool            `json:"sourceFileAvailable"`
+	Status                   string          `json:"status"`
+	TotalRows                int             `json:"totalRows"`
+	UpdatedRows              int             `json:"updatedRows"`
+}
+
+type ImportsGetResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -2262,6 +2545,11 @@ type MessageCreate struct {
 	ToNumber      string `json:"toNumber"`
 }
 
+type MessageLink struct {
+	ChannelId string `json:"channelId"`
+	MessageId string `json:"messageId"`
+}
+
 type MessagesCheckLinksResponse struct {
 	Data json.RawMessage `json:"data"`
 }
@@ -2298,6 +2586,25 @@ type NoteCreate struct {
 	ContactId string `json:"contactId"`
 	DealId    string `json:"dealId"`
 	IsPinned  bool   `json:"isPinned"`
+}
+
+type NoteListRow struct {
+	AccountId     string          `json:"accountId"`
+	Body          string          `json:"body"`
+	Contact       json.RawMessage `json:"contact"`
+	ContactId     string          `json:"contactId"`
+	ContactOrigin string          `json:"contactOrigin"`
+	CreatedAt     string          `json:"createdAt"`
+	Deal          json.RawMessage `json:"deal"`
+	DealId        string          `json:"dealId"`
+	DeleteReason  string          `json:"deleteReason"`
+	DeletedAt     string          `json:"deletedAt"`
+	DeletedBy     string          `json:"deletedBy"`
+	Id            string          `json:"id"`
+	IsPinned      bool            `json:"isPinned"`
+	UpdatedAt     string          `json:"updatedAt"`
+	User          json.RawMessage `json:"user"`
+	UserId        string          `json:"userId"`
 }
 
 type NotesDeleteResponse struct {
@@ -2365,10 +2672,14 @@ type PaginatedResponse struct {
 }
 
 type PaginationMeta struct {
-	Page        int  `json:"page"`
-	PerPage     int  `json:"per_page"`
-	Total       int  `json:"total"`
-	TotalCapped bool `json:"total_capped"`
+	ExactScanTruncated bool `json:"exact_scan_truncated"`
+	HasMore            bool `json:"has_more"`
+	Page               int  `json:"page"`
+	PerPage            int  `json:"per_page"`
+	RankedMax          int  `json:"ranked_max"`
+	Total              int  `json:"total"`
+	TotalCapped        bool `json:"total_capped"`
+	Truncated          bool `json:"truncated"`
 }
 
 type PaymentLinkCreateInvoiceResponse struct {
@@ -2383,6 +2694,18 @@ type PaymentsRecordInvoiceResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type PhoneReachability struct {
+	Attempts       int    `json:"attempts"`
+	LastAnsweredAt string `json:"lastAnsweredAt"`
+	LastAttemptAt  string `json:"lastAttemptAt"`
+	Number         string `json:"number"`
+	Slot           string `json:"slot"`
+}
+
+type PhoneReachabilityGetContactResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type Pipeline struct {
 	AutomationOnly bool            `json:"automationOnly"`
 	Color          string          `json:"color"`
@@ -2394,6 +2717,16 @@ type Pipeline struct {
 	SortOrder      int             `json:"sortOrder"`
 	Stages         json.RawMessage `json:"stages"`
 	UpdatedAt      string          `json:"updatedAt"`
+}
+
+type PipelineArchivedRow struct {
+	ArchivedAt   string `json:"archivedAt"`
+	ArchivedName string `json:"archivedName"`
+	Color        string `json:"color"`
+	Id           string `json:"id"`
+	Name         string `json:"name"`
+	OpenDeals    int    `json:"openDeals"`
+	StageCount   int    `json:"stageCount"`
 }
 
 type PipelineHealth struct {
@@ -2441,6 +2774,21 @@ type PipelineHealthLegacyRiskyDeal struct {
 	Value       float64         `json:"value"`
 }
 
+type PipelineListRow struct {
+	AccountId        string          `json:"accountId"`
+	ArchivedFromName string          `json:"archivedFromName"`
+	AutomationOnly   bool            `json:"automationOnly"`
+	Color            string          `json:"color"`
+	CreatedAt        string          `json:"createdAt"`
+	Description      string          `json:"description"`
+	Id               string          `json:"id"`
+	IsDefault        bool            `json:"isDefault"`
+	Name             string          `json:"name"`
+	SortOrder        int             `json:"sortOrder"`
+	Stages           json.RawMessage `json:"stages"`
+	UpdatedAt        string          `json:"updatedAt"`
+}
+
 type PipelineStage struct {
 	Color                 string `json:"color"`
 	EntryByAutomationOnly bool   `json:"entryByAutomationOnly"`
@@ -2458,6 +2806,21 @@ type PipelineStageCreate struct {
 	IsWon     bool   `json:"isWon"`
 	Name      string `json:"name"`
 	SortOrder int    `json:"sortOrder"`
+}
+
+type PipelineStageListRow struct {
+	Color                 string `json:"color"`
+	CreatedAt             string `json:"createdAt"`
+	DeletedAt             string `json:"deletedAt"`
+	EntryByAutomationOnly bool   `json:"entryByAutomationOnly"`
+	Id                    string `json:"id"`
+	IsLost                bool   `json:"isLost"`
+	IsSystem              bool   `json:"isSystem"`
+	IsWon                 bool   `json:"isWon"`
+	Name                  string `json:"name"`
+	PipelineId            string `json:"pipelineId"`
+	SortOrder             int    `json:"sortOrder"`
+	UpdatedAt             string `json:"updatedAt"`
 }
 
 type PlaybookEnrollmentsGetResponse struct {
@@ -2519,6 +2882,22 @@ type ProductCreate struct {
 	Sku         string          `json:"sku"`
 	Taxable     bool            `json:"taxable"`
 	Unit        string          `json:"unit"`
+}
+
+type ProductListRow struct {
+	AccountId   string `json:"accountId"`
+	CreatedAt   string `json:"createdAt"`
+	Currency    string `json:"currency"`
+	Description string `json:"description"`
+	Id          string `json:"id"`
+	IsActive    bool   `json:"isActive"`
+	Metadata    string `json:"metadata"`
+	Name        string `json:"name"`
+	Price       string `json:"price"`
+	Sku         string `json:"sku"`
+	Taxable     bool   `json:"taxable"`
+	Unit        string `json:"unit"`
+	UpdatedAt   string `json:"updatedAt"`
 }
 
 type ProductsDeleteResponse struct {
@@ -2739,6 +3118,10 @@ type ResetPasswordPostUsersIdResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type RestoreGetImportsIdResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type ResubmitPostImportsIdResponse struct {
 	Data json.RawMessage `json:"data"`
 }
@@ -2871,6 +3254,10 @@ type SettingsDeleteZoomResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type SettingsGetAiLocalFilesResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type SettingsGetAiResponse struct {
 	Data json.RawMessage `json:"data"`
 }
@@ -2932,6 +3319,10 @@ type SettingsGetWhatsappResponse struct {
 }
 
 type SettingsGetWhatsappSendersResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+type SettingsPatchAiLocalFilesResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
@@ -3186,6 +3577,17 @@ type Tag struct {
 	Name      string `json:"name"`
 }
 
+type TagListRow struct {
+	AccountId    string `json:"accountId"`
+	Color        string `json:"color"`
+	CreatedAt    string `json:"createdAt"`
+	Description  string `json:"description"`
+	Id           string `json:"id"`
+	MergedAt     string `json:"mergedAt"`
+	MergedIntoId string `json:"mergedIntoId"`
+	Name         string `json:"name"`
+}
+
 type TagsDeleteCompaniesIdIdResponse struct {
 	Data json.RawMessage `json:"data"`
 }
@@ -3196,11 +3598,6 @@ type TagsDeleteDealsIdIdResponse struct {
 
 type TagsDeleteResponse struct {
 	Data json.RawMessage `json:"data"`
-}
-
-type TagsListResponse struct {
-	Data string `json:"data"`
-	Meta string `json:"meta"`
 }
 
 type TagsMergeResponse struct {
@@ -3226,6 +3623,17 @@ type Task struct {
 	UpdatedAt   string `json:"updatedAt"`
 }
 
+type TaskCalendarRow struct {
+	AssignedTo  string          `json:"assignedTo"`
+	Assignee    json.RawMessage `json:"assignee"`
+	Description string          `json:"description"`
+	DueDate     string          `json:"dueDate"`
+	Id          string          `json:"id"`
+	Priority    string          `json:"priority"`
+	Status      string          `json:"status"`
+	Title       string          `json:"title"`
+}
+
 type TaskCreate struct {
 	AssignedTo            string `json:"assignedTo"`
 	CheckOrigin           string `json:"checkOrigin"`
@@ -3237,6 +3645,30 @@ type TaskCreate struct {
 	Priority              string `json:"priority"`
 	Status                string `json:"status"`
 	Title                 string `json:"title"`
+}
+
+type TaskListRow struct {
+	AccountId      string          `json:"accountId"`
+	AssignedTo     string          `json:"assignedTo"`
+	Assignee       json.RawMessage `json:"assignee"`
+	CompletedAt    string          `json:"completedAt"`
+	Contact        json.RawMessage `json:"contact"`
+	ContactId      string          `json:"contactId"`
+	CreatedAt      string          `json:"createdAt"`
+	CreatedBy      string          `json:"createdBy"`
+	Creator        json.RawMessage `json:"creator"`
+	Deal           json.RawMessage `json:"deal"`
+	DealId         string          `json:"dealId"`
+	Description    string          `json:"description"`
+	DueDate        string          `json:"dueDate"`
+	Id             string          `json:"id"`
+	NextActionKind string          `json:"nextActionKind"`
+	Priority       string          `json:"priority"`
+	SourceId       string          `json:"sourceId"`
+	SourceType     string          `json:"sourceType"`
+	Status         string          `json:"status"`
+	Title          string          `json:"title"`
+	UpdatedAt      string          `json:"updatedAt"`
 }
 
 type TaskUpdate struct {
@@ -3398,6 +3830,18 @@ type Webhook struct {
 	Id          string          `json:"id"`
 	IsActive    bool            `json:"isActive"`
 	LastFiredAt string          `json:"lastFiredAt"`
+	Url         string          `json:"url"`
+}
+
+type WebhookListRow struct {
+	CreatedAt   string          `json:"createdAt"`
+	Description string          `json:"description"`
+	Events      json.RawMessage `json:"events"`
+	FailCount   int             `json:"failCount"`
+	Id          string          `json:"id"`
+	IsActive    bool            `json:"isActive"`
+	LastFiredAt string          `json:"lastFiredAt"`
+	UpdatedAt   string          `json:"updatedAt"`
 	Url         string          `json:"url"`
 }
 

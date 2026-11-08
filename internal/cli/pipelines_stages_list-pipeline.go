@@ -32,7 +32,7 @@ func newPipelinesStagesListPipelineCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "stages", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "stages", false, path, params, nil, "data", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}

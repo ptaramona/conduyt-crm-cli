@@ -11,26 +11,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newAccountExportsPromotedCmd(flags *rootFlags) *cobra.Command {
-	var flagCursor string
-	var flagAll bool
+func newAutomationsDistributionGetAutomationsIdCmd(flags *rootFlags) *cobra.Command {
+	var flagNodeId string
 
 	cmd := &cobra.Command{
-		Use:         "account-exports",
-		Short:       "List account-exports",
-		Long:        "List account-exports",
-		Example:     "  conduyt-crm-pp-cli account-exports",
-		Annotations: map[string]string{"pp:endpoint": "account-exports.get", "pp:method": "GET", "pp:path": "/account-exports", "mcp:read-only": "true"},
+		Use:         "get-automations-id <id>",
+		Aliases:     []string{"get"},
+		Short:       "Get automations id distribution",
+		Example:     "  conduyt-crm-pp-cli automations distribution get-automations-id 550e8400-e29b-41d4-a716-446655440000",
+		Annotations: map[string]string{"pp:endpoint": "distribution.get-automations-id", "pp:method": "GET", "pp:path": "/automations/{id}/distribution", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+			path := "/automations/{id}/distribution"
+			if len(args) < 1 || args[0] == "" {
+				return usageErr(fmt.Errorf("id is required\nUsage: %s <%s>", cmd.CommandPath(), "id"))
+			}
+			path = replacePathParam(path, "id", args[0])
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
-
-			path := "/account-exports"
-			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "account-exports", path, map[string]string{
-				"cursor": formatCLIParamValue(flagCursor),
-			}, nil, flagAll, "cursor", "cursor", "", 100, "", "", cmd.ErrOrStderr())
+			params := map[string]string{}
+			if flagNodeId != "" {
+				params["node_id"] = formatCLIParamValue(flagNodeId)
+			}
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "distribution", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -38,20 +45,17 @@ func newAccountExportsPromotedCmd(flags *rootFlags) *cobra.Command {
 			// Machine-format flags (--json, --csv, --compact, --quiet, --plain,
 			// --select) and piped stdout suppress this line; the JSON envelope
 			// already carries meta.source for those consumers.
-			// SYNC: keep this gate aligned with command_endpoint.go.tmpl.
+			// SYNC: keep this gate aligned with command_promoted.go.tmpl.
 			if wantsHumanTable(cmd.OutOrStdout(), flags) {
 				var countItems []json.RawMessage
-				if json.Unmarshal(data, &countItems) != nil {
-					// Single object, not an array
-					countItems = []json.RawMessage{data}
-				}
+				_ = json.Unmarshal(data, &countItems)
 				printProvenance(cmd, len(countItems), prov)
 			}
-			// For JSON output, wrap with provenance envelope. --select wins over
-			// --compact when both are set; --compact only runs when no explicit
-			// fields were requested. Explicit format flags (--csv, --quiet, --plain)
-			// opt out of the auto-JSON path so piped consumers that asked for a
-			// non-JSON format reach the standard pipeline below.
+			// For JSON output, wrap with provenance envelope before passing through flags.
+			// --select wins over --compact when both are set; --compact only runs when
+			// no explicit fields were requested. Explicit format flags (--csv, --quiet,
+			// --plain) opt out of the auto-JSON path so piped consumers that asked for
+			// a non-JSON format reach the standard pipeline below.
 			if flags.asJSON || (!isTerminal(cmd.OutOrStdout()) && !flags.csv && !flags.quiet && !flags.plain) {
 				filtered := data
 				if flags.selectFields != "" {
@@ -65,6 +69,7 @@ func newAccountExportsPromotedCmd(flags *rootFlags) *cobra.Command {
 				}
 				return printOutput(cmd.OutOrStdout(), wrapped, true)
 			}
+			// For all other output modes (table, csv, plain, quiet), use the standard pipeline
 			if wantsHumanTable(cmd.OutOrStdout(), flags) {
 				var items []map[string]any
 				if json.Unmarshal(data, &items) == nil && len(items) > 0 {
@@ -80,15 +85,7 @@ func newAccountExportsPromotedCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagCursor, "cursor", "", "Query parameter read by this route.")
-	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
-
-	// Wire sibling endpoints and sub-resources as subcommands
-	{
-		sub := newAccountExportsFilesCmd(flags)
-		sub.Hidden = false // unhide: the raw parent is hidden but these are useful under the promoted command
-		cmd.AddCommand(sub)
-	}
+	cmd.Flags().StringVar(&flagNodeId, "node-id", "", "Query parameter read by this route.")
 
 	return cmd
 }

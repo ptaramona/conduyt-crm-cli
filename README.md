@@ -280,7 +280,8 @@ Manage account
 
 Manage account exports
 
-- **`conduyt-crm-pp-cli account-exports`** - List account-exports
+- **`conduyt-crm-pp-cli account-exports get`** - List account-exports
+- **`conduyt-crm-pp-cli account-exports post`** - Create / invoke account-exports
 
 ### accounts
 
@@ -294,6 +295,7 @@ Manage accounts
 Activity feed and logging
 
 - **`conduyt-crm-pp-cli activities create-activity`** - Log an activity
+- **`conduyt-crm-pp-cli activities get-assignment-reasons`** - List activities assignment-reasons
 - **`conduyt-crm-pp-cli activities get-id`** - Get activities id
 - **`conduyt-crm-pp-cli activities list`** - List activities
 
@@ -301,7 +303,7 @@ Activity feed and logging
 
 Manage activity
 
-- **`conduyt-crm-pp-cli activity`** - Streams the activities the activity list would answer for the same filters (the same visibility, deal fence and soft-deleted-parent rules as GET /activities) as CSV, newest first by createdAt then id. Columns: id, type, description, user, contact, deal, timestamp. An export from this endpoint holds at most 100,000 rows AND 50 MB of CSV: more matching rows are refused 413 export_too_large before any row is written (narrow the date range or filters; a whole-account export is a separate background job). One request streams within a 55 s deadline that also covers the initial count. The LAST line of every response is a trailer: `#conduyt-export,complete,<rows written by the whole export>` when every row was written; `#conduyt-export,continue,<cursor>` when the deadline came: request again with ?cursor=<cursor> and the SAME filters and append that part, which has no header row (the cursor is signed and bound to the account, the filters and the ceiling; any other cursor is a 400 cursor_invalid); `#conduyt-export,too_large,<rows|bytes>` when the ceiling was reached while streaming: discard everything. A response without a trailer was cut: discard it.
+- **`conduyt-crm-pp-cli activity`** - Streams the activities the activity list would answer for the same filters (the same visibility, deal fence and soft-deleted-parent rules as GET /activities) as CSV, newest first by createdAt then id. Columns: id, type, description, user, contact, deal, timestamp. An export from this endpoint holds at most 100,000 rows AND 50 MB of CSV: more matching rows are refused 413 export_too_large before any row is written (narrow the date range or filters, or export every matching row in the background: POST /account-exports with entities ["activity"] and the same filters as activityFilters). One request streams within a 55 s deadline that also covers the initial count. The LAST line of every response is a trailer: `#conduyt-export,complete,<rows written by the whole export>` when every row was written; `#conduyt-export,continue,<cursor>` when the deadline came: request again with ?cursor=<cursor> and the SAME filters and append that part, which has no header row (the cursor is signed and bound to the account, the filters and the ceiling; any other cursor is a 400 cursor_invalid); `#conduyt-export,too_large,<rows|bytes>` when the ceiling was reached while streaming: discard everything. A response without a trailer was cut: discard it.
 
 ### admin
 
@@ -310,7 +312,7 @@ Super-admin account management and impersonation
 - **`conduyt-crm-pp-cli admin clean-test-accounts`** - Delete test accounts
 - **`conduyt-crm-pp-cli admin clean-test-data`** - Clean test data from the system
 - **`conduyt-crm-pp-cli admin impersonate`** - Impersonate a user (super-admin)
-- **`conduyt-crm-pp-cli admin list-accounts`** - Every account with the columns the admin console needs. `status=trialing` is the trial users listing: it leaves comped and test accounts out. (#518) `isTest` is read-only: it is set only by registration's test-account rule, which needs both an e2e+ address on conduyt.com, conduyt.app or brightmarketingsolutions.com and the harness secret (TEST_ACCOUNT_SIGNUP_SECRET, sent as the conduyt_test_signup cookie or the x-conduyt-test-signup header), and no route accepts it.
+- **`conduyt-crm-pp-cli admin list-accounts`** - (#612) A page of accounts, newest first (page / per_page, default 50, max 200; limit is an alias of per_page), with the total that match q and status. (#620) meta.summary carries the total / comp / trialing / paid counts over the whole filtered set on every answer. `status=ending_soon` is trial users whose trial ends within 7 days or has ended. A malformed or conflicting query parameter is a 400. Each row carries the columns the admin console needs. `status=trialing` is the trial users listing: it leaves comped and test accounts out. (#518) `isTest` is read-only: it is set only by registration's test-account rule, which needs both an e2e+ address on conduyt.com, conduyt.app or brightmarketingsolutions.com and the harness secret (TEST_ACCOUNT_SIGNUP_SECRET, sent as the conduyt_test_signup cookie or the x-conduyt-test-signup header), and no route accepts it.
 - **`conduyt-crm-pp-cli admin stop-impersonate`** - Stop impersonating
 - **`conduyt-crm-pp-cli admin toggle-comp`** - Toggle comp (free) status for an account
 
@@ -388,6 +390,7 @@ Workflow automations (native + n8n), publishing, analytics
 - **`conduyt-crm-pp-cli automations create-from-template`** - Create automation from a template
 - **`conduyt-crm-pp-cli automations delete`** - Delete an automation
 - **`conduyt-crm-pp-cli automations get`** - Get an automation by ID
+- **`conduyt-crm-pp-cli automations get-distribution-steps`** - List automations distribution-steps
 - **`conduyt-crm-pp-cli automations get-failures`** - List automations failures
 - **`conduyt-crm-pp-cli automations get-failures-drilldown`** - List automations failures drilldown
 - **`conduyt-crm-pp-cli automations get-resolve`** - List automations resolve
@@ -543,10 +546,16 @@ Internal team chat channels and messages
 - **`conduyt-crm-pp-cli chat add-reaction`** - Add a reaction to a message
 - **`conduyt-crm-pp-cli chat create-channel`** - Create a chat channel
 - **`conduyt-crm-pp-cli chat delete-agents-id`** - Delete chat agents id
-- **`conduyt-crm-pp-cli chat delete-message`** - Delete a chat message
-- **`conduyt-crm-pp-cli chat edit-message`** - Edit a chat message
-- **`conduyt-crm-pp-cli chat get-agents`** - List chat agents
+- **`conduyt-crm-pp-cli chat delete-agents-id-webhook`** - Delete chat agents id webhook
+- **`conduyt-crm-pp-cli chat delete-agents-me-mcp`** - The server is stateless (no session id), so DELETE answers 405 with `Allow: POST` and writes nothing.
+- **`conduyt-crm-pp-cli chat delete-message`** - Delete a message (its attachments are queued for deletion). The sender, or a channel admin or owner for a person's key (#685, as in Slack, members delete their own messages with communications.create and membership alone). AI teammates' keys are allowed (#625) on their OWN messages only (never a person's, whatever the channel role), with the chat scope and the trail people have (no edit window for anyone), behind the live fence inside the write's transaction; the agent's change is audited in that transaction. People need communications.create and channel membership; an agent key is judged on the same right. A CRM bot post (a win, help or panic card the CRM authored) is deleted by a channel admin or owner only; a member's own delete of one is refused with 403. The write is scoped to this channel, so a message a contact merge moved to another channel is answered 409 and nothing is deleted or audited.
+- **`conduyt-crm-pp-cli chat edit-message`** - Edit the caller's own message (body; record mentions are re-resolved). AI teammates' keys are allowed (#625) on their OWN messages only (never a person's, whatever the channel role), with the chat scope and the trail people have (no edit window for anyone), behind the live fence inside the write's transaction; the agent's change is audited in that transaction. People need communications.create (the right to have posted the message) and channel membership; a person edits only their OWN message, an admin or owner cannot edit another person's (#685); an agent key is judged on the same right. Only a text message can be edited (a card, system line or CRM bot post is refused with 403). The write is scoped to this channel, so a message a contact merge moved to another channel is answered 409 and nothing is edited.
+- **`conduyt-crm-pp-cli chat follow-thread`** - (#684 lane F, Paul 2026-11-06: thread notifications follow Slack) Only while the workspace's thread view (teamChatThreads) is on; 409 code team_chat_threads_off otherwise. messageId is the thread ROOT (a reply id, an unknown id, another channel's message or, for a key whose scopes do not grant deals, a deal card: 404). Only a thread's followers are notified of a reply that stays in the thread: the root's author, everyone who replied, everyone mentioned in it, and whoever followed it here. A later reply or mention follows an unfollowed person again. Idempotent.
+- **`conduyt-crm-pp-cli chat get-agents`** - The workspace's live AI teammates (a removed teammate is never listed), oldest first. A signed-in member reads the Settings rows (the whole live roster). An owner's or admin's API key (the chat scope; the read tier is enough) reads one row per teammate: { id, handle, name, provider, state, connected, connection, knowledgeFolders, createdAt } and nothing else (no token, no pair code, no webhook address); a member's key and an AI teammate's own key are refused (403). Use a row's id or @handle with the Grok Bot connect operations (/chat/agents/{id}/connect and /chat/agents/{id}/webhook). Creating, pairing and removing a teammate stay in Settings > AI (a signed-in session): POST /chat/agents refuses every API key. An API key is answered at most 200 live teammates; a workspace past that is refused to the key (413), never cut (the Settings session is not bounded).
+- **`conduyt-crm-pp-cli chat get-agents-id-webhook`** - Get chat agents id webhook
 - **`conduyt-crm-pp-cli chat get-agents-me-inbox`** - List chat agents me inbox
+- **`conduyt-crm-pp-cli chat get-agents-me-mcp`** - The server is stateless and offers no SSE stream, so GET answers 405 with `Allow: POST`.
+- **`conduyt-crm-pp-cli chat get-channels-id-linked-record`** - Get chat channels id linked-record
 - **`conduyt-crm-pp-cli chat get-channels-id-notifications`** - Get chat channels id notifications
 - **`conduyt-crm-pp-cli chat get-channels-id-pins`** - Get chat channels id pins
 - **`conduyt-crm-pp-cli chat get-channels-id-upload`** - Get chat channels id upload
@@ -555,6 +564,8 @@ Internal team chat channels and messages
 - **`conduyt-crm-pp-cli chat get-messages-message-id-location`** - Get chat messages messageId location
 - **`conduyt-crm-pp-cli chat get-presence`** - List chat presence
 - **`conduyt-crm-pp-cli chat get-search`** - List chat search
+- **`conduyt-crm-pp-cli chat get-thread`** - (#684) Only while the workspace's thread view (account setting teamChatThreads) is on; 409 code team_chat_threads_off otherwise. messageId is the thread ROOT (a top-level message; a reply id is a 404). The replies served are the thread's replies that are not deleted, inside the 90-day history window and, for a key whose scopes do not grant deals, not deal cards; total and earlierCount count the same set. Oldest first. Without before: the LATEST limit replies; before=<seq> reads the page below that reply ("Load N earlier replies": send earlierCursor). The root is served whatever its age while it has a reply inside the window (404 once it has none); a deleted root is served as stored (deletedAt set, body "Message deleted"). aiReactions: an AI teammate's turn that ended with a reaction instead of a reply, computed from its claim (never a stored message), while the reaction stands. replying: the AI teammates whose turn on this thread is running. Both are empty while AI teammates are off. Replies are posted with POST /chat/channels/{id}/messages and parentId.
+- **`conduyt-crm-pp-cli chat get-thread-files`** - The attachments on a thread's root message and on every reply that carries that root, oldest first, capped at 200 per read (hasMore says there are more). Only messages inside the channel's 90-day history window count, a deleted message contributes nothing, and the replies of a deleted root keep their files. messageId must be a thread root; a reply id answers 404, and so does a root older than the window with no reply inside it. Same access as the channel read (a non-member of the channel is refused). Answers 409 team_chat_threads_off unless the account setting teamChatThreads is on.
 - **`conduyt-crm-pp-cli chat get-typing-status`** - Get who is currently typing
 - **`conduyt-crm-pp-cli chat get-unread`** - List chat unread
 - **`conduyt-crm-pp-cli chat list-channels`** - List chat channels
@@ -563,23 +574,40 @@ Internal team chat channels and messages
 - **`conduyt-crm-pp-cli chat patch-channels-id-agents`** - Update chat channels id agents
 - **`conduyt-crm-pp-cli chat patch-channels-id-notifications`** - Update chat channels id notifications
 - **`conduyt-crm-pp-cli chat post-agents`** - Create / invoke chat agents
+- **`conduyt-crm-pp-cli chat post-agents-id-connect`** - Create / invoke chat agents id connect
 - **`conduyt-crm-pp-cli chat post-agents-id-pair-code`** - Create / invoke chat agents id pair-code
+- **`conduyt-crm-pp-cli chat post-agents-id-webhook-test`** - Create / invoke chat agents id webhook test
 - **`conduyt-crm-pp-cli chat post-agents-me-heartbeat`** - Create / invoke chat agents me heartbeat
 - **`conduyt-crm-pp-cli chat post-agents-me-inbox-ack`** - Create / invoke chat agents me inbox ack
 - **`conduyt-crm-pp-cli chat post-agents-me-inbox-claim`** - Create / invoke chat agents me inbox claim
+- **`conduyt-crm-pp-cli chat post-agents-me-mcp`** - (#1140) A stateless MCP server over Streamable HTTP for an AI teammate that runs in the cloud (for example a Grok Bot routine woken by a webhook): it answers JSON only, with no session id and no SSE stream. One JSON-RPC 2.0 message per request; a batch (an array) is refused with -32600.
+Methods: `initialize` (echoes protocolVersion 2025-06-18 or 2025-03-26, otherwise answers 2025-06-18; capabilities `tools` only), notifications such as `notifications/initialized` (202, no body), `ping`, `tools/list`, `tools/call`. Any other method answers -32601; an unknown tool -32602.
+Tools (each calls the existing route in-process with the caller's own key, so every rule of that route applies unchanged, the rate limits included):
+- `reply` {channelId, parentId, body, idempotencyKey, claimToken?}: POST /chat/channels/{id}/messages. Rail mode: idempotencyKey `turn:<messageId>` with no claimToken; the same key returns the first reply (idempotentReplay) instead of posting twice. Claim mode: `reply:<messageId>` plus the claim token completes that claim.
+- `react` {channelId, messageId, emoji, claimToken?, sourceMessageId?}: POST /chat/channels/{id}/messages/{messageId}/reactions; with a token it ends a claimed turn.
+- `stay_silent` {messageId, claimToken}: POST /chat/agents/me/inbox/claim with action silent (claim mode only).
+- `send` {channelId, body}: POST /chat/channels/{id}/messages, a new message (never an answer to a turn).
+- `linked_record` {channelId}: GET /chat/channels/{id}/linked-record (read-only).
+- `read_messages` {channelId, limit 1 to 50, default 20}: GET /chat/channels/{id}/messages?limit=.
+A route's success is the tool result's text content (its `data`); a route's refusal is a result with `isError: true` whose text is the route's error body plus its `status` (for example 409 agent_human_required, 409 reply_stale_claim, 403 Not a member of this channel). Arguments of the wrong type or a missing required argument are `isError: true` with code invalid_arguments, and no route runs.
+Who: a paired AI teammate key only, sent as `Authorization: Bearer cdy_...` (the chat scope); the same key in X-API-Key, a session, or anything else is 403 agent_key_required. Never put the key in the URL.
+Mutation budget: this path is NOT charged per request by the key's 500 an hour mutation budget; each WRITE tool call (reply, react, send, stay_silent) is charged once to that same budget instead. Protocol methods and the read tools (read_messages, linked_record) are never charged. A write past the budget is a tool result with isError true: the budget's message, status 429, code mutation_budget_exceeded and retryAfter (seconds).
 - **`conduyt-crm-pp-cli chat post-agents-pair`** - Create / invoke chat agents pair
 - **`conduyt-crm-pp-cli chat post-ask`** - Create / invoke chat ask
 - **`conduyt-crm-pp-cli chat post-celebrate`** - Create / invoke chat celebrate
 - **`conduyt-crm-pp-cli chat post-channels-id-messages-message-id-claim`** - Create / invoke chat channels id messages messageId claim
 - **`conduyt-crm-pp-cli chat post-channels-id-messages-message-id-handoff`** - Create / invoke chat channels id messages messageId handoff
-- **`conduyt-crm-pp-cli chat post-channels-id-messages-message-id-pin`** - Create / invoke chat channels id messages messageId pin
-- **`conduyt-crm-pp-cli chat post-channels-id-upload-finalize`** - Create / invoke chat channels id upload finalize
-- **`conduyt-crm-pp-cli chat post-channels-id-upload-intent`** - Create / invoke chat channels id upload intent
+- **`conduyt-crm-pp-cli chat post-channels-id-messages-message-id-pin`** - Toggle (or set, with pinned) a deal card's pin; any member of the channel. An AI teammate's pin and unpin are audited (chat.message_pinned / chat.message_unpinned). AI teammates' keys are allowed (#625): the same chat scope and rules as a person, behind the live fence inside the write's transaction. An agent key answers 401 agent_revoked (the agent or its key was revoked, or the agent or its owner is inactive), 402 plan_required, 404 ai_teammates_off, 403 when it is not a member of the channel, and 409 agents_muted_in_channel when "Agents respond here" is off in this channel; each refusal writes nothing.
+- **`conduyt-crm-pp-cli chat post-channels-id-upload-finalize`** - Step 3 of a direct-to-storage chat attachment: the staged bytes are judged by content and copied into the channel's attachment folder; send the answer in a message's metadata.attachments (POST /chat/channels/{id}/messages). AI teammates' keys are allowed (#625): the same chat scope and rules as a person, behind the live fence inside the write's transaction. An agent key answers 401 agent_revoked (the agent or its key was revoked, or the agent or its owner is inactive), 402 plan_required, 404 ai_teammates_off, 403 when it is not a member of the channel, and 409 agents_muted_in_channel when "Agents respond here" is off in this channel; each refusal writes nothing.
+- **`conduyt-crm-pp-cli chat post-channels-id-upload-intent`** - Step 1 of a direct-to-storage chat attachment: answers a presigned PUT for the declared name, type and size (the chat attachment limits), then PUT the bytes and POST .../upload/finalize. The caller is recorded as the uploader. AI teammates' keys are allowed (#625): the same chat scope and rules as a person, behind the live fence inside the write's transaction. An agent key answers 401 agent_revoked (the agent or its key was revoked, or the agent or its owner is inactive), 402 plan_required, 404 ai_teammates_off, 403 when it is not a member of the channel, and 409 agents_muted_in_channel when "Agents respond here" is off in this channel; each refusal writes nothing.
 - **`conduyt-crm-pp-cli chat post-handoff`** - Create / invoke chat handoff
+- **`conduyt-crm-pp-cli chat put-agents-id-webhook`** - Update chat agents id webhook
+- **`conduyt-crm-pp-cli chat put-agents-me-knowledge`** - (#1209) An AI teammate's listener (by its listenerId, the id its heartbeat and claims carry) reports its KNOWLEDGE FOLDER (a folder on the listener's computer the teammate reads on every turn, whoever asked, read-only; by default the directory the listener was started in). Conduyt stores only, per listener, the folder count, never the path, a file name or contents; every surface reads the aggregate over the listeners whose heartbeat beats now (configured = any of them has a folder; folders = the sum), so a listener started with --no-knowledge never hides another one's folder, and a stopped listener drops out with its last beat. acknowledged: true records that the owner acknowledged the consent on this start ("Anyone who can mention your teammate can ask it about the files in this folder. Set it up for project or document folders, never one holding secrets. Files that look like credentials are skipped, but that is a safety net, not a guarantee."). The teammate's own paired key only. A report that changes this listener's entry is stored; the audit row ai_knowledge_folder.changed is written when the aggregate changes or on an acknowledgement; a report that changes nothing writes nothing. The teammate's entry is removed when it is revoked.
 - **`conduyt-crm-pp-cli chat remove-member`** - Remove a member from a channel
 - **`conduyt-crm-pp-cli chat remove-reaction`** - Remove a reaction from a message
 - **`conduyt-crm-pp-cli chat send-message`** - Send a message in a channel
 - **`conduyt-crm-pp-cli chat send-typing-indicator`** - Send a typing indicator
+- **`conduyt-crm-pp-cli chat unfollow-thread`** - (#684 lane F) The caller stops being notified of the thread's replies, until a later reply of theirs or a mention of them follows them again (Slack does). Same guards as PUT. Idempotent.
 - **`conduyt-crm-pp-cli chat upload-file`** - Upload a file to a channel
 
 ### companies
@@ -794,6 +822,7 @@ Click-to-call dialer via Twilio
 - **`conduyt-crm-pp-cli dialer get-stats`** - List dialer stats
 - **`conduyt-crm-pp-cli dialer get-status-log`** - List dialer status-log
 - **`conduyt-crm-pp-cli dialer get-status-log-team`** - List dialer status-log team
+- **`conduyt-crm-pp-cli dialer get-status-log-timeline`** - List dialer status-log timeline
 - **`conduyt-crm-pp-cli dialer get-token`** - Get a Twilio browser token for click-to-call
 - **`conduyt-crm-pp-cli dialer initiate-call`** - Initiate an outbound call
 - **`conduyt-crm-pp-cli dialer patch-call-id`** - Update dialer call id
@@ -807,7 +836,7 @@ Click-to-call dialer via Twilio
 - **`conduyt-crm-pp-cli dialer post-call-id-mute`** - Create / invoke dialer call id mute
 - **`conduyt-crm-pp-cli dialer post-call-id-participants`** - Create / invoke dialer call id participants
 - **`conduyt-crm-pp-cli dialer post-call-id-record`** - Create / invoke dialer call id record
-- **`conduyt-crm-pp-cli dialer post-call-id-supervise`** - Create / invoke dialer call id supervise
+- **`conduyt-crm-pp-cli dialer post-call-id-supervise`** - Join an active call as a supervisor (admins and owners). listen: muted, nobody hears the supervisor; whisper: only the REP hears the supervisor (the coach target is always the rep's leg of this call, never the first other participant); barge: everyone hears the supervisor. A received call that is not on its conference line yet is moved there first (the rep and the caller hear about a second of silence). agentCallSid (optional, any mode): the rep leg the caller last saw (GET /dialer/live-monitor agentLegSid); when the call's rep leg is another, the request is refused before anything moves.
 - **`conduyt-crm-pp-cli dialer post-call-id-transfer`** - Create / invoke dialer call id transfer
 - **`conduyt-crm-pp-cli dialer post-call-id-vm-drop`** - Create / invoke dialer call id vm-drop
 - **`conduyt-crm-pp-cli dialer post-heartbeat`** - Create / invoke dialer heartbeat
@@ -877,6 +906,7 @@ Send individual and bulk emails
 
 - **`conduyt-crm-pp-cli email get-opt-out-list`** - List email opt-out-list
 - **`conduyt-crm-pp-cli email post-opt-out-list`** - Create / invoke email opt-out-list
+- **`conduyt-crm-pp-cli email post-opt-out-list-check`** - Answers whether one email address is on this workspace's email opt-out list, and if so its source and since when. It is a POST only so the address travels in the JSON body and never in a URL (request logs keep URLs); it reads and stores nothing. Send a bare address (person@example.com, at most 320 characters). The server is more tolerant than this contract promises, and it also trims, lowercases and strips a display name before matching by hash, so the case of the address does not matter, but only the bare form is documented. Owners, admins and the platform super admin only. An API key reaches it with the emails scope, and a read-tier key may call it (this exact path is the only list route a read-tier key may POST).
 - **`conduyt-crm-pp-cli email post-opt-out-list-resubscribe`** - Create / invoke email opt-out-list resubscribe
 - **`conduyt-crm-pp-cli email send`** - Sends one email through the account's connected Resend domain and logs it as a Message row linked to the contact. `to` must equal the linked contact's registered email address (case-insensitive) — this stops a caller from citing a contact's id but sending to a different address, which would bypass that contact's opt-out/CAN-SPAM status. Provide `html`, `text`, or both; at least one body is required. There is no scheduling field — this endpoint sends immediately or fails; it never queues a future send. This is a contact-bound send — `cc`/`bcc` are NOT supported, so a non-empty value is rejected with 400 (omitted, null, whitespace-only and [] are accepted as none), for the same reason as the `to` guard above — only `to` is checked against the contact's opt-out/registered-address status, so any other recipient would bypass it. Send to each additional contact as its own request.
 - **`conduyt-crm-pp-cli email send-bulk`** - Send bulk emails
@@ -1440,6 +1470,7 @@ Account settings, branding, SMS/Twilio configuration
 - **`conduyt-crm-pp-cli settings delete-zoom`** - Delete settings zoom
 - **`conduyt-crm-pp-cli settings get`** - Includes messageCheck.minimumGrade (admin only; default { enabled: false, channel: { sms: null, email: null }, adminOverride: true }). Not enforced yet.
 - **`conduyt-crm-pp-cli settings get-ai`** - List settings ai
+- **`conduyt-crm-pp-cli settings get-ai-local-files`** - List settings ai-local-files
 - **`conduyt-crm-pp-cli settings get-ai-teammates`** - List settings ai-teammates
 - **`conduyt-crm-pp-cli settings get-branding`** - The white-label branding (name, logo, favicon, colours, custom domain) and the account's Company details, the eight fields every member's email signature reads ("From company details"), with the settingsRevision they were read at. Needs settings.view (an API key needs the settings scope).
 - **`conduyt-crm-pp-cli settings get-delivery-guard`** - List settings delivery-guard
@@ -1460,6 +1491,7 @@ Account settings, branding, SMS/Twilio configuration
 - **`conduyt-crm-pp-cli settings get-whatsapp-senders`** - List settings whatsapp senders
 - **`conduyt-crm-pp-cli settings get-zoom`** - List settings zoom
 - **`conduyt-crm-pp-cli settings patch-ai`** - Update settings ai
+- **`conduyt-crm-pp-cli settings patch-ai-local-files`** - Update settings ai-local-files
 - **`conduyt-crm-pp-cli settings patch-ai-teammates`** - Update settings ai-teammates
 - **`conduyt-crm-pp-cli settings patch-delivery-guard`** - Update settings delivery-guard
 - **`conduyt-crm-pp-cli settings patch-dormancy`** - Update settings dormancy

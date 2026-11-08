@@ -15,7 +15,6 @@ func newChatGetChannelsIdNotificationsCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "get-channels-id-notifications <id>",
-		Aliases:     []string{"get"},
 		Short:       "Get chat channels id notifications",
 		Example:     "  conduyt-crm-pp-cli chat get-channels-id-notifications 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "chat.get-channels-id-notifications", "pp:method": "GET", "pp:path": "/chat/channels/{id}/notifications", "mcp:read-only": "true"},

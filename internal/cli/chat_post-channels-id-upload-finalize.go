@@ -18,7 +18,7 @@ func newChatPostChannelsIdUploadFinalizeCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "post-channels-id-upload-finalize <id>",
-		Short:       "Create / invoke chat channels id upload finalize",
+		Short:       "Step 3 of a direct-to-storage chat attachment",
 		Example:     "  conduyt-crm-pp-cli chat post-channels-id-upload-finalize 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "chat.post-channels-id-upload-finalize", "pp:method": "POST", "pp:path": "/chat/channels/{id}/upload/finalize"},
 		RunE: func(cmd *cobra.Command, args []string) error {

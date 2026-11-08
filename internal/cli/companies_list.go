@@ -13,6 +13,7 @@ import (
 
 func newCompaniesListCmd(flags *rootFlags) *cobra.Command {
 	var flagCountMode string
+	var flagFields string
 	var flagHasOpenDeals string
 	var flagIndustry string
 	var flagLifecycleStage string
@@ -44,6 +45,19 @@ func newCompaniesListCmd(flags *rootFlags) *cobra.Command {
 					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagCountMode, "count-mode", allowedCountMode)
 				}
 			}
+			if cmd.Flags().Changed("fields") {
+				allowedFields := []string{"picker"}
+				validFields := false
+				for _, v := range allowedFields {
+					if flagFields == v {
+						validFields = true
+						break
+					}
+				}
+				if !validFields {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagFields, "fields", allowedFields)
+				}
+			}
 			path := "/companies"
 			c, err := flags.newClient()
 			if err != nil {
@@ -51,6 +65,7 @@ func newCompaniesListCmd(flags *rootFlags) *cobra.Command {
 			}
 			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "companies", path, map[string]string{
 				"count_mode":     formatCLIParamValue(flagCountMode),
+				"fields":         formatCLIParamValue(flagFields),
 				"hasOpenDeals":   formatCLIParamValue(flagHasOpenDeals),
 				"industry":       formatCLIParamValue(flagIndustry),
 				"lifecycleStage": formatCLIParamValue(flagLifecycleStage),
@@ -110,16 +125,17 @@ func newCompaniesListCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&flagCountMode, "count-mode", "", "exact (default) counts every matching company into meta.total. (one of: exact, none)")
+	cmd.Flags().StringVar(&flagFields, "fields", "", "picker: each row is only { id, name, domain } and nothing else (no owner, contactCount, dealCount, totalValue) (one of: picker)")
 	cmd.Flags().StringVar(&flagHasOpenDeals, "has-open-deals", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagIndustry, "industry", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagLifecycleStage, "lifecycle-stage", "", "Query parameter read by this route.")
-	cmd.Flags().StringVar(&flagOrder, "order", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagOrder, "order", "", "Sort direction, asc or desc (default desc).")
 	cmd.Flags().StringVar(&flagOwnerId, "owner-id", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagPage, "page", "1", "Page number")
 	cmd.Flags().IntVar(&flagPerPage, "per-page", 50, "Items per page (max 200)")
 	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
 	cmd.Flags().StringVar(&flagSize, "size", "", "Query parameter read by this route.")
-	cmd.Flags().StringVar(&flagSort, "sort", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSort, "sort", "", "Sort field. Two different non-empty values are a 400; empty values are ignored; the same value repeated is one value.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

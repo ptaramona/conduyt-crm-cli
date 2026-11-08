@@ -13,6 +13,7 @@ import (
 )
 
 func newChatPostAgentsMeHeartbeatCmd(flags *rootFlags) *cobra.Command {
+	var bodyListenerId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -43,6 +44,13 @@ func newChatPostAgentsMeHeartbeatCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyListenerId != "" {
+					var parsedListenerId any
+					if err := json.Unmarshal([]byte(bodyListenerId), &parsedListenerId); err != nil {
+						return fmt.Errorf("parsing --listener-id JSON: %w", err)
+					}
+					bodyMap["listenerId"] = bodyListenerId
+				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
 			if err != nil {
@@ -187,6 +195,7 @@ func newChatPostAgentsMeHeartbeatCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyListenerId, "listener-id", "", "(#657) the listener's id, the same one its inbox claims carry.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

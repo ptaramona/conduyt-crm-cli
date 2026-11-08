@@ -13,6 +13,7 @@ import (
 )
 
 func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
+	var bodyAlsoInChannel bool
 	var bodyBody string
 	var bodyCardCallId string
 	var bodyCardContactId string
@@ -20,11 +21,14 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 	var bodyCardEndSec string
 	var bodyCardQuote string
 	var bodyCardStartSec string
+	var bodyCardTaskId string
 	var bodyClaimToken string
 	var bodyEffect string
 	var bodyIdempotencyKey string
 	var bodyKind string
+	var bodyLocalSources string
 	var bodyMetadataAttachments string
+	var bodyMetadataLinks string
 	var bodyParentId string
 	var stdinBody bool
 
@@ -73,6 +77,9 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if cmd.Flags().Changed("also-in-channel") {
+					bodyMap["alsoInChannel"] = bodyAlsoInChannel
+				}
 				if bodyBody != "" {
 					bodyMap["body"] = bodyBody
 				}
@@ -96,6 +103,9 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 					if bodyCardStartSec != "" {
 						nestedCard["startSec"] = bodyCardStartSec
 					}
+					if bodyCardTaskId != "" {
+						nestedCard["taskId"] = bodyCardTaskId
+					}
 					if len(nestedCard) > 0 {
 						bodyMap["card"] = nestedCard
 					}
@@ -112,6 +122,13 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 				if bodyKind != "" {
 					bodyMap["kind"] = bodyKind
 				}
+				if bodyLocalSources != "" {
+					var parsedLocalSources any
+					if err := json.Unmarshal([]byte(bodyLocalSources), &parsedLocalSources); err != nil {
+						return fmt.Errorf("parsing --local-sources JSON: %w", err)
+					}
+					bodyMap["localSources"] = parsedLocalSources
+				}
 				{
 					nestedMetadata := map[string]any{}
 					if bodyMetadataAttachments != "" {
@@ -120,6 +137,13 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 							return fmt.Errorf("parsing --metadata-attachments JSON: %w", err)
 						}
 						nestedMetadata["attachments"] = parsedMetadataAttachments
+					}
+					if bodyMetadataLinks != "" {
+						var parsedMetadataLinks any
+						if err := json.Unmarshal([]byte(bodyMetadataLinks), &parsedMetadataLinks); err != nil {
+							return fmt.Errorf("parsing --metadata-links JSON: %w", err)
+						}
+						nestedMetadata["links"] = parsedMetadataLinks
 					}
 					if len(nestedMetadata) > 0 {
 						bodyMap["metadata"] = nestedMetadata
@@ -272,6 +296,7 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&bodyAlsoInChannel, "also-in-channel", false, "(#684, Paul 2026-11-05) 'Also send to #channel': with parentId")
 	cmd.Flags().StringVar(&bodyBody, "body", "", "Body")
 	cmd.Flags().StringVar(&bodyCardCallId, "card-call-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyCardContactId, "card-contact-id", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
@@ -279,12 +304,15 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyCardEndSec, "card-end-sec", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyCardQuote, "card-quote", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyCardStartSec, "card-start-sec", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
+	cmd.Flags().StringVar(&bodyCardTaskId, "card-task-id", "", "(#613 C) with kind task: the CRM task the card points at. Required for kind task (400 card.taskId is required).")
 	cmd.Flags().StringVar(&bodyClaimToken, "claim-token", "", "(Paired AI agent keys) the listener's claim on the source turn, `<generation>:<listener id>`.")
 	cmd.Flags().StringVar(&bodyEffect, "effect", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
 	cmd.Flags().StringVar(&bodyIdempotencyKey, "idempotency-key", "", "(Paired AI agent keys only; a person's key or session gets 400.")
-	cmd.Flags().StringVar(&bodyKind, "kind", "text", "Kind")
+	cmd.Flags().StringVar(&bodyKind, "kind", "text", "text, or a card that shares a CRM record by REFERENCE (card.dealId, card.contactId, card.callId with its range, or card.")
+	cmd.Flags().StringVar(&bodyLocalSources, "local-sources", "", "(#655 phase 2, AI teammate replies to an inbox turn only: with the idempotencyKey reply")
 	cmd.Flags().StringVar(&bodyMetadataAttachments, "metadata-attachments", "", "Read by the handler from the JSON body (the route declares no schema for its type).")
-	cmd.Flags().StringVar(&bodyParentId, "parent-id", "", "Parent message ID for threads")
+	cmd.Flags().StringVar(&bodyMetadataLinks, "metadata-links", "", "(#613) server-derived, never accepted")
+	cmd.Flags().StringVar(&bodyParentId, "parent-id", "", "Parent message ID for threads.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

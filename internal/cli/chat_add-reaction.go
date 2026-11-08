@@ -13,7 +13,9 @@ import (
 )
 
 func newChatAddReactionCmd(flags *rootFlags) *cobra.Command {
+	var bodyClaimToken string
 	var bodyEmoji string
+	var bodySourceMessageId string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
@@ -65,8 +67,14 @@ func newChatAddReactionCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyClaimToken != "" {
+					bodyMap["claimToken"] = bodyClaimToken
+				}
 				if bodyEmoji != "" {
 					bodyMap["emoji"] = bodyEmoji
+				}
+				if bodySourceMessageId != "" {
+					bodyMap["sourceMessageId"] = bodySourceMessageId
 				}
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)
@@ -212,7 +220,9 @@ func newChatAddReactionCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyClaimToken, "claim-token", "", "(Paired AI agent keys only; any other caller gets 400.")
 	cmd.Flags().StringVar(&bodyEmoji, "emoji", "", "Emoji")
+	cmd.Flags().StringVar(&bodySourceMessageId, "source-message-id", "", "(AI agent turns.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
 	return cmd

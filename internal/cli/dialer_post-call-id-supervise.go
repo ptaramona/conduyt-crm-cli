@@ -13,12 +13,13 @@ import (
 )
 
 func newDialerPostCallIdSuperviseCmd(flags *rootFlags) *cobra.Command {
+	var bodyAgentCallSid string
 	var bodyMode string
 	var stdinBody bool
 
 	cmd := &cobra.Command{
 		Use:         "post-call-id-supervise <id>",
-		Short:       "Create / invoke dialer call id supervise",
+		Short:       "Join an active call as a supervisor (admins and owners).",
 		Example:     "  conduyt-crm-pp-cli dialer post-call-id-supervise 550e8400-e29b-41d4-a716-446655440000 --mode listen",
 		Annotations: map[string]string{"pp:endpoint": "dialer.post-call-id-supervise", "pp:method": "POST", "pp:path": "/dialer/call/{id}/supervise"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -60,6 +61,9 @@ func newDialerPostCallIdSuperviseCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
+				if bodyAgentCallSid != "" {
+					bodyMap["agentCallSid"] = bodyAgentCallSid
+				}
 				if bodyMode != "" {
 					bodyMap["mode"] = bodyMode
 				}
@@ -207,6 +211,7 @@ func newDialerPostCallIdSuperviseCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&bodyAgentCallSid, "agent-call-sid", "", "Agent call sid")
 	cmd.Flags().StringVar(&bodyMode, "mode", "", "Mode")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 

@@ -937,7 +937,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 		"api":         "conduyt-crm",
 		"description": "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has.",
 		"archetype":   "crm",
-		"tool_count":  948,
+		"tool_count":  974,
 		"paths":       paths,
 		// tool_surface tells agents which surface a capability lives on.
 		"tool_surface": "MCP exposes typed endpoint tools plus a runtime mirror of user-facing CLI commands. Endpoint tools keep typed schemas; command-mirror tools shell out to the companion conduyt-crm-pp-cli binary.",
@@ -970,9 +970,10 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "account-exports",
 				"description": "Manage account exports",
-				"endpoints":   []string{"get"},
+				"endpoints":   []string{"get", "post"},
 				"syncable":    true,
 				"searchable":  true,
+				"writable":    true,
 			},
 			{
 				"name":        "account-exports.files",
@@ -989,7 +990,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "activities",
 				"description": "Activity feed and logging",
-				"endpoints":   []string{"create-activity", "get-id", "list"},
+				"endpoints":   []string{"create-activity", "get-assignment-reasons", "get-id", "list"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1069,7 +1070,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "automations",
 				"description": "Workflow automations (native + n8n), publishing, analytics",
-				"endpoints":   []string{"create", "create-from-template", "delete", "get", "get-failures", "get-failures-drilldown", "get-resolve", "get-schema", "get-step-logs", "list", "list-actions", "list-condition-fields", "list-events", "list-templates", "post-copilot", "post-import", "post-resolve", "post-validate", "test-webhook", "update"},
+				"endpoints":   []string{"create", "create-from-template", "delete", "get", "get-distribution-steps", "get-failures", "get-failures-drilldown", "get-resolve", "get-schema", "get-step-logs", "list", "list-actions", "list-condition-fields", "list-events", "list-templates", "post-copilot", "post-import", "post-resolve", "post-validate", "test-webhook", "update"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1089,6 +1090,12 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "automations.dependency-audit",
 				"description": "Manage dependency audit",
 				"endpoints":   []string{"get-automations-id"},
+			},
+			{
+				"name":        "automations.distribution",
+				"description": "Manage distribution",
+				"endpoints":   []string{"get-automations-id", "post-automations-id"},
+				"writable":    true,
 			},
 			{
 				"name":        "automations.dry-run",
@@ -1300,7 +1307,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "chat",
 				"description": "Internal team chat channels and messages",
-				"endpoints":   []string{"add-member", "add-reaction", "create-channel", "delete-agents-id", "delete-message", "edit-message", "get-agents", "get-agents-me-inbox", "get-channels-id-notifications", "get-channels-id-pins", "get-channels-id-upload", "get-floor", "get-message", "get-messages-message-id-location", "get-presence", "get-search", "get-typing-status", "get-unread", "list-channels", "list-messages", "patch-agents-id", "patch-channels-id-agents", "patch-channels-id-notifications", "post-agents", "post-agents-id-pair-code", "post-agents-me-heartbeat", "post-agents-me-inbox-ack", "post-agents-me-inbox-claim", "post-agents-pair", "post-ask", "post-celebrate", "post-channels-id-messages-message-id-claim", "post-channels-id-messages-message-id-handoff", "post-channels-id-messages-message-id-pin", "post-channels-id-upload-finalize", "post-channels-id-upload-intent", "post-handoff", "remove-member", "remove-reaction", "send-message", "send-typing-indicator", "upload-file"},
+				"endpoints":   []string{"add-member", "add-reaction", "create-channel", "delete-agents-id", "delete-agents-id-webhook", "delete-agents-me-mcp", "delete-message", "edit-message", "follow-thread", "get-agents", "get-agents-id-webhook", "get-agents-me-inbox", "get-agents-me-mcp", "get-channels-id-linked-record", "get-channels-id-notifications", "get-channels-id-pins", "get-channels-id-upload", "get-floor", "get-message", "get-messages-message-id-location", "get-presence", "get-search", "get-thread", "get-thread-files", "get-typing-status", "get-unread", "list-channels", "list-messages", "patch-agents-id", "patch-channels-id-agents", "patch-channels-id-notifications", "post-agents", "post-agents-id-connect", "post-agents-id-pair-code", "post-agents-id-webhook-test", "post-agents-me-heartbeat", "post-agents-me-inbox-ack", "post-agents-me-inbox-claim", "post-agents-me-mcp", "post-agents-pair", "post-ask", "post-celebrate", "post-channels-id-messages-message-id-claim", "post-channels-id-messages-message-id-handoff", "post-channels-id-messages-message-id-pin", "post-channels-id-upload-finalize", "post-channels-id-upload-intent", "post-handoff", "put-agents-id-webhook", "put-agents-me-knowledge", "remove-member", "remove-reaction", "send-message", "send-typing-indicator", "unfollow-thread", "upload-file"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1390,7 +1397,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "contacts.dnc",
 				"description": "Manage dnc",
-				"endpoints":   []string{"get-contacts-id"},
+				"endpoints":   []string{"get-contact-verdicts"},
 			},
 			{
 				"name":        "contacts.duplicate-proposals",
@@ -1414,6 +1421,11 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"description": "Manage gdpr forget",
 				"endpoints":   []string{"post-contacts-id"},
 				"writable":    true,
+			},
+			{
+				"name":        "contacts.phone-reachability",
+				"description": "Manage phone reachability",
+				"endpoints":   []string{"get-contact"},
 			},
 			{
 				"name":        "contacts.score",
@@ -1549,7 +1561,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "dialer",
 				"description": "Click-to-call dialer via Twilio",
-				"endpoints":   []string{"delete-call-id-participants-participant-sid", "delete-call-id-supervise", "get-agent-statuses", "get-agents-status", "get-call-id", "get-call-id-media", "get-call-id-participants", "get-call-id-post-call", "get-calls", "get-calls-hourly", "get-capabilities", "get-dispositions", "get-health", "get-history", "get-inbound-lookup", "get-intelligence", "get-leaderboard", "get-live-monitor", "get-local-presence-resolve", "get-queue", "get-queue-open", "get-recordings", "get-settings", "get-setup", "get-stats", "get-status-log", "get-status-log-team", "get-token", "initiate-call", "patch-call-id", "patch-call-id-participants-participant-sid", "patch-settings", "post-call-eligibility", "post-call-id-ai-disposition", "post-call-id-facetime-status", "post-call-id-hangup", "post-call-id-hold", "post-call-id-mute", "post-call-id-participants", "post-call-id-record", "post-call-id-supervise", "post-call-id-transfer", "post-call-id-vm-drop", "post-heartbeat", "post-local-presence-sync", "post-mirror-token", "post-queue-next", "post-queue-release", "post-queue-skip", "post-queue-worked", "post-setup-wire-inbound", "post-status-log", "post-status-log-rollup"},
+				"endpoints":   []string{"delete-call-id-participants-participant-sid", "delete-call-id-supervise", "get-agent-statuses", "get-agents-status", "get-call-id", "get-call-id-media", "get-call-id-participants", "get-call-id-post-call", "get-calls", "get-calls-hourly", "get-capabilities", "get-dispositions", "get-health", "get-history", "get-inbound-lookup", "get-intelligence", "get-leaderboard", "get-live-monitor", "get-local-presence-resolve", "get-queue", "get-queue-open", "get-recordings", "get-settings", "get-setup", "get-stats", "get-status-log", "get-status-log-team", "get-status-log-timeline", "get-token", "initiate-call", "patch-call-id", "patch-call-id-participants-participant-sid", "patch-settings", "post-call-eligibility", "post-call-id-ai-disposition", "post-call-id-facetime-status", "post-call-id-hangup", "post-call-id-hold", "post-call-id-mute", "post-call-id-participants", "post-call-id-record", "post-call-id-supervise", "post-call-id-transfer", "post-call-id-vm-drop", "post-heartbeat", "post-local-presence-sync", "post-mirror-token", "post-queue-next", "post-queue-release", "post-queue-skip", "post-queue-worked", "post-setup-wire-inbound", "post-status-log", "post-status-log-rollup"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1607,7 +1619,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "email",
 				"description": "Send individual and bulk emails",
-				"endpoints":   []string{"get-opt-out-list", "post-opt-out-list", "post-opt-out-list-resubscribe", "send", "send-bulk"},
+				"endpoints":   []string{"get-opt-out-list", "post-opt-out-list", "post-opt-out-list-check", "post-opt-out-list-resubscribe", "send", "send-bulk"},
 				"syncable":    true,
 				"searchable":  true,
 				"writable":    true,
@@ -1765,6 +1777,12 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 				"name":        "imports.repair",
 				"description": "Manage repair",
 				"endpoints":   []string{"post-imports-id"},
+				"writable":    true,
+			},
+			{
+				"name":        "imports.restore",
+				"description": "Manage restore",
+				"endpoints":   []string{"get-imports-id", "post-imports-id"},
 				"writable":    true,
 			},
 			{
@@ -2087,7 +2105,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "settings",
 				"description": "Account settings, branding, SMS/Twilio configuration",
-				"endpoints":   []string{"delete-ai-byo", "delete-fromk", "delete-fromk-webhook", "delete-project-blue", "delete-project-blue-voice", "delete-warmy", "delete-whatsapp", "delete-zoom", "get", "get-ai", "get-ai-teammates", "get-branding", "get-delivery-guard", "get-dormancy", "get-fromk", "get-fromk-lines", "get-lead-visibility", "get-operations", "get-project-blue", "get-project-blue-lines", "get-project-blue-voice", "get-scheduled-export", "get-sms", "get-twilio", "get-warmy", "get-warmy-engine", "get-whatsapp", "get-whatsapp-senders", "get-zoom", "patch-ai", "patch-ai-teammates", "patch-delivery-guard", "patch-dormancy", "patch-lead-visibility", "patch-scheduled-export", "patch-warmy-engine", "post-operations", "post-zoom-test", "put-ai-byo", "put-fromk", "put-fromk-webhook", "put-project-blue", "put-project-blue-lines-line-id", "put-project-blue-voice", "put-warmy", "put-whatsapp", "put-zoom", "test-integration", "test-sms", "test-twilio", "update", "update-branding", "update-sms", "update-twilio"},
+				"endpoints":   []string{"delete-ai-byo", "delete-fromk", "delete-fromk-webhook", "delete-project-blue", "delete-project-blue-voice", "delete-warmy", "delete-whatsapp", "delete-zoom", "get", "get-ai", "get-ai-local-files", "get-ai-teammates", "get-branding", "get-delivery-guard", "get-dormancy", "get-fromk", "get-fromk-lines", "get-lead-visibility", "get-operations", "get-project-blue", "get-project-blue-lines", "get-project-blue-voice", "get-scheduled-export", "get-sms", "get-twilio", "get-warmy", "get-warmy-engine", "get-whatsapp", "get-whatsapp-senders", "get-zoom", "patch-ai", "patch-ai-local-files", "patch-ai-teammates", "patch-delivery-guard", "patch-dormancy", "patch-lead-visibility", "patch-scheduled-export", "patch-warmy-engine", "post-operations", "post-zoom-test", "put-ai-byo", "put-fromk", "put-fromk-webhook", "put-project-blue", "put-project-blue-lines-line-id", "put-project-blue-voice", "put-warmy", "put-whatsapp", "put-zoom", "test-integration", "test-sms", "test-twilio", "update", "update-branding", "update-sms", "update-twilio"},
 				"searchable":  true,
 				"writable":    true,
 			},

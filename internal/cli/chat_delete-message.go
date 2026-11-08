@@ -15,7 +15,7 @@ func newChatDeleteMessageCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "delete-message <id> <messageId>",
-		Short:       "Delete a chat message",
+		Short:       "Delete a message (its attachments are queued for deletion).",
 		Example:     "  conduyt-crm-pp-cli chat delete-message 550e8400-e29b-41d4-a716-446655440000 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "chat.delete-message", "pp:method": "DELETE", "pp:path": "/chat/channels/{id}/messages/{messageId}"},
 		RunE: func(cmd *cobra.Command, args []string) error {

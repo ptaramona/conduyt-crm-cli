@@ -18,7 +18,7 @@ func newChatPostChannelsIdMessagesMessageIdPinCmd(flags *rootFlags) *cobra.Comma
 
 	cmd := &cobra.Command{
 		Use:         "post-channels-id-messages-message-id-pin <id> <messageId>",
-		Short:       "Create / invoke chat channels id messages messageId pin",
+		Short:       "Toggle (or set, with pinned) a deal card's pin; any member of the channel.",
 		Example:     "  conduyt-crm-pp-cli chat post-channels-id-messages-message-id-pin 550e8400-e29b-41d4-a716-446655440000 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "chat.post-channels-id-messages-message-id-pin", "pp:method": "POST", "pp:path": "/chat/channels/{id}/messages/{messageId}/pin"},
 		RunE: func(cmd *cobra.Command, args []string) error {

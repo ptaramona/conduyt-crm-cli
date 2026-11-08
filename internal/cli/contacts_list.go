@@ -51,6 +51,19 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 		Example:     "  conduyt-crm-pp-cli contacts list",
 		Annotations: map[string]string{"pp:endpoint": "contacts.list", "pp:method": "GET", "pp:path": "/contacts", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("sort") {
+				allowedSort := []string{"createdAt", "updatedAt", "firstName", "lastName", "email", "phone", "company", "source", "leadScore", "lastContactedAt", "lastActionAt", "lastContactAttemptAt", "lastActivityAt", "assignedTo", "city", "state", "zip"}
+				validSort := false
+				for _, v := range allowedSort {
+					if flagSort == v {
+						validSort = true
+						break
+					}
+				}
+				if !validSort {
+					return fmt.Errorf("invalid value %q for --%s: must be one of %v", flagSort, "sort", allowedSort)
+				}
+			}
 			if cmd.Flags().Changed("cf") {
 				var parsedCf any
 				if err := json.Unmarshal([]byte(flagCf), &parsedCf); err != nil {
@@ -193,7 +206,7 @@ func newContactsListCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&flagSearch, "search", "", "Text search over name, email, phone (any formatting, incl. secondary phones) and company.")
 	cmd.Flags().StringVar(&flagSmartView, "smart-view", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagSmartListId, "smart-list-id", "", "Query parameter read by this route.")
-	cmd.Flags().StringVar(&flagSort, "sort", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagSort, "sort", "", "Query parameter read by this route. (one of: createdAt, updatedAt, firstName, lastName, email, phone, company, source, leadScore, lastContactedAt, lastActionAt, lastContactAttemptAt, lastActivityAt, assignedTo, city, state, zip)")
 	cmd.Flags().StringVar(&flagSource, "source", "", "Query parameter read by this route.")
 	cmd.Flags().StringArrayVar(&flagTag, "tag", nil, "Tag name filter, repeatable (--tag a --tag b; a comma list or JSON array is also accepted, a JSON array keeps a name that contains a comma). The contact carries ANY of the named tags.")
 	cmd.Flags().StringArrayVar(&flagTagId, "tag-id", nil, "Tag id filter, repeatable (--tag-id <uuid> --tag-id <uuid>; a comma list or JSON array is also accepted). The contact carries ANY of the given tags.")

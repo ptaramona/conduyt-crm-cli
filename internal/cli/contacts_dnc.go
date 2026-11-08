@@ -15,6 +15,6 @@ func newContactsDncCmd(flags *rootFlags) *cobra.Command {
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
-	cmd.AddCommand(newContactsDncGetContactsIdCmd(flags))
+	cmd.AddCommand(newContactsDncGetContactVerdictsCmd(flags))
 	return cmd
 }

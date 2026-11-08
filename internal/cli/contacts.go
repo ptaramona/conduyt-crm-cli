@@ -42,6 +42,7 @@ func newContactsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newContactsEnrichCmd(flags))
 	cmd.AddCommand(newContactsGdprExportCmd(flags))
 	cmd.AddCommand(newContactsGdprForgetCmd(flags))
+	cmd.AddCommand(newContactsPhoneReachabilityCmd(flags))
 	cmd.AddCommand(newContactsScoreCmd(flags))
 	cmd.AddCommand(newContactsTagsCmd(flags))
 	cmd.AddCommand(newContactsTimelineCmd(flags))

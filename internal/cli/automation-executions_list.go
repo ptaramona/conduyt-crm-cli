@@ -21,6 +21,7 @@ func newAutomationExecutionsListCmd(flags *rootFlags) *cobra.Command {
 	var flagSearch string
 	var flagSort string
 	var flagStatus string
+	var flagView string
 	var flagAll bool
 
 	cmd := &cobra.Command{
@@ -44,6 +45,7 @@ func newAutomationExecutionsListCmd(flags *rootFlags) *cobra.Command {
 				"search":       formatCLIParamValue(flagSearch),
 				"sort":         formatCLIParamValue(flagSort),
 				"status":       formatCLIParamValue(flagStatus),
+				"view":         formatCLIParamValue(flagView),
 			}, nil, flagAll, "offset", "offset", "limit", 50, "", "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
@@ -101,6 +103,7 @@ func newAutomationExecutionsListCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&flagSearch, "search", "", "Full-text search query")
 	cmd.Flags().StringVar(&flagSort, "sort", "", "Query parameter read by this route.")
 	cmd.Flags().StringVar(&flagStatus, "status", "", "Query parameter read by this route.")
+	cmd.Flags().StringVar(&flagView, "view", "", "Query parameter read by this route.")
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd

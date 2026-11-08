@@ -29,6 +29,7 @@ func newImportsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newImportsLaunchMonitorCmd(flags))
 	cmd.AddCommand(newImportsProcessCmd(flags))
 	cmd.AddCommand(newImportsRepairCmd(flags))
+	cmd.AddCommand(newImportsRestoreCmd(flags))
 	cmd.AddCommand(newImportsResubmitCmd(flags))
 	cmd.AddCommand(newImportsResumeCmd(flags))
 	cmd.AddCommand(newImportsRevertPreviewCmd(flags))

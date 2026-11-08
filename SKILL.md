@@ -92,6 +92,25 @@ These capabilities aren't available in any other tool for this API.
   conduyt-crm-pp-cli tail messages --interval 5s --agent
   ```
 
+### AI teammate webhooks
+
+An AI teammate (for example Grok Bot) can be woken through its own webhook,
+created by the teammate's Connect in Settings > AI (never through the webhook
+routes, which refuse these event names). Such a webhook receives only:
+`chat.agent_turn` (one per Team Chat message that is a turn for that teammate,
+by the same rule as the listener inbox: AI Team Chat, a DM to it, a channel set
+to "always", an @mention of it, or, while the workspace's thread view is on, a
+person's unmentioned reply in a thread under its own answer; never in a channel
+where agents are muted)
+and `chat.agent_test` (the Connect / Test hello). An ordinary webhook never
+receives either. Besides the HMAC headers, each request carries the teammate's
+sender key as `Authorization: Bearer <key>`. A `chat.agent_turn` more than 10
+minutes old is cancelled instead of sent, so only the 1m and 5m retries apply.
+The `data` of a turn: agentUserId, agentHandle, messageId, channelId,
+channelName, channelKind, threadId (reply with parentId = threadId), senderId,
+senderName, senderKind, senderIsOwner, body, createdAt, replyIdempotencyKey
+(`turn:<messageId>`), linkedRecord (`{ kind }` or null) and toolsUrl.
+
 ## Command Reference
 
 **account** — Manage account
@@ -101,7 +120,8 @@ These capabilities aren't available in any other tool for this API.
 
 **account-exports** — Manage account exports
 
-- `conduyt-crm-pp-cli account-exports` — List account-exports
+- `conduyt-crm-pp-cli account-exports get` — List account-exports
+- `conduyt-crm-pp-cli account-exports post` — Create / invoke account-exports
 
 **accounts** — Manage accounts
 
@@ -111,6 +131,7 @@ These capabilities aren't available in any other tool for this API.
 **activities** — Activity feed and logging
 
 - `conduyt-crm-pp-cli activities create-activity` — Log an activity
+- `conduyt-crm-pp-cli activities get-assignment-reasons` — List activities assignment-reasons
 - `conduyt-crm-pp-cli activities get-id` — Get activities id
 - `conduyt-crm-pp-cli activities list` — List activities
 
@@ -123,7 +144,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli admin clean-test-accounts` — Delete test accounts
 - `conduyt-crm-pp-cli admin clean-test-data` — Clean test data from the system
 - `conduyt-crm-pp-cli admin impersonate` — Impersonate a user (super-admin)
-- `conduyt-crm-pp-cli admin list-accounts` — Every account with the columns the admin console needs.
+- `conduyt-crm-pp-cli admin list-accounts` — (#612) A page of accounts, newest first (page / per_page, default 50, max 200; limit is an alias of per_page)
 - `conduyt-crm-pp-cli admin stop-impersonate` — Stop impersonating
 - `conduyt-crm-pp-cli admin toggle-comp` — Toggle comp (free) status for an account
 
@@ -187,6 +208,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli automations create-from-template` — Create automation from a template
 - `conduyt-crm-pp-cli automations delete` — Delete an automation
 - `conduyt-crm-pp-cli automations get` — Get an automation by ID
+- `conduyt-crm-pp-cli automations get-distribution-steps` — List automations distribution-steps
 - `conduyt-crm-pp-cli automations get-failures` — List automations failures
 - `conduyt-crm-pp-cli automations get-failures-drilldown` — List automations failures drilldown
 - `conduyt-crm-pp-cli automations get-resolve` — List automations resolve
@@ -318,10 +340,16 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli chat add-reaction` — Add a reaction to a message
 - `conduyt-crm-pp-cli chat create-channel` — Create a chat channel
 - `conduyt-crm-pp-cli chat delete-agents-id` — Delete chat agents id
-- `conduyt-crm-pp-cli chat delete-message` — Delete a chat message
-- `conduyt-crm-pp-cli chat edit-message` — Edit a chat message
-- `conduyt-crm-pp-cli chat get-agents` — List chat agents
+- `conduyt-crm-pp-cli chat delete-agents-id-webhook` — Delete chat agents id webhook
+- `conduyt-crm-pp-cli chat delete-agents-me-mcp` — The server is stateless (no session id), so DELETE answers 405 with `Allow: POST` and writes nothing.
+- `conduyt-crm-pp-cli chat delete-message` — Delete a message (its attachments are queued for deletion).
+- `conduyt-crm-pp-cli chat edit-message` — Edit the caller's own message (body; record mentions are re-resolved).
+- `conduyt-crm-pp-cli chat follow-thread` — (#684 lane F, Paul 2026-11-06: thread notifications follow Slack)
+- `conduyt-crm-pp-cli chat get-agents` — The workspace's live AI teammates (a removed teammate is never listed), oldest first.
+- `conduyt-crm-pp-cli chat get-agents-id-webhook` — Get chat agents id webhook
 - `conduyt-crm-pp-cli chat get-agents-me-inbox` — List chat agents me inbox
+- `conduyt-crm-pp-cli chat get-agents-me-mcp` — The server is stateless and offers no SSE stream, so GET answers 405 with `Allow: POST`.
+- `conduyt-crm-pp-cli chat get-channels-id-linked-record` — Get chat channels id linked-record
 - `conduyt-crm-pp-cli chat get-channels-id-notifications` — Get chat channels id notifications
 - `conduyt-crm-pp-cli chat get-channels-id-pins` — Get chat channels id pins
 - `conduyt-crm-pp-cli chat get-channels-id-upload` — Get chat channels id upload
@@ -330,6 +358,8 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli chat get-messages-message-id-location` — Get chat messages messageId location
 - `conduyt-crm-pp-cli chat get-presence` — List chat presence
 - `conduyt-crm-pp-cli chat get-search` — List chat search
+- `conduyt-crm-pp-cli chat get-thread` — (#684) Only while the workspace's thread view (account setting teamChatThreads) is on
+- `conduyt-crm-pp-cli chat get-thread-files` — The attachments on a thread's root message and on every reply that carries that root, oldest first
 - `conduyt-crm-pp-cli chat get-typing-status` — Get who is currently typing
 - `conduyt-crm-pp-cli chat get-unread` — List chat unread
 - `conduyt-crm-pp-cli chat list-channels` — List chat channels
@@ -338,23 +368,29 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli chat patch-channels-id-agents` — Update chat channels id agents
 - `conduyt-crm-pp-cli chat patch-channels-id-notifications` — Update chat channels id notifications
 - `conduyt-crm-pp-cli chat post-agents` — Create / invoke chat agents
+- `conduyt-crm-pp-cli chat post-agents-id-connect` — Create / invoke chat agents id connect
 - `conduyt-crm-pp-cli chat post-agents-id-pair-code` — Create / invoke chat agents id pair-code
+- `conduyt-crm-pp-cli chat post-agents-id-webhook-test` — Create / invoke chat agents id webhook test
 - `conduyt-crm-pp-cli chat post-agents-me-heartbeat` — Create / invoke chat agents me heartbeat
 - `conduyt-crm-pp-cli chat post-agents-me-inbox-ack` — Create / invoke chat agents me inbox ack
 - `conduyt-crm-pp-cli chat post-agents-me-inbox-claim` — Create / invoke chat agents me inbox claim
+- `conduyt-crm-pp-cli chat post-agents-me-mcp` — (#1140)
 - `conduyt-crm-pp-cli chat post-agents-pair` — Create / invoke chat agents pair
 - `conduyt-crm-pp-cli chat post-ask` — Create / invoke chat ask
 - `conduyt-crm-pp-cli chat post-celebrate` — Create / invoke chat celebrate
 - `conduyt-crm-pp-cli chat post-channels-id-messages-message-id-claim` — Create / invoke chat channels id messages messageId claim
 - `conduyt-crm-pp-cli chat post-channels-id-messages-message-id-handoff` — Create / invoke chat channels id messages messageId handoff
-- `conduyt-crm-pp-cli chat post-channels-id-messages-message-id-pin` — Create / invoke chat channels id messages messageId pin
-- `conduyt-crm-pp-cli chat post-channels-id-upload-finalize` — Create / invoke chat channels id upload finalize
-- `conduyt-crm-pp-cli chat post-channels-id-upload-intent` — Create / invoke chat channels id upload intent
+- `conduyt-crm-pp-cli chat post-channels-id-messages-message-id-pin` — Toggle (or set, with pinned) a deal card's pin; any member of the channel.
+- `conduyt-crm-pp-cli chat post-channels-id-upload-finalize` — Step 3 of a direct-to-storage chat attachment
+- `conduyt-crm-pp-cli chat post-channels-id-upload-intent` — Step 1 of a direct-to-storage chat attachment: answers a presigned PUT for the declared name
 - `conduyt-crm-pp-cli chat post-handoff` — Create / invoke chat handoff
+- `conduyt-crm-pp-cli chat put-agents-id-webhook` — Update chat agents id webhook
+- `conduyt-crm-pp-cli chat put-agents-me-knowledge` — (#1209) An AI teammate's listener (by its listenerId, the id its heartbeat and claims carry)
 - `conduyt-crm-pp-cli chat remove-member` — Remove a member from a channel
 - `conduyt-crm-pp-cli chat remove-reaction` — Remove a reaction from a message
 - `conduyt-crm-pp-cli chat send-message` — Send a message in a channel
 - `conduyt-crm-pp-cli chat send-typing-indicator` — Send a typing indicator
+- `conduyt-crm-pp-cli chat unfollow-thread` — (#684 lane F) The caller stops being notified of the thread's replies
 - `conduyt-crm-pp-cli chat upload-file` — Upload a file to a channel
 
 **companies** — Company (organization) management
@@ -521,6 +557,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli dialer get-stats` — List dialer stats
 - `conduyt-crm-pp-cli dialer get-status-log` — List dialer status-log
 - `conduyt-crm-pp-cli dialer get-status-log-team` — List dialer status-log team
+- `conduyt-crm-pp-cli dialer get-status-log-timeline` — List dialer status-log timeline
 - `conduyt-crm-pp-cli dialer get-token` — Get a Twilio browser token for click-to-call
 - `conduyt-crm-pp-cli dialer initiate-call` — Initiate an outbound call
 - `conduyt-crm-pp-cli dialer patch-call-id` — Update dialer call id
@@ -534,7 +571,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli dialer post-call-id-mute` — Create / invoke dialer call id mute
 - `conduyt-crm-pp-cli dialer post-call-id-participants` — Create / invoke dialer call id participants
 - `conduyt-crm-pp-cli dialer post-call-id-record` — Create / invoke dialer call id record
-- `conduyt-crm-pp-cli dialer post-call-id-supervise` — Create / invoke dialer call id supervise
+- `conduyt-crm-pp-cli dialer post-call-id-supervise` — Join an active call as a supervisor (admins and owners).
 - `conduyt-crm-pp-cli dialer post-call-id-transfer` — Create / invoke dialer call id transfer
 - `conduyt-crm-pp-cli dialer post-call-id-vm-drop` — Create / invoke dialer call id vm-drop
 - `conduyt-crm-pp-cli dialer post-heartbeat` — Create / invoke dialer heartbeat
@@ -592,6 +629,7 @@ These capabilities aren't available in any other tool for this API.
 
 - `conduyt-crm-pp-cli email get-opt-out-list` — List email opt-out-list
 - `conduyt-crm-pp-cli email post-opt-out-list` — Create / invoke email opt-out-list
+- `conduyt-crm-pp-cli email post-opt-out-list-check` — Answers whether one email address is on this workspace's email opt-out list, and if so its source and since when.
 - `conduyt-crm-pp-cli email post-opt-out-list-resubscribe` — Create / invoke email opt-out-list resubscribe
 - `conduyt-crm-pp-cli email send` — Sends one email through the account's connected Resend domain and logs it as a Message row linked to the contact.
 - `conduyt-crm-pp-cli email send-bulk` — Send bulk emails
@@ -1005,6 +1043,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli settings delete-zoom` — Delete settings zoom
 - `conduyt-crm-pp-cli settings get` — Includes messageCheck.
 - `conduyt-crm-pp-cli settings get-ai` — List settings ai
+- `conduyt-crm-pp-cli settings get-ai-local-files` — List settings ai-local-files
 - `conduyt-crm-pp-cli settings get-ai-teammates` — List settings ai-teammates
 - `conduyt-crm-pp-cli settings get-branding` — The white-label branding (name, logo, favicon, colours, custom domain) and the account's Company details
 - `conduyt-crm-pp-cli settings get-delivery-guard` — List settings delivery-guard
@@ -1025,6 +1064,7 @@ These capabilities aren't available in any other tool for this API.
 - `conduyt-crm-pp-cli settings get-whatsapp-senders` — List settings whatsapp senders
 - `conduyt-crm-pp-cli settings get-zoom` — List settings zoom
 - `conduyt-crm-pp-cli settings patch-ai` — Update settings ai
+- `conduyt-crm-pp-cli settings patch-ai-local-files` — Update settings ai-local-files
 - `conduyt-crm-pp-cli settings patch-ai-teammates` — Update settings ai-teammates
 - `conduyt-crm-pp-cli settings patch-delivery-guard` — Update settings delivery-guard
 - `conduyt-crm-pp-cli settings patch-dormancy` — Update settings dormancy

@@ -918,6 +918,13 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limitParam:  "per_page",
 			limit:       50,
 		}
+	case "activities-assignment-reasons":
+		return paginationDefaults{
+			cursorParam: "cursor",
+			cursorType:  "cursor",
+			limitParam:  "per_page",
+			limit:       100,
+		}
 	case "activity":
 		return paginationDefaults{
 			cursorParam: "cursor",
@@ -928,9 +935,9 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 	case "admin":
 		return paginationDefaults{
 			cursorParam: "page",
-			cursorType:  "offset",
+			cursorType:  "page",
 			limitParam:  "limit",
-			limit:       200,
+			limit:       50,
 		}
 	case "ai":
 		return paginationDefaults{
@@ -1324,6 +1331,13 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limitParam:  "per_page",
 			limit:       50,
 		}
+	case "messages/messages_thread":
+		return paginationDefaults{
+			cursorParam: "before",
+			cursorType:  "offset",
+			limitParam:  "limit",
+			limit:       20,
+		}
 	case "notes":
 		return paginationDefaults{
 			cursorParam: "page",
@@ -1486,6 +1500,8 @@ func resourceSupportsPagination(resource string) bool {
 		return true
 	case "activities":
 		return true
+	case "activities-assignment-reasons":
+		return true
 	case "activity":
 		return true
 	case "admin":
@@ -1591,6 +1607,8 @@ func resourceSupportsPagination(resource string) bool {
 	case "lead-routing-assignment-log":
 		return true
 	case "messages":
+		return true
+	case "messages_thread":
 		return true
 	case "notes":
 		return true
@@ -2401,6 +2419,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertBulkEnroll(data)
 	case "dependency_audit":
 		return db.UpsertDependencyAudit(data)
+	case "distribution":
+		return db.UpsertDistribution(data)
 	case "dry_run":
 		return db.UpsertDryRun(data)
 	case "node_stats":
@@ -2445,6 +2465,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertWiring(data)
 	case "link":
 		return db.UpsertLink(data)
+	case "chat":
+		return db.UpsertChat(data)
 	case "intelligence":
 		return db.UpsertIntelligence(data)
 	case "related":
@@ -2469,6 +2491,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertGdprExport(data)
 	case "gdpr_forget":
 		return db.UpsertGdprForget(data)
+	case "phone_reachability":
+		return db.UpsertPhoneReachability(data)
 	case "score":
 		return db.UpsertScore(data)
 	case "contacts_tags":
@@ -2481,6 +2505,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertState(data)
 	case "suggestion":
 		return db.UpsertSuggestion(data)
+	case "custom-fields":
+		return db.UpsertCustomFields(data)
 	case "custom_fields_history":
 		return db.UpsertCustomFieldsHistory(data)
 	case "impact":
@@ -2535,6 +2561,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertProcess(data)
 	case "repair":
 		return db.UpsertRepair(data)
+	case "imports_restore":
+		return db.UpsertImportsRestore(data)
 	case "resubmit":
 		return db.UpsertResubmit(data)
 	case "resume":
@@ -2567,8 +2595,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertMedia(data)
 	case "archive":
 		return db.UpsertArchive(data)
-	case "restore":
-		return db.UpsertRestore(data)
+	case "pipelines_restore":
+		return db.UpsertPipelinesRestore(data)
 	case "stages":
 		return db.UpsertStages(data)
 	case "reports":
@@ -2646,6 +2674,7 @@ func defaultSyncResources() []string {
 		"activity",
 		"admin",
 		"batch-operations",
+		"chat",
 		"custom-fields",
 		"deals",
 		"dialer",
@@ -2657,10 +2686,12 @@ func defaultSyncResources() []string {
 		"generated-documents",
 		"integrations-wordpress-forms-intakes",
 		"lead-routing-assignment-log",
+		"pipelines",
 		"scoring-rules",
 		"sms",
 		"sms-providers",
 		"sms-providers-template-options",
+		"tags",
 	}
 }
 
@@ -2671,6 +2702,7 @@ func knownSyncResourceNames() []string {
 	names := []string{
 		"account-exports",
 		"activities",
+		"activities-assignment-reasons",
 		"activity",
 		"admin",
 		"ai",
@@ -2694,6 +2726,7 @@ func knownSyncResourceNames() []string {
 		"calls",
 		"calls-unknown-callers",
 		"chat",
+		"chat-channels",
 		"companies",
 		"companies-duplicates",
 		"conduyt-auth",
@@ -2787,6 +2820,7 @@ func syncResourcePath(resource string) (string, error) {
 	paths := map[string]string{ // #nosec G101 -- endpoint paths, not credentials.
 		"account-exports":                      "/account-exports",
 		"activities":                           "/activities",
+		"activities-assignment-reasons":        "/activities/assignment-reasons",
 		"activity":                             "/activity/export.csv",
 		"admin":                                "/admin/accounts",
 		"ai":                                   "/ai/feed",
@@ -2809,7 +2843,8 @@ func syncResourcePath(resource string) (string, error) {
 		"calendars":                            "/calendars",
 		"calls":                                "/calls",
 		"calls-unknown-callers":                "/calls/unknown-callers",
-		"chat":                                 "/chat/channels",
+		"chat":                                 "/chat/agents",
+		"chat-channels":                        "/chat/channels",
 		"companies":                            "/companies",
 		"companies-duplicates":                 "/companies/duplicates",
 		"conduyt-auth":                         "/auth/login-history",
@@ -3024,6 +3059,10 @@ func dependentResourceDefs() []dependentResourceDef {
 		}},
 		{Name: "launch_monitor", ParentTable: "imports", ParentIDParam: "id", PathTemplate: "/imports/{id}/launch-monitor", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
 			{Param: "id", Field: "id"},
+		}},
+		{Name: "messages_thread", ParentTable: "messages", ParentIDParam: "messageId", PathTemplate: "/chat/channels/{id}/messages/{messageId}/thread", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
+			{Param: "id", Field: "channels_id"},
+			{Param: "messageId", Field: "id"},
 		}},
 		{Name: "rows", ParentTable: "imports", ParentIDParam: "id", PathTemplate: "/imports/{id}/rows", KeyField: "", ReconcileMode: "none", GenericScopeJSONPath: "", PathParams: []dependentPathParamDef{
 			{Param: "id", Field: "id"},
@@ -3645,10 +3684,13 @@ func dependentParentRows(db *store.Store, parentTable string, pathParams []depen
 // flat paths.
 var resourceIDFieldOverrides = map[string]string{
 	"admin":                                "id",
+	"chat":                                 "id",
+	"custom-fields":                        "id",
 	"dialer":                               "id",
 	"integrations-wordpress-forms-intakes": "id",
 	"sms-providers":                        "id",
 	"sms-providers-template-options":       "id",
+	"tags":                                 "id",
 }
 
 // partitionOutcome tracks whether a sync loop (flat tenant-scoped OR dependent
@@ -3733,6 +3775,8 @@ func responsePathForResource(resource, path string) []string {
 		return []string{"data"}
 	case "batch-operations\x00/batch-operations":
 		return []string{"data"}
+	case "chat\x00/chat/agents":
+		return []string{"data"}
 	case "custom-fields\x00/custom-fields":
 		return []string{"data"}
 	case "dialer\x00/dialer/calls":
@@ -3758,6 +3802,8 @@ func responsePathForResource(resource, path string) []string {
 	case "sms-providers\x00/sms-providers/options":
 		return []string{"data"}
 	case "sms-providers\x00/sms-providers/template-options":
+		return []string{"data"}
+	case "tags\x00/tags":
 		return []string{"data"}
 	}
 	return nil

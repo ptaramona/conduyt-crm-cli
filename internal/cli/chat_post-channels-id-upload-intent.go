@@ -20,7 +20,7 @@ func newChatPostChannelsIdUploadIntentCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "post-channels-id-upload-intent <id>",
-		Short:       "Create / invoke chat channels id upload intent",
+		Short:       "Step 1 of a direct-to-storage chat attachment: answers a presigned PUT for the declared name",
 		Example:     "  conduyt-crm-pp-cli chat post-channels-id-upload-intent 550e8400-e29b-41d4-a716-446655440000",
 		Annotations: map[string]string{"pp:endpoint": "chat.post-channels-id-upload-intent", "pp:method": "POST", "pp:path": "/chat/channels/{id}/upload/intent"},
 		RunE: func(cmd *cobra.Command, args []string) error {

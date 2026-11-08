@@ -11,33 +11,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newContactsDncGetContactsIdCmd(flags *rootFlags) *cobra.Command {
-	var flagTo string
+func newAutomationsGetDistributionStepsCmd(flags *rootFlags) *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:         "get-contacts-id <id>",
-		Aliases:     []string{"get"},
-		Short:       "Get contacts id dnc",
-		Example:     "  conduyt-crm-pp-cli contacts dnc get-contacts-id 550e8400-e29b-41d4-a716-446655440000",
-		Annotations: map[string]string{"pp:endpoint": "dnc.get-contacts-id", "pp:method": "GET", "pp:path": "/contacts/{id}/dnc", "mcp:read-only": "true"},
+		Use:         "get-distribution-steps",
+		Short:       "List automations distribution-steps",
+		Example:     "  conduyt-crm-pp-cli automations get-distribution-steps",
+		Annotations: map[string]string{"pp:endpoint": "automations.get-distribution-steps", "pp:method": "GET", "pp:path": "/automations/distribution-steps", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cmd.Help()
-			}
-			path := "/contacts/{id}/dnc"
-			if len(args) < 1 || args[0] == "" {
-				return usageErr(fmt.Errorf("id is required\nUsage: %s <%s>", cmd.CommandPath(), "id"))
-			}
-			path = replacePathParam(path, "id", args[0])
+			path := "/automations/distribution-steps"
 			c, err := flags.newClient()
 			if err != nil {
 				return err
 			}
 			params := map[string]string{}
-			if flagTo != "" {
-				params["to"] = formatCLIParamValue(flagTo)
-			}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "dnc", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "automations", false, path, params, nil, "", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -85,7 +73,6 @@ func newContactsDncGetContactsIdCmd(flags *rootFlags) *cobra.Command {
 			return printOutputWithFlagsMeta(cmd.OutOrStdout(), data, flags, map[string]any{"source": "live"})
 		},
 	}
-	cmd.Flags().StringVar(&flagTo, "to", "", "Query parameter read by this route.")
 
 	return cmd
 }

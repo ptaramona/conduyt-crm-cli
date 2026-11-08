@@ -297,6 +297,7 @@ See README.md or the bundled SKILL.md for recipes.`,
 		return nil
 	}
 	rootCmd.AddCommand(newAccountCmd(flags))
+	rootCmd.AddCommand(newAccountExportsCmd(flags))
 	rootCmd.AddCommand(newAccountsCmd(flags))
 	rootCmd.AddCommand(newActivitiesCmd(flags))
 	rootCmd.AddCommand(newAdminCmd(flags))
@@ -398,7 +399,6 @@ See README.md or the bundled SKILL.md for recipes.`,
 	rootCmd.AddCommand(newNovelDripsCmd(flags))
 	rootCmd.AddCommand(newNovelSendCheckCmd(flags))
 	rootCmd.AddCommand(newAPICmd(flags))
-	rootCmd.AddCommand(newAccountExportsPromotedCmd(flags))
 	rootCmd.AddCommand(newActivityPromotedCmd(flags))
 	rootCmd.AddCommand(newApiSearchPromotedCmd(flags))
 	rootCmd.AddCommand(newBulkOperationsPromotedCmd(flags))

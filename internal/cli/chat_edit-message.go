@@ -19,7 +19,7 @@ func newChatEditMessageCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "edit-message <id> <messageId>",
 		Aliases: []string{"update"},
-		Short:   "Edit a chat message",
+		Short:   "Edit the caller's own message (body; record mentions are re-resolved).",
 		// TODO: replace placeholder example values before relying on this for live dogfood.
 		Example:     "  conduyt-crm-pp-cli chat edit-message 550e8400-e29b-41d4-a716-446655440000 550e8400-e29b-41d4-a716-446655440000 --body example-value",
 		Annotations: map[string]string{"pp:endpoint": "chat.edit-message", "pp:method": "PATCH", "pp:path": "/chat/channels/{id}/messages/{messageId}"},

@@ -16,6 +16,7 @@ func newWebhooksVoiceRecordingCmd(flags *rootFlags) *cobra.Command {
 	var bodyAccountSid string
 	var bodyCallSid string
 	var bodyConferenceSid string
+	var bodyRecordingChannels string
 	var bodyRecordingDuration string
 	var bodyRecordingSid string
 	var bodyRecordingStartTime string
@@ -47,6 +48,9 @@ func newWebhooksVoiceRecordingCmd(flags *rootFlags) *cobra.Command {
 			}
 			if bodyConferenceSid != "" {
 				fields["ConferenceSid"] = bodyConferenceSid
+			}
+			if bodyRecordingChannels != "" {
+				fields["RecordingChannels"] = bodyRecordingChannels
 			}
 			if bodyRecordingDuration != "" {
 				fields["RecordingDuration"] = bodyRecordingDuration
@@ -211,6 +215,7 @@ func newWebhooksVoiceRecordingCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyAccountSid, "account-sid", "", "A form field the handler reads")
 	cmd.Flags().StringVar(&bodyCallSid, "call-sid", "", "A form field the handler reads")
 	cmd.Flags().StringVar(&bodyConferenceSid, "conference-sid", "", "A form field the handler reads")
+	cmd.Flags().StringVar(&bodyRecordingChannels, "recording-channels", "", "A form field the handler reads")
 	cmd.Flags().StringVar(&bodyRecordingDuration, "recording-duration", "", "A form field the handler reads")
 	cmd.Flags().StringVar(&bodyRecordingSid, "recording-sid", "", "A form field the handler reads")
 	cmd.Flags().StringVar(&bodyRecordingStartTime, "recording-start-time", "", "A form field the handler reads")

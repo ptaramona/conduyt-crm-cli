@@ -16,7 +16,7 @@ func newChatGetAgentsCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "get-agents",
 		Aliases:     []string{"list"},
-		Short:       "List chat agents",
+		Short:       "The workspace's live AI teammates (a removed teammate is never listed), oldest first.",
 		Example:     "  conduyt-crm-pp-cli chat get-agents",
 		Annotations: map[string]string{"pp:endpoint": "chat.get-agents", "pp:method": "GET", "pp:path": "/chat/agents", "mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -26,7 +26,7 @@ func newChatGetAgentsCmd(flags *rootFlags) *cobra.Command {
 				return err
 			}
 			params := map[string]string{}
-			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "chat", false, path, params, nil, "", cmd.ErrOrStderr())
+			data, prov, err := resolveReadWithStrategyAndResponsePath(cmd.Context(), c, flags, "auto", "chat", false, path, params, nil, "data", cmd.ErrOrStderr())
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}

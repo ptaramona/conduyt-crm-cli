@@ -18,6 +18,7 @@ func newEmailCmd(flags *rootFlags) *cobra.Command {
 
 	cmd.AddCommand(newEmailGetOptOutListCmd(flags))
 	cmd.AddCommand(newEmailPostOptOutListCmd(flags))
+	cmd.AddCommand(newEmailPostOptOutListCheckCmd(flags))
 	cmd.AddCommand(newEmailPostOptOutListResubscribeCmd(flags))
 	cmd.AddCommand(newEmailSendCmd(flags))
 	cmd.AddCommand(newEmailSendBulkCmd(flags))

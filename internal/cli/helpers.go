@@ -1043,6 +1043,132 @@ func extractPaginatedObjectArray(raw json.RawMessage) ([]json.RawMessage, bool) 
 	return items, true
 }
 
+// embeddedPagedSubresourcePageCap bounds the page loop in
+// fetchEmbeddedPagedSubresource so a misbehaving server returning a
+// non-empty next URL on every response can't spin forever. 500 covers
+// the largest realistic embedded sub-resource (e.g. 50k items at 100
+// per page); pathological servers trip the cap and surface an error
+// instead of hanging.
+const embeddedPagedSubresourcePageCap = 500
+
+// fetchEmbeddedPagedSubresource paginates the embedded paged
+// sub-resource at childPath until exhausted, returning the
+// concatenated items. The generator emits per-endpoint thin wrappers
+// that call this with the detected envelope shape; consolidating the
+// loop here keeps the page cap, error handling, and envelope-walking
+// logic in one place.
+//
+// nextField names the envelope's "more pages" property. nextIsURL
+// distinguishes the two cursor shapes:
+//
+//   - nextIsURL=true: the property carries a full URL the runtime can
+//     GET directly to fetch the next page (envelope shape: items+next).
+//   - nextIsURL=false: the property either carries an opaque cursor
+//     token whose required query-param name isn't part of the embedded
+//     envelope, or it's a has_more-style bool. In either case the
+//     helper performs a single GET and emits a stderr truncation event
+//     when the field indicates more pages exist — paginating further
+//     requires API-specific arithmetic that cannot be synthesized
+//     from the envelope alone, so callers must use the dedicated list
+//     endpoint for full traversal.
+//
+// Envelope lookups are case-insensitive: API authors sometimes
+// describe envelopes in one casing in the schema and serve another on
+// the wire (`NextPageToken` vs `nextPageToken`).
+func fetchEmbeddedPagedSubresource(ctx context.Context, c interface {
+	GetWithHeadersValues(ctx context.Context, path string, params url.Values, headers map[string]string) (json.RawMessage, error)
+}, childPath, nextField string, nextIsURL, nextIsBoolean bool) ([]json.RawMessage, error) {
+	all := make([]json.RawMessage, 0)
+	nextURL := ""
+	for page := 0; page < embeddedPagedSubresourcePageCap; page++ {
+		target := childPath
+		var query url.Values
+		if nextURL != "" {
+			target, query = relativizeNextURLParts(nextURL)
+		}
+		data, err := c.GetWithHeadersValues(ctx, target, query, nil)
+		if err != nil {
+			return nil, fmt.Errorf("paginating embedded sub-resource %q page %d: %w", childPath, page+1, err)
+		}
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal(data, &obj); err != nil {
+			return nil, fmt.Errorf("paginating embedded sub-resource %q page %d: unexpected response shape: %w", childPath, page+1, err)
+		}
+		if items, ok := extractPaginatedItems(obj); ok {
+			all = append(all, items...)
+		}
+		if !nextIsURL {
+			if moreRaw, ok := caseInsensitiveLookup(obj, nextField); ok {
+				if hasUnfollowableNextSignal(moreRaw, nextIsBoolean) {
+					emitEmbeddedPagedTruncationWarning(childPath)
+				}
+			}
+			return all, nil
+		}
+		nextRaw, ok := caseInsensitiveLookup(obj, nextField)
+		if !ok {
+			return all, nil
+		}
+		var nextStr string
+		if json.Unmarshal(nextRaw, &nextStr) != nil || nextStr == "" {
+			return all, nil
+		}
+		nextURL = nextStr
+	}
+	return all, fmt.Errorf("paginating embedded sub-resource %q: hit %d-page cap (likely a server returning a non-empty next URL on every response)", childPath, embeddedPagedSubresourcePageCap)
+}
+
+// hasUnfollowableNextSignal reports whether a non-URL next field
+// value indicates more pages exist (true bool, non-empty cursor
+// string) — the caller emits a truncation warning when this returns
+// true. Returns false on missing/null/false/empty signals.
+func hasUnfollowableNextSignal(raw json.RawMessage, nextIsBoolean bool) bool {
+	if nextIsBoolean {
+		var more bool
+		return json.Unmarshal(raw, &more) == nil && more
+	}
+	var cursor string
+	return json.Unmarshal(raw, &cursor) == nil && cursor != ""
+}
+
+func emitEmbeddedPagedTruncationWarning(childPath string) {
+	if humanFriendly {
+		fmt.Fprintf(os.Stderr, "warning: %s truncated; more pages available via the dedicated list endpoint.\n", childPath)
+	} else {
+		fmt.Fprintf(os.Stderr, `{"event":"truncated","sub_resource":%q}`+"\n", childPath)
+	}
+}
+
+// relativizeNextURLParts strips an absolute scheme+host from a next-page URL
+// so the client's BaseURL+path concat doesn't produce a double-prefixed target,
+// while preserving repeated query params for the follow-up request.
+func relativizeNextURLParts(raw string) (string, url.Values) {
+	u, err := url.Parse(raw)
+	if err != nil || !u.IsAbs() {
+		return raw, nil
+	}
+	path := u.Path
+	if path == "" {
+		path = "/"
+	}
+	return path, u.Query()
+}
+
+// caseInsensitiveLookup returns obj[key] tolerating envelope casing
+// drift between the spec and the wire response.
+func caseInsensitiveLookup(obj map[string]json.RawMessage, key string) (json.RawMessage, bool) {
+	if raw, ok := obj[key]; ok {
+		return raw, true
+	}
+	lowered := strings.ToLower(key)
+	for k, raw := range obj {
+		if strings.ToLower(k) == lowered {
+			return raw, true
+		}
+	}
+	return nil, false
+}
+
 func rawAtPath(obj map[string]json.RawMessage, path string) (json.RawMessage, bool) {
 	if raw, ok := obj[path]; ok {
 		return raw, true

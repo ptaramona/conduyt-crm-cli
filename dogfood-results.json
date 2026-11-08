@@ -1,11 +1,11 @@
 {
-  "dir": "\u003ccli-dir\u003e/conduyt-crm-pp-cli",
+  "dir": "\u003ccli-dir\u003e/conduyt-crm-cli-637",
   "spec_path": "\u003ccli-dir\u003e/spec.yaml",
   "spec_source": "bundled",
-  "verdict": "PASS",
+  "verdict": "WARN",
   "path_check": {
-    "tested": 7,
-    "valid": 7,
+    "tested": 6,
+    "valid": 6,
     "valid_pct": 100
   },
   "auth_check": {
@@ -26,20 +26,23 @@
     "detail": "no OAuth-scoped endpoints in spec"
   },
   "dead_flags": {
-    "total": 23,
+    "total": 24,
     "dead": 0
   },
   "dead_functions": {
-    "total": 73,
-    "dead": 0
+    "total": 81,
+    "dead": 1,
+    "items": [
+      "appendArrayQueryParam"
+    ]
   },
   "pipeline_check": {
     "sync_calls_domain": true,
-    "search_calls_domain": false,
+    "search_calls_domain": true,
     "domain_tables": 4,
     "sync_file_emitted": true,
     "sync_resources_present": true,
-    "detail": "sync uses domain-specific Upsert methods; search uses generic Search only; 4 domain tables found"
+    "detail": "sync uses domain-specific Upsert methods; search uses domain-specific Search methods; 4 domain tables found"
   },
   "example_check": {
     "tested": 10,
@@ -49,8 +52,8 @@
   },
   "wiring_check": {
     "command_tree": {
-      "defined": 929,
-      "registered": 929
+      "defined": 1211,
+      "registered": 1211
     },
     "config_consistency": {
       "consistent": true
@@ -63,8 +66,9 @@
     }
   },
   "novel_features_check": {
-    "planned": 7,
-    "found": 7
+    "planned": 0,
+    "found": 0,
+    "skipped": true
   },
   "mcp_surface_parity": {
     "state": "runtime_walking",
@@ -72,28 +76,28 @@
     "detail": "MCP surface mirrors the Cobra tree at runtime"
   },
   "reimplementation_check": {
-    "checked": 7,
-    "exempted_via_store": 3
-  },
-  "description_drift_check": {
-    "expected": "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has."
+    "checked": 0,
+    "exempted_via_store": 0,
+    "skipped": true
   },
   "source_client_check": {
     "checked": 0,
     "skipped": true
   },
   "print_json_filtered_check": {
-    "checked": 912
+    "checked": 1198
   },
   "test_presence": {
     "checked": 1
   },
   "naming_check": {
-    "checked": 912
+    "checked": 1198
   },
   "sync_param_drop_check": {
     "checked": 0,
     "skipped": true
   },
-  "issues": null
+  "issues": [
+    "1 dead helper functions found"
+  ]
 }

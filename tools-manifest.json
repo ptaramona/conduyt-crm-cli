@@ -63,6 +63,63 @@
       ]
     },
     {
+      "name": "account-exports_post",
+      "description": "Create / invoke account-exports. Required: entities. Optional: activityFilters. Returns the new AccountExportsPostResponse.",
+      "method": "POST",
+      "path": "/account-exports",
+      "params": [
+        {
+          "name": "activity-filters-contact-id",
+          "wire_name": "activityFilters.contactId",
+          "type": "string",
+          "location": "body",
+          "description": "A contact UUID; anything else is a 400 invalid_export_request."
+        },
+        {
+          "name": "activity-filters-deal-id",
+          "wire_name": "activityFilters.dealId",
+          "type": "string",
+          "location": "body",
+          "description": "A deal UUID; anything else is a 400 invalid_export_request."
+        },
+        {
+          "name": "activity-filters-from-date",
+          "wire_name": "activityFilters.fromDate",
+          "type": "string",
+          "location": "body",
+          "description": "From date"
+        },
+        {
+          "name": "activity-filters-search",
+          "wire_name": "activityFilters.search",
+          "type": "string",
+          "location": "body",
+          "description": "Search"
+        },
+        {
+          "name": "activity-filters-to-date",
+          "wire_name": "activityFilters.toDate",
+          "type": "string",
+          "location": "body",
+          "description": "To date"
+        },
+        {
+          "name": "activity-filters-type",
+          "wire_name": "activityFilters.type",
+          "type": "string",
+          "location": "body",
+          "description": "Type"
+        },
+        {
+          "name": "entities",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Entities",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "account-exports_files_get-account-exports-id-entity-download",
       "description": "Get account-exports id files entity download. Required: id, entity. Optional: part.",
       "method": "GET",
@@ -198,6 +255,80 @@
       ]
     },
     {
+      "name": "activities_get-assignment-reasons",
+      "description": "List activities assignment-reasons. Optional: activity_id, automation_id, contact_id (plus 8 more). Returns the ActivitiesGetAssignmentReasonsResponse.",
+      "method": "GET",
+      "path": "/activities/assignment-reasons",
+      "params": [
+        {
+          "name": "activity_id",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "automation_id",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "contact_id",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "cursor",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "deal_id",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "from",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "node_id",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "outcome",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "per_page",
+          "type": "int",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "to",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "user_id",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        }
+      ]
+    },
+    {
       "name": "activities_get-id",
       "description": "Get activities id. Required: id. Returns the DataEnvelope.",
       "method": "GET",
@@ -282,7 +413,7 @@
     },
     {
       "name": "activity_get-export-csv",
-      "description": "Streams the activities the activity list would answer for the same filters (the same visibility, deal fence and soft-deleted-parent rules as GET /activities) as CSV, newest first by createdAt then id. Columns: id, type, description, user, contact, deal, timestamp. An export from this endpoint holds at most 100,000 rows AND 50 MB of CSV: more matching rows are refused 413 export_too_large before any row is written (narrow the date range or filters; a whole-account export is a separate background job). One request streams within a 55 s deadline that also covers the initial count. The LAST line of every response is a trailer: `#conduyt-export,complete,\u003crows written by the whole export\u003e` when every row was written; `#conduyt-export,continue,\u003ccursor\u003e` when the deadline came: request again with ?cursor=\u003ccursor\u003e and the SAME filters and append that part, which has no header row (the cursor is signed and bound to the account, the filters and the ceiling; any other cursor is a 400 cursor_invalid); `#conduyt-export,too_large,\u003crows|bytes\u003e` when the ceiling was reached while streaming: discard everything. A response without a trailer was cut: discard it. Optional: contact_id, cursor, deal_id (plus 4 more).",
+      "description": "Streams the activities the activity list would answer for the same filters (the same visibility, deal fence and soft-deleted-parent rules as GET /activities) as CSV, newest first by createdAt then id. Columns: id, type, description, user, contact, deal, timestamp. An export from this endpoint holds at most 100,000 rows AND 50 MB of CSV: more matching rows are refused 413 export_too_large before any row is written (narrow the date range or filters, or export every matching row in the background: POST /account-exports with entities ['activity'] and the same filters as activityFilters). One request streams within a 55 s deadline that also covers the initial count. The LAST line of every response is a trailer: `#conduyt-export,complete,\u003crows written by the whole export\u003e` when every row was written; `#conduyt-export,continue,\u003ccursor\u003e` when the deadline came: request again with ?cursor=\u003ccursor\u003e and the SAME filters and append that part, which has no header row (the cursor is signed and bound to the account, the filters and the ceiling; any other cursor is a 400 cursor_invalid); `#conduyt-export,too_large,\u003crows|bytes\u003e` when the ceiling was reached while streaming: discard everything. A response without a trailer was cut: discard it. Optional: contact_id, cursor, deal_id (plus 4 more).",
       "method": "GET",
       "path": "/activity/export.csv",
       "params": [
@@ -380,12 +511,24 @@
     },
     {
       "name": "admin_list-accounts",
-      "description": "Every account with the columns the admin console needs. `status=trialing` is the trial users listing: it leaves comped and test accounts out. (#518) `isTest` is read-only: it is set only by registration's test-account rule, which needs both an e2e+ address on conduyt.com, conduyt.app or brightmarketingsolutions.com and the harness secret (TEST_ACCOUNT_SIGNUP_SECRET, sent as the conduyt_test_signup cookie or the x-conduyt-test-signup header), and no route accepts it. Optional: limit (default: 200), q, status. Returns array of AdminListAccountsItem.",
+      "description": "(#612) A page of accounts, newest first (page / per_page, default 50, max 200; limit is an alias of per_page), with the total that match q and status. (#620) meta.summary carries the total / comp / trialing / paid counts over the whole filtered set on every answer. `status=ending_soon` is trial users whose trial ends within 7 days or has ended. A malformed or conflicting query parameter is a 400. Each row carries the columns the admin console needs. `status=trialing` is the trial users listing: it leaves comped and test accounts out. (#518) `isTest` is read-only: it is set only by registration's test-account rule, which needs both an e2e+ address on conduyt.com, conduyt.app or brightmarketingsolutions.com and the harness secret (TEST_ACCOUNT_SIGNUP_SECRET, sent as the conduyt_test_signup cookie or the x-conduyt-test-signup header), and no route accepts it. Optional: limit (default: 50), page (default: 1), per_page (default: 50) (plus 2 more). Returns array of AdminListAccountsItem.",
       "method": "GET",
       "path": "/admin/accounts",
       "params": [
         {
           "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "per_page",
           "type": "int",
           "location": "query",
           "description": "Query parameter read by this route."
@@ -1531,7 +1674,7 @@
     },
     {
       "name": "automation-executions_list",
-      "description": "List automation execution logs. Optional: automationId, contactId, dateFrom (plus 6 more). Returns the AutomationExecutionsListResponse.",
+      "description": "List automation execution logs. Optional: automationId, contactId, dateFrom (plus 7 more). Returns the AutomationExecutionsListResponse.",
       "method": "GET",
       "path": "/automation-executions",
       "params": [
@@ -1585,6 +1728,12 @@
         },
         {
           "name": "status",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "view",
           "type": "string",
           "location": "query",
           "description": "Query parameter read by this route."
@@ -1839,6 +1988,13 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "automations_get-distribution-steps",
+      "description": "List automations distribution-steps. Returns the AutomationsGetDistributionStepsResponse.",
+      "method": "GET",
+      "path": "/automations/distribution-steps",
+      "params": []
     },
     {
       "name": "automations_get-failures",
@@ -2726,6 +2882,118 @@
           "type": "string",
           "location": "query",
           "description": "Query parameter read by this route."
+        }
+      ]
+    },
+    {
+      "name": "automations_distribution_get-automations-id",
+      "description": "Get automations id distribution. Required: id. Optional: node_id. Returns the DistributionGetAutomationsIdResponse.",
+      "method": "GET",
+      "path": "/automations/{id}/distribution",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        },
+        {
+          "name": "node_id",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
+        }
+      ]
+    },
+    {
+      "name": "automations_distribution_post-automations-id",
+      "description": "Create / invoke automations id distribution. Required: id. Optional: config, nodeId. Returns the new DistributionPostAutomationsIdResponse.",
+      "method": "POST",
+      "path": "/automations/{id}/distribution",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        },
+        {
+          "name": "config-apply-to",
+          "wire_name": "config.applyTo",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-caps-default",
+          "wire_name": "config.caps.default",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-group-id",
+          "wire_name": "config.groupId",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-lane-source",
+          "wire_name": "config.laneSource",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-mode",
+          "wire_name": "config.mode",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-overflow",
+          "wire_name": "config.overflow",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-overwrite-existing",
+          "wire_name": "config.overwriteExisting",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-target",
+          "wire_name": "config.target",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-tiers",
+          "wire_name": "config.tiers",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "config-user-ids",
+          "wire_name": "config.userIds",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "nodeId",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
         }
       ]
     },
@@ -6488,7 +6756,7 @@
     },
     {
       "name": "calls_link_call-to-contact",
-      "description": "Board #35, the unknown-caller prompt's 'Search a contact'. Links the call to the contact with a compare-and-set on the locked call row: an unlinked call is linked; a call already linked to THIS contact answers 200 with `alreadyLinked: true` (idempotent); a call linked to another contact is 409 `call_already_linked`, or 404 `call_not_found` when that contact is hidden from the caller. With `attachNumber: true` the call's number (the caller on an inbound call, stored under the account's country) is written into the contact's next free phone slot (the empty primary phone, then phone_2, phone_3 ... the account's numbered phone fields); nothing is ever overwritten, a number the contact already has writes nothing (`alreadyOnContact: true`), every slot taken is 409 `no_free_phone_slot`, and a number another live contact has as its primary phone is 409 `number_on_another_contact` (checked for every attach, serialized per number). A contact erased by a GDPR forget (or being erased) is 409 `contact_forgotten`. With `dryRun: true` the same checks run and the answer says what the request would do, writing nothing. Nothing is written on any refusal. Requires `dialer.create`, plus `contacts.edit` when `attachNumber` is true; the contact must be one the caller may see (404 otherwise) and, for an attach, edit (403 `contact_not_editable` for a collaborator), re-proven under the row lock. API keys need the `calls` scope (a `dialer` key covers it) and the `contacts` scope. A new link records an `unknown_call_linked` activity on the contact and the call's touch. Required: id, contactId. Optional: attachNumber (default: false), dryRun (default: false). Returns the new LinkCallToContactResponse.",
+      "description": "Board #35, the unknown-caller prompt's 'Search a contact'. Links the call to the contact with a compare-and-set on the locked call row: an unlinked call is linked; a call already linked to THIS contact answers 200 with `alreadyLinked: true` (idempotent); a call linked to another contact is 409 `call_already_linked`, or 404 `call_not_found` when that contact is hidden from the caller. With `attachNumber: true` the call's number (the caller on an inbound call, stored under the account's country) is written into the contact's next free phone slot (the empty primary phone, then phone_2, phone_3 ... the account's numbered phone fields); nothing is ever overwritten, a number the contact already has writes nothing (`alreadyOnContact: true`), every slot taken is 409 `no_free_phone_slot`, and a number another live contact has as its primary phone is 409 `number_on_another_contact` (checked for every attach, serialized per number). A contact erased by a GDPR forget (or being erased) is 409 `contact_forgotten`. With `dryRun: true` the same checks run and the answer says what the request would do, writing nothing. Nothing is written on any refusal. Requires `dialer.create`, plus `contacts.edit` when `attachNumber` is true; the contact must be one the caller may see (404 otherwise) and, for an attach, edit (403 `contact_not_editable` for a collaborator), re-proven under the row lock. API keys need the `calls` scope (a `dialer` key covers it) and the `contacts` scope. A new link records an `unknown_call_linked` activity on the contact and the call's touch. Required: id, contactId. Optional: attachAs, attachNumber (default: false), dryRun (default: false) (plus 1 more). Returns the new LinkCallToContactResponse.",
       "method": "POST",
       "path": "/calls/{id}/link",
       "params": [
@@ -6498,6 +6766,12 @@
           "location": "path",
           "description": "Resource UUID",
           "required": true
+        },
+        {
+          "name": "attachAs",
+          "type": "string",
+          "location": "body",
+          "description": "(#632) The one-click 'Add this number' choice; needs attachNumber true. primary = the number becomes the primary phone and the old primary moves to the first empty numbered slot (attached.demotedTo); alternate = the first empty numbered slot. A number the contact already has writes nothing. A full contact is 409 no_free_phone_slot carrying `slots` ([{ slot, number }], every filled slot) unless replaceSlot is sent. A write records a contact_phone_added activity (with the replaced number, if any)."
         },
         {
           "name": "attachNumber",
@@ -6517,6 +6791,12 @@
           "type": "bool",
           "location": "body",
           "description": "Run every check and answer what the request would do (attached.slot, alreadyOnContact, alreadyLinked, or the same refusal); nothing is written."
+        },
+        {
+          "name": "replaceSlot",
+          "type": "string",
+          "location": "body",
+          "description": "(#632) With attachAs, when every slot is taken: the filled slot to replace. For primary, 'phone' drops the old primary, a numbered slot receives the old primary and drops its own number; for alternate, a numbered slot receives the number (never 'phone'). The dropped number is returned in attached.replaced and written to the activity feed. An empty or unknown slot is 400 replace_slot_invalid. Ignored while a slot is free."
         }
       ]
     },
@@ -6543,7 +6823,7 @@
     },
     {
       "name": "chat_add-reaction",
-      "description": "Add a reaction to a message. Required: id, messageId, emoji. Returns the new DataEnvelope.",
+      "description": "Add a reaction to a message. Required: id, messageId, emoji. Optional: claimToken, sourceMessageId. Returns the new DataEnvelope.",
       "method": "POST",
       "path": "/chat/channels/{id}/messages/{messageId}/reactions",
       "params": [
@@ -6562,11 +6842,23 @@
           "required": true
         },
         {
+          "name": "claimToken",
+          "type": "string",
+          "location": "body",
+          "description": "(Paired AI agent keys only; any other caller gets 400.) The listener's claim on the turn this reaction ends, `\u003cgeneration\u003e:\u003clistener id\u003e`. The reaction then completes that claim with outcome reacted in the same transaction. A token that is not the running holder's, or a target outside the source's channel and thread, writes NOTHING (409 reaction_stale_claim). A turn that already ended (a reply, a silence, another reaction) writes NOTHING (409 turn_finished); the same reaction repeated is idempotent. Without a token the reaction is ordinary. Malformed: 400."
+        },
+        {
           "name": "emoji",
           "type": "string",
           "location": "body",
           "description": "Emoji",
           "required": true
+        },
+        {
+          "name": "sourceMessageId",
+          "type": "string",
+          "location": "body",
+          "description": "(AI agent turns.) The turn's source message when the reaction targets another message of its thread; defaults to the reacted message. A source message that DIFFERS from the reacted message must come with claimToken and be a uuid, else 400; a value equal to the reacted message is the default and is accepted without a token (an ordinary reaction)."
         }
       ]
     },
@@ -6631,8 +6923,30 @@
       ]
     },
     {
+      "name": "chat_delete-agents-id-webhook",
+      "description": "Delete chat agents id webhook. Required: id. Returns the ChatDeleteAgentsIdWebhookResponse. Destructive.",
+      "method": "DELETE",
+      "path": "/chat/agents/{id}/webhook",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "The teammate's id (a UUID), or its handle written @handle (percent-encoded %40handle works...",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "chat_delete-agents-me-mcp",
+      "description": "The server is stateless (no session id), so DELETE answers 405 with `Allow: POST` and writes nothing. Destructive.",
+      "method": "DELETE",
+      "path": "/chat/agents/me/mcp",
+      "params": []
+    },
+    {
       "name": "chat_delete-message",
-      "description": "Delete a chat message. Required: id, messageId. Returns the ChatDeleteMessageResponse. Destructive.",
+      "description": "Delete a message (its attachments are queued for deletion). The sender, or a channel admin or owner for a person's key (#685, as in Slack, members delete their own messages with communications.create and membership alone). AI teammates' keys are allowed (#625) on their OWN messages only (never a person's, whatever the channel role), with the chat scope and the trail people have (no edit window for anyone), behind the live fence inside the write's transaction; the agent's change is audited in that transaction. People need communications.create and channel membership; an agent key is judged on the same right. A CRM bot post (a win, help or panic card the CRM authored) is deleted by a channel admin or owner only; a member's own delete of one is refused with 403. The write is scoped to this channel, so a message a contact merge moved to another channel is answered 409 and nothing is deleted or audited. Required: id, messageId. Returns the ChatDeleteMessageResponse. Destructive.",
       "method": "DELETE",
       "path": "/chat/channels/{id}/messages/{messageId}",
       "params": [
@@ -6654,7 +6968,7 @@
     },
     {
       "name": "chat_edit-message",
-      "description": "Edit a chat message. Required: id, messageId, body. Returns the updated DataEnvelope.",
+      "description": "Edit the caller's own message (body; record mentions are re-resolved). AI teammates' keys are allowed (#625) on their OWN messages only (never a person's, whatever the channel role), with the chat scope and the trail people have (no edit window for anyone), behind the live fence inside the write's transaction; the agent's change is audited in that transaction. People need communications.create (the right to have posted the message) and channel membership; a person edits only their OWN message, an admin or owner cannot edit another person's (#685); an agent key is judged on the same right. Only a text message can be edited (a card, system line or CRM bot post is refused with 403). The write is scoped to this channel, so a message a contact merge moved to another channel is answered 409 and nothing is edited. Required: id, messageId, body. Returns the updated DataEnvelope.",
       "method": "PATCH",
       "path": "/chat/channels/{id}/messages/{messageId}",
       "params": [
@@ -6682,11 +6996,48 @@
       ]
     },
     {
+      "name": "chat_follow-thread",
+      "description": "(#684 lane F, Paul 2026-11-06: thread notifications follow Slack) Only while the workspace's thread view (teamChatThreads) is on; 409 code team_chat_threads_off otherwise. messageId is the thread ROOT (a reply id, an unknown id, another channel's message or, for a key whose scopes do not grant deals, a deal card: 404). Only a thread's followers are notified of a reply that stays in the thread: the root's author, everyone who replied, everyone mentioned in it, and whoever followed it here. A later reply or mention follows an unfollowed person again. Idempotent. Required: id, messageId. Returns the updated ChatFollowThreadResponse.",
+      "method": "PUT",
+      "path": "/chat/channels/{id}/messages/{messageId}/follow",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Resource UUID",
+          "required": true
+        },
+        {
+          "name": "messageId",
+          "type": "string",
+          "location": "path",
+          "description": "Message id",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "chat_get-agents",
-      "description": "List chat agents. Returns the DataEnvelope.",
+      "description": "The workspace's live AI teammates (a removed teammate is never listed), oldest first. A signed-in member reads the Settings rows (the whole live roster). An owner's or admin's API key (the chat scope; the read tier is enough) reads one row per teammate: { id, handle, name, provider, state, connected, connection, knowledgeFolders, createdAt } and nothing else (no token, no pair code, no webhook address); a member's key and an AI teammate's own key are refused (403). Use a row's id or @handle with the Grok Bot connect operations (/chat/agents/{id}/connect and /chat/agents/{id}/webhook). Creating, pairing and removing a teammate stay in Settings \u003e AI (a signed-in session): POST /chat/agents refuses every API key. An API key is answered at most 200 live teammates; a workspace past that is refused to the key (413), never cut (the Settings session is not bounded). Returns array of ChatGetAgentsItem.",
       "method": "GET",
       "path": "/chat/agents",
       "params": []
+    },
+    {
+      "name": "chat_get-agents-id-webhook",
+      "description": "Get chat agents id webhook. Required: id. Returns the ChatGetAgentsIdWebhookResponse.",
+      "method": "GET",
+      "path": "/chat/agents/{id}/webhook",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "The teammate's id (a UUID), or its handle written @handle (percent-encoded %40handle works...",
+          "required": true
+        }
+      ]
     },
     {
       "name": "chat_get-agents-me-inbox",
@@ -6705,6 +7056,28 @@
           "type": "int",
           "location": "query",
           "description": "integer 0-25 (default 25) — seconds to long-poll when nothing is waiting; 0 answers at once. A non-integer, a value above 25 or wait repeated with different values is a 400. Every poll step is bounded server-side (statement_timeout and a bounded pool checkout); a step that cannot finish answers 503 code agent_inbox_busy with Retry-After."
+        }
+      ]
+    },
+    {
+      "name": "chat_get-agents-me-mcp",
+      "description": "The server is stateless and offers no SSE stream, so GET answers 405 with `Allow: POST`.",
+      "method": "GET",
+      "path": "/chat/agents/me/mcp",
+      "params": []
+    },
+    {
+      "name": "chat_get-channels-id-linked-record",
+      "description": "Get chat channels id linked-record. Required: id. Returns the ChatGetChannelsIdLinkedRecordResponse.",
+      "method": "GET",
+      "path": "/chat/channels/{id}/linked-record",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Id",
+          "required": true
         }
       ]
     },
@@ -6849,6 +7222,74 @@
       ]
     },
     {
+      "name": "chat_get-thread",
+      "description": "(#684) Only while the workspace's thread view (account setting teamChatThreads) is on; 409 code team_chat_threads_off otherwise. messageId is the thread ROOT (a top-level message; a reply id is a 404). The replies served are the thread's replies that are not deleted, inside the 90-day history window and, for a key whose scopes do not grant deals, not deal cards; total and earlierCount count the same set. Oldest first. Without before: the LATEST limit replies; before=\u003cseq\u003e reads the page below that reply ('Load N earlier replies': send earlierCursor). The root is served whatever its age while it has a reply inside the window (404 once it has none); a deleted root is served as stored (deletedAt set, body 'Message deleted'). aiReactions: an AI teammate's turn that ended with a reaction instead of a reply, computed from its claim (never a stored message), while the reaction stands. replying: the AI teammates whose turn on this thread is running. Both are empty while AI teammates are off. Replies are posted with POST /chat/channels/{id}/messages and parentId. Required: id, messageId. Optional: before, limit (default: 20), markRead (plus 1 more). Returns the ChatGetThreadResponse.",
+      "method": "GET",
+      "path": "/chat/channels/{id}/messages/{messageId}/thread",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Resource UUID",
+          "required": true
+        },
+        {
+          "name": "messageId",
+          "type": "string",
+          "location": "path",
+          "description": "Message id",
+          "required": true
+        },
+        {
+          "name": "before",
+          "type": "string",
+          "location": "query",
+          "description": "A reply's seq (earlierCursor of the previous page): the page of replies below it. A whole number; given once."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Replies per page, 1 to 50. Given once."
+        },
+        {
+          "name": "markRead",
+          "type": "string",
+          "location": "query",
+          "description": "(#684 lane F) true: move the caller's read position in this thread to the newest message this answer serves (the newest reply on the page, else the root). Only forward. Only the value true; given once; never with readUpTo."
+        },
+        {
+          "name": "readUpTo",
+          "type": "string",
+          "location": "query",
+          "description": "(#684 lane F) a message id: move the caller's read position in this thread to that message when it is the root or one of the thread's served replies (any other id moves nothing). Only forward. Given once; never with markRead."
+        }
+      ]
+    },
+    {
+      "name": "chat_get-thread-files",
+      "description": "The attachments on a thread's root message and on every reply that carries that root, oldest first, capped at 200 per read (hasMore says there are more). Only messages inside the channel's 90-day history window count, a deleted message contributes nothing, and the replies of a deleted root keep their files. messageId must be a thread root; a reply id answers 404, and so does a root older than the window with no reply inside it. Same access as the channel read (a non-member of the channel is refused). Answers 409 team_chat_threads_off unless the account setting teamChatThreads is on. Required: id, messageId. Returns the ChatGetThreadFilesResponse.",
+      "method": "GET",
+      "path": "/chat/channels/{id}/messages/{messageId}/files",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Resource UUID",
+          "required": true
+        },
+        {
+          "name": "messageId",
+          "type": "string",
+          "location": "path",
+          "description": "The thread's root message (not a reply).",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "chat_get-typing-status",
       "description": "Get who is currently typing. Required: id. Returns the DataEnvelope.",
       "method": "GET",
@@ -6879,7 +7320,7 @@
     },
     {
       "name": "chat_list-messages",
-      "description": "List messages in a channel. Required: id. Optional: afterSeq, cursor, limit (default: 50) (plus 2 more). Returns the ChatListMessagesResponse.",
+      "description": "List messages in a channel. Required: id. Optional: afterSeq, cursor, limit (default: 50) (plus 6 more). Returns the ChatListMessagesResponse.",
       "method": "GET",
       "path": "/chat/channels/{id}/messages",
       "params": [
@@ -6915,10 +7356,34 @@
           "description": "Query parameter read by this route."
         },
         {
+          "name": "pointersCursor",
+          "type": "string",
+          "location": "query",
+          "description": "(#613) the pointersCursor of a pointer read that was cut: this request CONTINUES it and answers only the next pointers (data is empty, hasMore false, nextCursor null; no message page is read, no read marker moves). The cursor is syntactic, `\u003cISO time\u003e_\u003cmessage id\u003e`, not signed: the interval comes from pointersFrom and pointersTo, which the client sends exactly as the cut answer gave them, and the cursor only says where in it to continue. The server rechecks membership, the deal fences and the retention boundary on every read, so a made-up cursor or interval returns only what the caller may already read. Requires pointersFrom and pointersTo; never with cursor, afterSeq, markRead or readUpTo. Repeat until pointersCursor comes back null: only then is the interval complete. Given once; a value that is not `\u003cISO time\u003e_\u003cmessage id\u003e` is a 400."
+        },
+        {
+          "name": "pointersFrom",
+          "type": "string",
+          "location": "query",
+          "description": "(#613) an ISO time. On the latest page (no cursor, no afterSeq), `pointers` answers from this time on (never past the retention boundary) instead of only the latest page's time, so a client that holds older pages revalidates every pointer it holds on each poll. With pointersCursor, the start of the interval it continues. Given once; repeated, not an ISO time, after pointersTo, or combined with cursor or afterSeq is a 400."
+        },
+        {
+          "name": "pointersTo",
+          "type": "string",
+          "location": "query",
+          "description": "(#613) an ISO time, read only with pointersCursor: the end of the interval it continues (the pointersTo of the cut answer). Given once; repeated, not an ISO time, or without pointersCursor is a 400."
+        },
+        {
           "name": "readUpTo",
           "type": "string",
           "location": "query",
           "description": "Query parameter read by this route."
+        },
+        {
+          "name": "topLevel",
+          "type": "string",
+          "location": "query",
+          "description": "(#684, only while the workspace's thread view is on; 409 code team_chat_threads_off otherwise) `true` serves the channel as the thread view shows it, newest first: every top-level message, each with `thread` (its chip summary, null when it has no reply); every reply a person sent with alsoInChannel, at its own seq, with `threadReply` (reason alsoInChannel); and (Paul 2026-11-05) for each top-level message on the page whose FIRST reply was sent by an AI teammate, that reply right after it (newest first: just before it), with `threadReply` (reason aiFirstAnswer). Later replies stay in the thread (GET /chat/channels/{id}/messages/{messageId}/thread). Each reply is still one message: counted once in the chip, unread once, notified once. nextCursor is the last row's id; markRead=true moves the read marker to the highest seq served in `data`. Only the value true; given once; never with afterSeq (the catch-up read serves every message) or pointersCursor. Not given: the answer is unchanged."
         }
       ]
     },
@@ -7048,6 +7513,21 @@
       ]
     },
     {
+      "name": "chat_post-agents-id-connect",
+      "description": "Create / invoke chat agents id connect. Required: id. Returns the new ChatPostAgentsIdConnectResponse.",
+      "method": "POST",
+      "path": "/chat/agents/{id}/connect",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "The teammate's id (a UUID), or its handle written @handle (percent-encoded %40handle works...",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "chat_post-agents-id-pair-code",
       "description": "Create / invoke chat agents id pair-code. Required: id. Returns the new ChatPostAgentsIdPairCodeResponse.",
       "method": "POST",
@@ -7063,11 +7543,33 @@
       ]
     },
     {
+      "name": "chat_post-agents-id-webhook-test",
+      "description": "Create / invoke chat agents id webhook test. Required: id. Returns the new ChatPostAgentsIdWebhookTestResponse.",
+      "method": "POST",
+      "path": "/chat/agents/{id}/webhook/test",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "The teammate's id (a UUID), or its handle written @handle (percent-encoded %40handle works...",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "chat_post-agents-me-heartbeat",
-      "description": "Create / invoke chat agents me heartbeat. Returns the new ChatPostAgentsMeHeartbeatResponse.",
+      "description": "Create / invoke chat agents me heartbeat. Optional: listenerId. Returns the new ChatPostAgentsMeHeartbeatResponse.",
       "method": "POST",
       "path": "/chat/agents/me/heartbeat",
-      "params": []
+      "params": [
+        {
+          "name": "listenerId",
+          "type": "string",
+          "location": "body",
+          "description": "(#657) the listener's id, the same one its inbox claims carry. Each heartbeat that names it records this listener's beat in the agent's set of live listeners (every listener whose last beat is inside the 60 s listening window; one past it drops out); a running claim reads as Replying while its listener is in that set, so concurrent listeners each keep their own. Optional: a heartbeat without it (an older listener) leaves the set unchanged. Legacy fallback: while no named listener is live in the set (every listener is older than this field, or all have gone quiet), any running claim of the agent may read Replying until its lease ends. A body that is supplied but is not a JSON object (invalid JSON, an array, a scalar, null) answers 400 and writes nothing; an absent body and {} are valid. Any other listenerId value answers 400."
+        }
+      ]
     },
     {
       "name": "chat_post-agents-me-inbox-ack",
@@ -7082,6 +7584,122 @@
       "method": "POST",
       "path": "/chat/agents/me/inbox/claim",
       "params": []
+    },
+    {
+      "name": "chat_post-agents-me-mcp",
+      "description": "(#1140) A stateless MCP server over Streamable HTTP for an AI teammate that runs in the cloud (for example a Grok Bot routine woken by a webhook): it answers JSON only, with no session id and no SSE stream. One JSON-RPC 2.0 message per request; a batch (an array) is refused with -32600. Methods: `initialize` (echoes protocolVersion 2025-06-18 or 2025-03-26, otherwise answers 2025-06-18; capabilities `tools` only), notifications such as `notifications/initialized` (202, no body), `ping`, `tools/list`, `tools/call`. Any other method answers -32601; an unknown tool -32602. Tools (each calls the existing route in-process with the caller's own key, so every rule of that route applies unchanged, the rate limits included): - `reply` {channelId, parentId, body, idempotencyKey, claimToken?}: POST /chat/channels/{id}/messages. Rail mode: idempotencyKey `turn:\u003cmessageId\u003e` with no claimToken; the same key returns the first reply (idempotentReplay) instead of posting twice. Claim mode: `reply:\u003cmessageId\u003e` plus the claim token completes that claim. - `react` {channelId, messageId, emoji, claimToken?, sourceMessageId?}: POST /chat/channels/{id}/messages/{messageId}/reactions; with a token it ends a claimed turn. - `stay_silent` {messageId, claimToken}: POST /chat/agents/me/inbox/claim with action silent (claim mode only). - `send` {channelId, body}: POST /chat/channels/{id}/messages, a new message (never an answer to a turn). - `linked_record` {channelId}: GET /chat/channels/{id}/linked-record (read-only). - `read_messages` {channelId, limit 1 to 50, default 20}: GET /chat/channels/{id}/messages?limit=. A route's success is the tool result's text content (its `data`); a route's refusal is a result with `isError: true` whose text is the route's error body plus its `status` (for example 409 agent_human_required, 409 reply_stale_claim, 403 Not a member of this channel). Arguments of the wrong type or a missing required argument are `isError: true` with code invalid_arguments, and no route runs. Who: a paired AI teammate key only, sent as `Authorization: Bearer cdy_...` (the chat scope); the same key in X-API-Key, a session, or anything else is 403 agent_key_required. Never put the key in the URL. Mutation budget: this path is NOT charged per request by the key's 500 an hour mutation budget; each WRITE tool call (reply, react, send, stay_silent) is charged once to that same budget instead. Protocol methods and the read tools (read_messages, linked_record) are never charged. A write past the budget is a tool result with isError true: the budget's message, status 429, code mutation_budget_exceeded and retryAfter (seconds). Required: jsonrpc. Optional: error, id, method (plus 2 more).",
+      "method": "POST",
+      "path": "/chat/agents/me/mcp",
+      "params": [
+        {
+          "name": "error",
+          "type": "string",
+          "location": "body",
+          "description": "A client's JSON-RPC error response (accepted with 202; this server sends no requests)"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "location": "body",
+          "description": "A string or a number. Absent on a notification."
+        },
+        {
+          "name": "jsonrpc",
+          "type": "string",
+          "location": "body",
+          "description": "Jsonrpc",
+          "required": true
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "location": "body",
+          "description": "Method"
+        },
+        {
+          "name": "params-arguments-body",
+          "wire_name": "params.arguments.body",
+          "type": "string",
+          "location": "body",
+          "description": "reply / send: the message text, at most 10,000 characters"
+        },
+        {
+          "name": "params-arguments-channel-id",
+          "wire_name": "params.arguments.channelId",
+          "type": "string",
+          "location": "body",
+          "description": "reply / send / react / linked_record / read_messages: the channel id"
+        },
+        {
+          "name": "params-arguments-claim-token",
+          "wire_name": "params.arguments.claimToken",
+          "type": "string",
+          "location": "body",
+          "description": "reply / react / stay_silent, claim mode only: the claim token \u003cgeneration\u003e:\u003clistener id\u003e"
+        },
+        {
+          "name": "params-arguments-emoji",
+          "wire_name": "params.arguments.emoji",
+          "type": "string",
+          "location": "body",
+          "description": "react: one of the allowed reactions"
+        },
+        {
+          "name": "params-arguments-idempotency-key",
+          "wire_name": "params.arguments.idempotencyKey",
+          "type": "string",
+          "location": "body",
+          "description": "reply: turn:\u003cmessageId\u003e in rail mode, reply:\u003cmessageId\u003e with claimToken in claim mode"
+        },
+        {
+          "name": "params-arguments-limit",
+          "wire_name": "params.arguments.limit",
+          "type": "int",
+          "location": "body",
+          "description": "read_messages: 1 to 50 (default 20)"
+        },
+        {
+          "name": "params-arguments-message-id",
+          "wire_name": "params.arguments.messageId",
+          "type": "string",
+          "location": "body",
+          "description": "react: the message to react to; stay_silent: the turn's message"
+        },
+        {
+          "name": "params-arguments-parent-id",
+          "wire_name": "params.arguments.parentId",
+          "type": "string",
+          "location": "body",
+          "description": "reply: the thread root to reply under"
+        },
+        {
+          "name": "params-arguments-source-message-id",
+          "wire_name": "params.arguments.sourceMessageId",
+          "type": "string",
+          "location": "body",
+          "description": "react, claim mode only: the turn's own message when reacting to another message of its thread"
+        },
+        {
+          "name": "params-name",
+          "wire_name": "params.name",
+          "type": "string",
+          "location": "body",
+          "description": "tools/call only, the tool name"
+        },
+        {
+          "name": "params-protocol-version",
+          "wire_name": "params.protocolVersion",
+          "type": "string",
+          "location": "body",
+          "description": "initialize only"
+        },
+        {
+          "name": "result",
+          "type": "string",
+          "location": "body",
+          "description": "A client's JSON-RPC result response (accepted with 202; this server sends no requests)"
+        }
+      ]
     },
     {
       "name": "chat_post-agents-pair",
@@ -7221,7 +7839,7 @@
     },
     {
       "name": "chat_post-channels-id-messages-message-id-pin",
-      "description": "Create / invoke chat channels id messages messageId pin. Required: id, messageId. Optional: pinned. Returns the new ChatPostChannelsIdMessagesMessageIdPinResponse.",
+      "description": "Toggle (or set, with pinned) a deal card's pin; any member of the channel. An AI teammate's pin and unpin are audited (chat.message_pinned / chat.message_unpinned). AI teammates' keys are allowed (#625): the same chat scope and rules as a person, behind the live fence inside the write's transaction. An agent key answers 401 agent_revoked (the agent or its key was revoked, or the agent or its owner is inactive), 402 plan_required, 404 ai_teammates_off, 403 when it is not a member of the channel, and 409 agents_muted_in_channel when 'Agents respond here' is off in this channel; each refusal writes nothing. Required: id, messageId. Optional: pinned. Returns the new ChatPostChannelsIdMessagesMessageIdPinResponse.",
       "method": "POST",
       "path": "/chat/channels/{id}/messages/{messageId}/pin",
       "params": [
@@ -7249,7 +7867,7 @@
     },
     {
       "name": "chat_post-channels-id-upload-finalize",
-      "description": "Create / invoke chat channels id upload finalize. Required: id. Optional: uploadId. Returns the new ChatPostChannelsIdUploadFinalizeResponse.",
+      "description": "Step 3 of a direct-to-storage chat attachment: the staged bytes are judged by content and copied into the channel's attachment folder; send the answer in a message's metadata.attachments (POST /chat/channels/{id}/messages). AI teammates' keys are allowed (#625): the same chat scope and rules as a person, behind the live fence inside the write's transaction. An agent key answers 401 agent_revoked (the agent or its key was revoked, or the agent or its owner is inactive), 402 plan_required, 404 ai_teammates_off, 403 when it is not a member of the channel, and 409 agents_muted_in_channel when 'Agents respond here' is off in this channel; each refusal writes nothing. Required: id. Optional: uploadId. Returns the new ChatPostChannelsIdUploadFinalizeResponse.",
       "method": "POST",
       "path": "/chat/channels/{id}/upload/finalize",
       "params": [
@@ -7270,7 +7888,7 @@
     },
     {
       "name": "chat_post-channels-id-upload-intent",
-      "description": "Create / invoke chat channels id upload intent. Required: id. Optional: contentType, fileName, size. Returns the new ChatPostChannelsIdUploadIntentResponse.",
+      "description": "Step 1 of a direct-to-storage chat attachment: answers a presigned PUT for the declared name, type and size (the chat attachment limits), then PUT the bytes and POST .../upload/finalize. The caller is recorded as the uploader. AI teammates' keys are allowed (#625): the same chat scope and rules as a person, behind the live fence inside the write's transaction. An agent key answers 401 agent_revoked (the agent or its key was revoked, or the agent or its owner is inactive), 402 plan_required, 404 ai_teammates_off, 403 when it is not a member of the channel, and 409 agents_muted_in_channel when 'Agents respond here' is off in this channel; each refusal writes nothing. Required: id. Optional: contentType, fileName, size. Returns the new ChatPostChannelsIdUploadIntentResponse.",
       "method": "POST",
       "path": "/chat/channels/{id}/upload/intent",
       "params": [
@@ -7334,6 +7952,74 @@
       ]
     },
     {
+      "name": "chat_put-agents-id-webhook",
+      "description": "Update chat agents id webhook. Required: id. Optional: address, key, paste. Returns the updated ChatPutAgentsIdWebhookResponse.",
+      "method": "PUT",
+      "path": "/chat/agents/{id}/webhook",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "The teammate's id (a UUID), or its handle written @handle (percent-encoded %40handle works...",
+          "required": true
+        },
+        {
+          "name": "address",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        },
+        {
+          "name": "paste",
+          "type": "string",
+          "location": "body",
+          "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        }
+      ]
+    },
+    {
+      "name": "chat_put-agents-me-knowledge",
+      "description": "(#1209) An AI teammate's listener (by its listenerId, the id its heartbeat and claims carry) reports its KNOWLEDGE FOLDER (a folder on the listener's computer the teammate reads on every turn, whoever asked, read-only; by default the directory the listener was started in). Conduyt stores only, per listener, the folder count, never the path, a file name or contents; every surface reads the aggregate over the listeners whose heartbeat beats now (configured = any of them has a folder; folders = the sum), so a listener started with --no-knowledge never hides another one's folder, and a stopped listener drops out with its last beat. acknowledged: true records that the owner acknowledged the consent on this start ('Anyone who can mention your teammate can ask it about the files in this folder. Set it up for project or document folders, never one holding secrets. Files that look like credentials are skipped, but that is a safety net, not a guarantee.'). The teammate's own paired key only. A report that changes this listener's entry is stored; the audit row ai_knowledge_folder.changed is written when the aggregate changes or on an acknowledgement; a report that changes nothing writes nothing. The teammate's entry is removed when it is revoked. Required: configured, folders, listenerId. Optional: acknowledged. Returns the updated ChatPutAgentsMeKnowledgeResponse.",
+      "method": "PUT",
+      "path": "/chat/agents/me/knowledge",
+      "params": [
+        {
+          "name": "acknowledged",
+          "type": "bool",
+          "location": "body",
+          "description": "the owner acknowledged the consent on this start (needs configured: true)"
+        },
+        {
+          "name": "configured",
+          "type": "bool",
+          "location": "body",
+          "description": "the listener has a knowledge folder (true exactly when folders is 1 or more)",
+          "required": true
+        },
+        {
+          "name": "folders",
+          "type": "int",
+          "location": "body",
+          "description": "how many knowledge folders the listener serves",
+          "required": true
+        },
+        {
+          "name": "listenerId",
+          "type": "string",
+          "location": "body",
+          "description": "the reporting listener's id (the one its heartbeat and inbox claims carry)",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "chat_remove-member",
       "description": "Remove a member from a channel. Required: id. Optional: userId. Returns the ChatRemoveMemberResponse. Destructive.",
       "method": "DELETE",
@@ -7384,7 +8070,7 @@
     },
     {
       "name": "chat_send-message",
-      "description": "Send a message in a channel. Required: id, body. Optional: card, claimToken, effect (plus 4 more). Returns the new ChatSendMessageResponse.",
+      "description": "Send a message in a channel. Required: id, body. Optional: alsoInChannel, card, claimToken (plus 6 more). Returns the new ChatSendMessageResponse.",
       "method": "POST",
       "path": "/chat/channels/{id}/messages",
       "params": [
@@ -7394,6 +8080,12 @@
           "location": "path",
           "description": "Resource UUID",
           "required": true
+        },
+        {
+          "name": "alsoInChannel",
+          "type": "bool",
+          "location": "body",
+          "description": "(#684, Paul 2026-11-05) 'Also send to #channel': with parentId, the reply is also shown in the channel (GET messages topLevel=true lists it at its own seq with threadReply). Stored on the ONE reply as metadata.alsoInChannel = true: never a second message, a second notification or a second AI turn; a client's metadata.alsoInChannel is ignored. 400 when not a boolean, when true without parentId, or when true from an AI teammate (its first answer is in the channel by rule). Given (true or false) while the workspace's thread view is off: 409 code team_chat_threads_off."
         },
         {
           "name": "body",
@@ -7445,6 +8137,13 @@
           "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
         },
         {
+          "name": "card-task-id",
+          "wire_name": "card.taskId",
+          "type": "string",
+          "location": "body",
+          "description": "(#613 C) with kind task: the CRM task the card points at. Required for kind task (400 card.taskId is required)."
+        },
+        {
           "name": "claimToken",
           "type": "string",
           "location": "body",
@@ -7466,7 +8165,13 @@
           "name": "kind",
           "type": "string",
           "location": "body",
-          "description": "Kind"
+          "description": "text, or a card that shares a CRM record by REFERENCE (card.dealId, card.contactId, card.callId with its range, or card.taskId). (#613 C) kind task: a person and a paired AI agent key post a task card with this same body field; the task must be one the caller may open under the Tasks module's own access (tasks.view, a tasks scope for a scoped key, the task visibility rules), else 404 Task not found and nothing is posted. The card stores only the taskId: every read hydrates metadata.live for the viewer (see the 201 description)."
+        },
+        {
+          "name": "localSources",
+          "type": "array",
+          "location": "body",
+          "description": "(#655 phase 2, AI teammate replies to an inbox turn only: with the idempotencyKey reply:\u003csource message id\u003e and its claimToken; 400 local_sources_turn_reply_only otherwise) the files on the owner's computer this reply used, read there by the owner's own AI: stored as metadata.localSources and shown under the message as 'From \u003cowner\u003e's local files: ...'. Accepted only when the turn's source message was sent by this teammate's owner (403 local_files_owner_only) and the workspace's Local files switch is on (403 local_files_off). While the sensitive-number screen is on (the default) the text is checked for a full card, Social Security or bank routing + account number (422 sensitive_numbers_in_local_post). Each such post writes the audit row chat.agent_local_files_posted (file names and sizes). Malformed: 400 invalid_local_sources."
         },
         {
           "name": "metadata-attachments",
@@ -7476,10 +8181,17 @@
           "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
         },
         {
+          "name": "metadata-links",
+          "wire_name": "metadata.links",
+          "type": "array",
+          "location": "body",
+          "description": "(#613) server-derived, never accepted: the messages of other channels this message quotes through their Team Chat links in `body` (/chat?message=\u003cid\u003e), resolved under the author's access. Only a relative link or one on the app's own address counts, its path exactly /chat and its one message parameter a whole UUID. A client's metadata.links is ignored; the stored message carries the derived list (it drives the channel's cross-channel pointer)."
+        },
+        {
           "name": "parentId",
           "type": "string",
           "location": "body",
-          "description": "Parent message ID for threads"
+          "description": "Parent message ID for threads. A reply is stored under its thread's root whichever message of the thread this names; a thread more than 64 replies deep answers 400 (nothing posted)"
         }
       ]
     },
@@ -7494,6 +8206,28 @@
           "type": "string",
           "location": "path",
           "description": "Resource UUID",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "chat_unfollow-thread",
+      "description": "(#684 lane F) The caller stops being notified of the thread's replies, until a later reply of theirs or a mention of them follows them again (Slack does). Same guards as PUT. Idempotent. Required: id, messageId. Returns the ChatUnfollowThreadResponse. Destructive.",
+      "method": "DELETE",
+      "path": "/chat/channels/{id}/messages/{messageId}/follow",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Resource UUID",
+          "required": true
+        },
+        {
+          "name": "messageId",
+          "type": "string",
+          "location": "path",
+          "description": "Message id",
           "required": true
         }
       ]
@@ -7763,7 +8497,7 @@
     },
     {
       "name": "companies_list",
-      "description": "List companies. Optional: count_mode, hasOpenDeals, industry (plus 8 more). Returns the CompaniesListResponse.",
+      "description": "List companies. Optional: count_mode, fields, hasOpenDeals (plus 9 more). Returns the CompaniesListResponse.",
       "method": "GET",
       "path": "/companies",
       "params": [
@@ -7772,6 +8506,12 @@
           "type": "string",
           "location": "query",
           "description": "exact (default) counts every matching company into meta.total. none skips that count (a picker that lists names does not need it): meta.total is then null and meta.has_more says whether another page exists. Any other value, or two different values, is a 400."
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "location": "query",
+          "description": "picker: each row is only { id, name, domain } and nothing else (no owner, contactCount, dealCount, totalValue); the contact-count and deal aggregations are not run. sort=totalValue and sort=dealCount are refused (400) under picker. Omitted: the full rows. Any other value, or two different values, is a 400."
         },
         {
           "name": "hasOpenDeals",
@@ -7795,7 +8535,7 @@
           "name": "order",
           "type": "string",
           "location": "query",
-          "description": "Query parameter read by this route."
+          "description": "Sort direction, asc or desc (default desc). The match is exact lowercase asc; any other value sorts desc, as an unknown sort field falls to createdAt. Two different non-empty values are a 400; empty values are ignored; the same value repeated is one value."
         },
         {
           "name": "ownerId",
@@ -7831,7 +8571,7 @@
           "name": "sort",
           "type": "string",
           "location": "query",
-          "description": "Query parameter read by this route."
+          "description": "Sort field. Two different non-empty values are a 400; empty values are ignored; the same value repeated is one value."
         }
       ]
     },
@@ -8284,7 +9024,7 @@
     },
     {
       "name": "conduyt-auth_delete-sessions",
-      "description": "Delete auth sessions. Required: id. Returns the ConduytAuthDeleteSessionsResponse. Destructive.",
+      "description": "Delete auth sessions. Optional: id, scope. Returns the ConduytAuthDeleteSessionsResponse. Destructive.",
       "method": "DELETE",
       "path": "/auth/sessions",
       "params": [
@@ -8292,8 +9032,13 @@
           "name": "id",
           "type": "string",
           "location": "query",
-          "description": "Query parameter read by this route.",
-          "required": true
+          "description": "Query parameter read by this route."
+        },
+        {
+          "name": "scope",
+          "type": "string",
+          "location": "query",
+          "description": "Query parameter read by this route."
         }
       ]
     },
@@ -9581,7 +10326,7 @@
           "name": "search",
           "type": "string",
           "location": "query",
-          "description": "Text search over name, email, phone (any formatting, incl. secondary phones) and company. A Lead ID (8 to 32 hex characters of a contact id or of one of its deals' ids, dashes optional, any case; a whole id matches exactly) resolves by id first: when it holds a hex letter and names a contact you can see, or one owning a deal you can see, the result is those contacts only; when it names none it falls back to the text search. A digits-only Lead ID (also a phone fragment) returns the text and phone matches plus the id matches."
+          "description": "Text search over name, email, phone (any formatting, incl. secondary phones) and company. A Lead ID (8 to 32 hex characters of a contact id or of one of its deals' ids, dashes optional, any case; a whole id matches exactly) resolves by id first: when it holds a hex letter and names a contact you can see, or one owning a deal you can see, the result is those contacts only; when it names none it falls back to the text search. A digits-only Lead ID (also a phone fragment) returns the text and phone matches plus the id matches. With no explicit sort the rows are ranked (exact matches first: the full displayed name, e-mail or phone equal to the term, then a first or last name alone equal to it; then prefix, then other substring; each newest first) and a ranked search serves at most 2000 rows: see meta.ranked_max and meta.truncated."
         },
         {
           "name": "smart_view",
@@ -9818,7 +10563,7 @@
           "name": "search",
           "type": "string",
           "location": "query",
-          "description": "Text search over name, email, phone (any formatting, incl. secondary phones) and company. A Lead ID (8 to 32 hex characters of a contact id or of one of its deals' ids, dashes optional, any case; a whole id matches exactly) resolves by id first: when it holds a hex letter and names a contact you can see, or one owning a deal you can see, the result is those contacts only; when it names none it falls back to the text search. A digits-only Lead ID (also a phone fragment) returns the text and phone matches plus the id matches."
+          "description": "Text search over name, email, phone (any formatting, incl. secondary phones) and company. A Lead ID (8 to 32 hex characters of a contact id or of one of its deals' ids, dashes optional, any case; a whole id matches exactly) resolves by id first: when it holds a hex letter and names a contact you can see, or one owning a deal you can see, the result is those contacts only; when it names none it falls back to the text search. A digits-only Lead ID (also a phone fragment) returns the text and phone matches plus the id matches. With no explicit sort the rows are ranked (exact matches first: the full displayed name, e-mail or phone equal to the term, then a first or last name alone equal to it; then prefix, then other substring; each newest first) and a ranked search serves at most 2000 rows: see meta.ranked_max and meta.truncated."
         },
         {
           "name": "smart_view",
@@ -10565,8 +11310,8 @@
       ]
     },
     {
-      "name": "contacts_dnc_get-contacts-id",
-      "description": "Get contacts id dnc. Required: id. Optional: to. Returns the DncGetContactsIdResponse.",
+      "name": "contacts_dnc_get-contact-verdicts",
+      "description": "Board #32 and #632. Every number the contact owns (the primary, the numbered phone slots, the account's phone-type fields), each with its own Do-Not-Call / litigator verdict (a hold scoped to one number blocks only that number; a contact-wide hold blocks all), and (#632) when a real call last connected on it. `preferred` is the number the dial prefers: the most recently answered number no hold is on (a DNC hold, even an overrideable one, a litigator listing, or any blocking flag), or null when none ever connected or every answered number is held; a dial of the primary takes it, an explicit pick of another number never does (the preference is a pre-call concern: every rep dial goes through this lookup). `requested` answers about the number in `to`, compared country-canonically. The top-level dnc / litigator / suppressions verdict stays PRIMARY-scoped. Requires communications.view or dialer.create; free-text reasons need contacts.view and teammate identities users.view. A contact the caller may not see answers 404. Required: id. Optional: to. Returns the DncGetContactVerdictsResponse.",
       "method": "GET",
       "path": "/contacts/{id}/dnc",
       "params": [
@@ -10574,14 +11319,14 @@
           "name": "id",
           "type": "string",
           "location": "path",
-          "description": "Id",
+          "description": "Resource UUID",
           "required": true
         },
         {
           "name": "to",
           "type": "string",
           "location": "query",
-          "description": "Query parameter read by this route."
+          "description": "The number about to be dialed (any formatting); answered in `requested`."
         }
       ]
     },
@@ -10741,6 +11486,21 @@
           "type": "string",
           "location": "body",
           "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        }
+      ]
+    },
+    {
+      "name": "contacts_phone-reachability_get-contact",
+      "description": "The same phoneReachability GET /contacts/{id} returns, for callers that hold only the contact id (the call dock, the softphone). Permission contacts.view; a contact the caller may not see answers 404. Required: id. Returns the PhoneReachabilityGetContactResponse.",
+      "method": "GET",
+      "path": "/contacts/{id}/phone-reachability",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Resource UUID",
+          "required": true
         }
       ]
     },
@@ -11322,7 +12082,7 @@
     },
     {
       "name": "custom-fields_list",
-      "description": "List custom field definitions. Optional: entityType, page (default: 1), per_page. Returns array of CustomFieldsListItem.",
+      "description": "List custom field definitions. Optional: entityType, page (default: 1), per_page. Returns array of CustomFieldListRow.",
       "method": "GET",
       "path": "/custom-fields",
       "params": [
@@ -12744,7 +13504,7 @@
           "name": "expectedUpdatedAt",
           "type": "string",
           "location": "body",
-          "description": "Optional optimistic-concurrency pin: the deal's `updatedAt` as the caller last read it. When it no longer matches, the request is refused with 409 `code: 'deal_changed'` and nothing is written. Omit it for last-write-wins per field. The pattern above is the server's rule (Zod's ISO date-time check). It also accepts minute precision without seconds (2026-12-01T10:00Z), which an RFC 3339 `format: date-time` validator refuses; send seconds for portability."
+          "description": "Optional optimistic-concurrency pin: the deal's `updatedAt` as the caller last read it. When it no longer matches, the request is refused with 409 `code: 'deal_changed'` and nothing is written. Omit it for last-write-wins per field, except one case refused with 409 `code: 'deal_changed'` even without a pin: the deal's contact changed between the request's first read and its lock on the deal (a concurrent re-link). The pattern above is the server's rule (Zod's ISO date-time check). It also accepts minute precision without seconds (2026-12-01T10:00Z), which an RFC 3339 `format: date-time` validator refuses; send seconds for portability."
         },
         {
           "name": "keepPreviousOwnerAsCollaborator",
@@ -13753,6 +14513,26 @@
       ]
     },
     {
+      "name": "dialer_get-status-log-timeline",
+      "description": "List dialer status-log timeline. Optional: date, userId. Returns the DialerGetStatusLogTimelineResponse.",
+      "method": "GET",
+      "path": "/dialer/status-log/timeline",
+      "params": [
+        {
+          "name": "date",
+          "type": "string",
+          "location": "query",
+          "description": "YYYY-MM-DD: the day in the workspace time zone (settings first). Omitted = today in that zone. Not a real date, or given more than once, is a 400."
+        },
+        {
+          "name": "userId",
+          "type": "string",
+          "location": "query",
+          "description": "uuid: the rep (an accepted member of this workspace) whose intervals to list. Omitted = only the agents list for the picker. Not a uuid, or given more than once, is a 400; a user who is not a member is a 404."
+        }
+      ]
+    },
+    {
       "name": "dialer_get-token",
       "description": "Get a Twilio browser token for click-to-call. Optional: vendor. Returns the new DataEnvelope.",
       "method": "POST",
@@ -14118,7 +14898,7 @@
           "name": "held",
           "type": "bool",
           "location": "body",
-          "description": "true puts the customer on hold, false takes the customer off hold. Already in that state: nothing is changed and the answer says so. A non-boolean is 400. Omitted: the state flips."
+          "description": "true puts the customer on hold, false takes the customer off hold. Already in that state: nothing is changed and the answer says so (false on a received call that was never moved: unchanged, nothing is touched). A non-boolean is 400. Omitted: the state flips."
         }
       ]
     },
@@ -14193,7 +14973,7 @@
     },
     {
       "name": "dialer_post-call-id-supervise",
-      "description": "Create / invoke dialer call id supervise. Required: id, mode. Returns the new DialerPostCallIdSuperviseResponse.",
+      "description": "Join an active call as a supervisor (admins and owners). listen: muted, nobody hears the supervisor; whisper: only the REP hears the supervisor (the coach target is always the rep's leg of this call, never the first other participant); barge: everyone hears the supervisor. A received call that is not on its conference line yet is moved there first (the rep and the caller hear about a second of silence). agentCallSid (optional, any mode): the rep leg the caller last saw (GET /dialer/live-monitor agentLegSid); when the call's rep leg is another, the request is refused before anything moves. Required: id, mode. Optional: agentCallSid. Returns the new DialerPostCallIdSuperviseResponse.",
       "method": "POST",
       "path": "/dialer/call/{id}/supervise",
       "params": [
@@ -14203,6 +14983,12 @@
           "location": "path",
           "description": "Id",
           "required": true
+        },
+        {
+          "name": "agentCallSid",
+          "type": "string",
+          "location": "body",
+          "description": "Agent call sid"
         },
         {
           "name": "mode",
@@ -14275,7 +15061,7 @@
     },
     {
       "name": "dialer_post-heartbeat",
-      "description": "Create / invoke dialer heartbeat. Optional: activeCallId, fallbackStatus, fallbackStatusCode (plus 7 more). Returns the new DataEnvelope.",
+      "description": "Create / invoke dialer heartbeat. Optional: activeCallId, fallbackStatus, fallbackStatusCode (plus 7 more). Returns the new DialerPostHeartbeatResponse.",
       "method": "POST",
       "path": "/dialer/heartbeat",
       "params": [
@@ -15561,6 +16347,21 @@
           "type": "string",
           "location": "body",
           "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        }
+      ]
+    },
+    {
+      "name": "email_post-opt-out-list-check",
+      "description": "Answers whether one email address is on this workspace's email opt-out list, and if so its source and since when. It is a POST only so the address travels in the JSON body and never in a URL (request logs keep URLs); it reads and stores nothing. Send a bare address (person@example.com, at most 320 characters). The server is more tolerant than this contract promises, and it also trims, lowercases and strips a display name before matching by hash, so the case of the address does not matter, but only the bare form is documented. Owners, admins and the platform super admin only. An API key reaches it with the emails scope, and a read-tier key may call it (this exact path is the only list route a read-tier key may POST). Required: address. Returns the new EmailPostOptOutListCheckResponse.",
+      "method": "POST",
+      "path": "/email/opt-out-list/check",
+      "params": [
+        {
+          "name": "address",
+          "type": "string",
+          "location": "body",
+          "description": "The bare address to look up.",
+          "required": true
         }
       ]
     },
@@ -17965,7 +18766,7 @@
     },
     {
       "name": "imports_get",
-      "description": "Get import job status. Required: id. Optional: summary. Returns the DataEnvelope.",
+      "description": "Get import job status. Required: id. Optional: summary. Returns the ImportsGetResponse.",
       "method": "GET",
       "path": "/imports/{id}",
       "params": [
@@ -18371,6 +19172,55 @@
           "type": "string",
           "location": "body",
           "description": "Read by the handler from the JSON body (the route declares no schema for its type)."
+        }
+      ]
+    },
+    {
+      "name": "imports_restore_get-imports-id",
+      "description": "(#590 design note 9.4) The re-enroll reconciliation's ambiguous_reported contacts of a finished import, with the before-state captured when they were reported and why they are ambiguous. Admin or owner, the import's edit permission. Required: id. Returns the RestoreGetImportsIdResponse.",
+      "method": "GET",
+      "path": "/imports/{id}/restore",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "imports_restore_post-imports-id",
+      "description": "(#590 design note 9.4) approve restores reported contacts (6.5, re-checked under the locks, an approved audit row); undo reverses one restore part by part (a CAS on everything it wrote; drift names its field); stop pauses the restored enrollments still active and records what was sent since. Admin or owner, the import's edit permission, audited. Required: id, action. Optional: auditId, contactIds.",
+      "method": "POST",
+      "path": "/imports/{id}/restore",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Id",
+          "required": true
+        },
+        {
+          "name": "action",
+          "type": "string",
+          "location": "body",
+          "description": "Action",
+          "required": true
+        },
+        {
+          "name": "auditId",
+          "type": "string",
+          "location": "body",
+          "description": "Audit id"
+        },
+        {
+          "name": "contactIds",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Contact ids"
         }
       ]
     },
@@ -20871,7 +21721,7 @@
     },
     {
       "name": "pipelines_list",
-      "description": "List pipelines with stages. Optional: archived, page (default: 1), per_page. Returns the DataEnvelope.",
+      "description": "List pipelines with stages. Optional: archived, page (default: 1), per_page.",
       "method": "GET",
       "path": "/pipelines",
       "params": [
@@ -21193,7 +22043,7 @@
     },
     {
       "name": "pipelines_stages_list-pipeline",
-      "description": "List stages for a pipeline. Required: id. Returns the DataEnvelope.",
+      "description": "List stages for a pipeline. Required: id. Returns array of PipelineStageListRow.",
       "method": "GET",
       "path": "/pipelines/{id}/stages",
       "params": [
@@ -25481,6 +26331,13 @@
       "params": []
     },
     {
+      "name": "settings_get-ai-local-files",
+      "description": "List settings ai-local-files. Returns the SettingsGetAiLocalFilesResponse.",
+      "method": "GET",
+      "path": "/settings/ai-local-files",
+      "params": []
+    },
+    {
       "name": "settings_get-ai-teammates",
       "description": "List settings ai-teammates. Returns the SettingsGetAiTeammatesResponse.",
       "method": "GET",
@@ -25642,6 +26499,32 @@
           "type": "string",
           "location": "body",
           "description": "Tone"
+        }
+      ]
+    },
+    {
+      "name": "settings_patch-ai-local-files",
+      "description": "Update settings ai-local-files. Optional: acknowledgeUnscreened, enabled, sensitiveScreen. Returns the updated SettingsPatchAiLocalFilesResponse.",
+      "method": "PATCH",
+      "path": "/settings/ai-local-files",
+      "params": [
+        {
+          "name": "acknowledgeUnscreened",
+          "type": "bool",
+          "location": "body",
+          "description": "required true with sensitiveScreen: false: posts from local files are no longer checked and the team is responsible for what is posted. Not stored; the change is audited with who, when and old -\u003e new"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "location": "body",
+          "description": "switch local files on or off for every AI teammate (audited: ai_local_files.changed)"
+        },
+        {
+          "name": "sensitiveScreen",
+          "type": "bool",
+          "location": "body",
+          "description": "switch the sensitive-number screen on or off; false needs acknowledgeUnscreened: true"
         }
       ]
     },
@@ -28615,7 +29498,7 @@
     },
     {
       "name": "tags_list",
-      "description": "List tags. Optional: counts, name, page (default: 1) (plus 2 more). Returns the TagsListResponse.",
+      "description": "List tags. Optional: counts, name, page (default: 1) (plus 2 more). Returns array of TagListRow.",
       "method": "GET",
       "path": "/tags",
       "params": [
@@ -29768,7 +30651,7 @@
     },
     {
       "name": "users_notifications_update-user-preferences",
-      "description": "Update user notification preferences. Required: id, preferences. Returns the updated NotificationsUpdateUserPreferencesResponse.",
+      "description": "Update user notification preferences. Required: id. Optional: preferences, sounds. Returns the updated NotificationsUpdateUserPreferencesResponse.",
       "method": "PATCH",
       "path": "/users/{id}/notifications",
       "params": [
@@ -29783,8 +30666,14 @@
           "name": "preferences",
           "type": "object",
           "location": "body",
-          "description": "Preferences",
-          "required": true
+          "description": "Preferences"
+        },
+        {
+          "name": "sounds-team-chat",
+          "wire_name": "sounds.teamChat",
+          "type": "bool",
+          "location": "body",
+          "description": "Team chat"
         }
       ]
     },
@@ -31451,7 +32340,7 @@
     },
     {
       "name": "webhooks_voice-recording",
-      "description": "Twilio recording callback. Optional: callId, AccountSid, CallSid (plus 6 more). Returns the new DataEnvelope. (public)",
+      "description": "Twilio recording callback. Optional: callId, AccountSid, CallSid (plus 7 more). Returns the new DataEnvelope. (public)",
       "method": "POST",
       "path": "/webhooks/voice/recording",
       "no_auth": true,
@@ -31476,6 +32365,12 @@
         },
         {
           "name": "ConferenceSid",
+          "type": "string",
+          "location": "body",
+          "description": "A form field the handler reads"
+        },
+        {
+          "name": "RecordingChannels",
           "type": "string",
           "location": "body",
           "description": "A form field the handler reads"
