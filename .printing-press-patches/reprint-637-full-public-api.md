@@ -291,3 +291,21 @@ priority/status defaults, page-size defaults), and request-body properties that 
 - Pinned by `internal/cli/command_tree_test.go`: `TestEverySpecOperationHasExactlyOneCommand` (943/943 non-OPTIONS operations, each
   through exactly one command annotation; 942/943 without the users invite fix) and `TestSiblingCommandNamesAreUnique` (names and
   aliases unique at every level of the tree).
+
+## Refresh 2026-11-08 (reprint637 second pass): app public/openapi.yaml at 86cb86329
+
+Contract: the app's `public/openapi.yaml` at batch17 tip 86cb86329 (62,755 lines, sha256
+f4ac1e3b2c4519f9d2a01d2f51d035f6ab856ec20739fa8d63511b64cd2e5cac) is `upstream/openapi.yaml`; `spec.yaml` is the same document plus
+`x-pp-resource: api-search` on GET /search (sha256 9e6eb974c2d72cfe15c8869deede425768cabd7a44efde2e295e8eaeba6ef824). 974 operations
+(was 948): 26 added (account exports, automation distribution, Grok Bot connect/webhook and agent MCP/knowledge routes, chat thread
+follow/files/thread/linked-record, contact phone reachability, dialer status-log timeline, imports restore, email opt-out-list check,
+activities assignment reasons, settings ai-local-files), none removed.
+
+Printed with Printing Press 4.28.0 twice (`--validate=false --max-endpoints-per-resource 200`): "base" on spec.yaml at fabf31d and "fresh"
+on the refreshed spec, both normalised (module path, copyright). A file the base print equals takes the fresh print (33), a file only
+the fresh print has is added (32), every other file the fresh print changed is a `git merge-file` of tree, base and fresh (9 clean,
+3 conflicts), and 2 files the press renamed are removed (`promoted_account-exports.go`, now the `account-exports` group with get/post;
+`contacts_dnc_get-contacts-id.go`, now `contacts_dnc_get-contact-verdicts.go`: the upstream operationId changed, so the command `contacts dnc get-contacts-id` is now `contacts dnc get-contact-verdicts`, same GET /contacts/{id}/dnc; and the bare `account-exports` list command is now `account-exports get`; no alias was added, as in the first reprint). Conflicts: README.md and SKILL.md keep
+the curated tree text; `calls link call-to-contact` re-emitted the body dryRun as a local `--dry-run` (re-applied as `--server-dry-run`,
+the new `--replace-slot` kept). Every `PATCH(<id>)` marker count under internal/ and cmd/ is identical before and after (12 ids).
+Tooling and logs: Cerebro `domains/conduyt/projects/session-tools-2026-10-08/briefs/reprint637-logs/` (merge.sh, merge-report.txt).
