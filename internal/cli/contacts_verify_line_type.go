@@ -54,13 +54,17 @@ func newNovelContactsVerifyLineTypeCmd(flags *rootFlags) *cobra.Command {
 					"estimatedCostUSD":   fmt.Sprintf("%.2f", float64(unverified)*0.008),
 					"note":               "Tenant-wide count from the local store (sync first for accuracy). A smart-list scope verifies at most this many.",
 				}
+				if flags.dryRun { // PATCH(gocli1219-live-gate-defects): --estimate --dry-run --json is a dry_run object too
+					est["dry_run"] = true
+					est["action"] = "contacts verify-line-type --estimate"
+				}
 				return printJSONFiltered(cmd.OutOrStdout(), est, flags)
 			}
 			if flagSmartList == "" && len(flagContactIDs) == 0 {
 				return cmd.Help()
 			}
 			if dryRunOK(flags) {
-				return nil
+				return writeDryRun(cmd.OutOrStdout(), flags, "contacts verify-line-type") // PATCH(gocli1219-live-gate-defects)
 			}
 			c, err := flags.newClient()
 			if err != nil {

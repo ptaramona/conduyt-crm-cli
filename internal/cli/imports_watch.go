@@ -14,29 +14,46 @@ import (
 
 // pp:data-source live
 func newNovelImportsWatchCmd(flags *rootFlags) *cobra.Command {
+	var flagLatest bool
 	var flagVerify bool
 	var flagInterval int
 	var flagTimeout int
 
 	cmd := &cobra.Command{
-		Use:   "watch [jobId]",
+		Use:   "watch [jobId | --latest]",
 		Short: "Poll an import job to completion, then render the outcome recap",
 		Long:  "Polls the import job until it reaches a terminal state, then prints the row-outcome recap (created/updated/skipped/errors). With --verify, also fetches the SMS delivery report so provider rejections and Conduyt skips are visible in the same breath. Typed exit codes: 0 completed clean, 2 completed with error rows, 4 failed/timeout — drop it straight into n8n or cron.",
 		Example: strings.Trim(`
+  conduyt-crm-pp-cli imports watch --latest --verify
   conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --verify
   conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --interval 10 --json`, "\n"),
 		Annotations: map[string]string{"mcp:read-only": "true", "pp:typed-exit-codes": "0,2,4"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
+			if len(args) == 0 && !flagLatest {
 				return cmd.Help()
 			}
-			if dryRunOK(flags) {
-				return nil
+			if len(args) > 0 && flagLatest {
+				return usageErr(fmt.Errorf("pass a jobId or --latest, not both"))
 			}
-			jobID := args[0]
+			if dryRunOK(flags) {
+				return writeDryRun(cmd.OutOrStdout(), flags, "imports watch") // PATCH(gocli1219-live-gate-defects)
+			}
 			c, err := flags.newClient()
 			if err != nil {
 				return err
+			}
+			var jobID string
+			if flagLatest {
+				latest, err := resolveLatestImportJob(cmd.Context(), c)
+				if err != nil {
+					return classifyAPIError(cmd.OutOrStdout(), err, flags)
+				}
+				if latest == "" {
+					return printJSONFiltered(cmd.OutOrStdout(), noImportJobYet(), flags)
+				}
+				jobID = latest
+			} else {
+				jobID = args[0]
 			}
 			deadline := time.Now().Add(time.Duration(flagTimeout) * time.Second)
 			var job map[string]any
@@ -104,5 +121,6 @@ func newNovelImportsWatchCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&flagVerify, "verify", false, "After completion, include the SMS delivery report (provider rejections + Conduyt skips)")
 	cmd.Flags().IntVar(&flagInterval, "interval", 5, "Poll interval in seconds")
 	cmd.Flags().IntVar(&flagTimeout, "timeout", 1800, "Give up after this many seconds (exit 4)")
+	cmd.Flags().BoolVar(&flagLatest, "latest", false, "Use the account's most recent import job instead of a jobId")
 	return cmd
 }

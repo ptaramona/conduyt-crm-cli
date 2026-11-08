@@ -13,27 +13,44 @@ import (
 
 // pp:data-source live
 func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
+	var flagLatest bool
 	var flagRows int
 
 	cmd := &cobra.Command{
-		Use:   "blame [jobId]",
+		Use:   "blame [jobId | --latest]",
 		Short: "Who got in, who was skipped, and why — for one import job",
 		Long:  "Joins the import job's row outcomes (created/updated/skipped/error, grouped by reason) with the account's SMS delivery report (provider rejections + Conduyt skips like landline_skipped/no_phone_skipped) so a bulk push can be blamed end-to-end in one call — the reconstruction the Kloudi incident required by hand.",
 		Example: strings.Trim(`
+  conduyt-crm-pp-cli imports blame --latest --json
   conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000
   conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --agent --select rowOutcomes,smsDelivery.rejectionReasons`, "\n"),
 		Annotations: map[string]string{"mcp:read-only": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
+			if len(args) == 0 && !flagLatest {
 				return cmd.Help()
 			}
-			if dryRunOK(flags) {
-				return nil
+			if len(args) > 0 && flagLatest {
+				return usageErr(fmt.Errorf("pass a jobId or --latest, not both"))
 			}
-			jobID := args[0]
+			if dryRunOK(flags) {
+				return writeDryRun(cmd.OutOrStdout(), flags, "imports blame") // PATCH(gocli1219-live-gate-defects)
+			}
 			c, err := flags.newClient()
 			if err != nil {
 				return err
+			}
+			var jobID string
+			if flagLatest {
+				latest, err := resolveLatestImportJob(cmd.Context(), c)
+				if err != nil {
+					return classifyAPIError(cmd.OutOrStdout(), err, flags)
+				}
+				if latest == "" {
+					return printJSONFiltered(cmd.OutOrStdout(), noImportJobYet(), flags)
+				}
+				jobID = latest
+			} else {
+				jobID = args[0]
 			}
 			data, err := c.Get(cmd.Context(), "/imports/"+jobID, nil)
 			if err != nil {
@@ -105,5 +122,6 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().IntVar(&flagRows, "rows", 200, "How many error rows to sample when grouping reasons")
+	cmd.Flags().BoolVar(&flagLatest, "latest", false, "Use the account's most recent import job instead of a jobId")
 	return cmd
 }

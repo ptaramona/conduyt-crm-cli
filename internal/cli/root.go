@@ -645,6 +645,7 @@ See README.md or the bundled SKILL.md for recipes.`,
 		hook(rootCmd, flags)
 	}
 	preferImplementedNovelCommands(rootCmd)
+	applyLiveGateFixtures(rootCmd) // PATCH(gocli1219-live-gate-fixtures)
 	// Attach the conditional platform identity command last so ordinary,
 	// promoted, and novel API-owned `whoami` commands all win the name.
 	if registeredPlatformSource != nil {

@@ -55,6 +55,9 @@ func newActivityPromotedCmd(flags *rootFlags) *cobra.Command {
 			}
 			_ = os.Stderr
 			_ = prov
+			if isDryRunResponseForClient(c, data) { // PATCH(gocli1219-live-gate-defects): the text-envelope path printed the bare sentinel
+				return writeDryRun(cmd.OutOrStdout(), flags, "activity")
+			}
 			var textEnvelope struct {
 				Format string `json:"format"`
 				Body   string `json:"body"`

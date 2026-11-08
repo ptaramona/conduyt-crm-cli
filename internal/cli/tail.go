@@ -222,6 +222,9 @@ func fetchAndEmit(ctx context.Context, c interface {
 		return enc.Encode(event)
 	}
 
+	if len(items) == 0 { // PATCH(gocli1219-live-gate-defects): an empty page is reported, not silent
+		return enc.Encode(map[string]any{"event": "empty", "timestamp": time.Now().UTC().Format(time.RFC3339)})
+	}
 	for _, item := range items {
 		event := map[string]any{
 			"event":     "data",

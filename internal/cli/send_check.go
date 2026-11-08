@@ -32,7 +32,7 @@ func newNovelSendCheckCmd(flags *rootFlags) *cobra.Command {
 				return cmd.Help()
 			}
 			if dryRunOK(flags) {
-				return nil
+				return writeDryRun(cmd.OutOrStdout(), flags, "send-check") // PATCH(gocli1219-live-gate-defects): --dry-run --json answers a dry_run object
 			}
 			c, err := flags.newClient()
 			if err != nil {
@@ -112,7 +112,13 @@ func newNovelSendCheckCmd(flags *rootFlags) *cobra.Command {
 				}
 			}
 			if len(rows) == 0 {
-				return notFoundErr(fmt.Errorf("no contacts found in the given scope"))
+				// PATCH(gocli1219-live-gate-defects): an empty tag or smart-list scope is a clean answer (nothing to send, 0 checked), exit 0;
+				// a --contact that does not exist is still the API's 404 above.
+				return printJSONFiltered(cmd.OutOrStdout(), map[string]any{
+					"summary":  map[string]any{"checked": 0, "ok": 0, "warn": 0, "blocked": 0, "dncChecked": false},
+					"verdicts": []any{},
+					"note":     "no contacts in the given scope",
+				}, flags)
 			}
 
 			// 2) DNC list (one paged read, matched locally on digit suffix).

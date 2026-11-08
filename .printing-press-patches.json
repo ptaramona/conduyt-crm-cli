@@ -262,6 +262,43 @@
         "internal/client/redaction_patch.go"
       ],
       "validated_outcome": "go build, go vet and go test -count=1 ./... green; every earlier patch test passes (MCP guard tests through codeOrchTestInvoke; tests that pinned 4.28.0 generator defaults re-pinned to the 4.34.2 contract, each marked gocli1219)."
+    },
+    {
+      "id": "gocli1219-live-gate-defects",
+      "summary": "Real defects the 11-08 publish live gate found (triage: gocli1219-logs/triage.md class a): send-check answers an empty tag/smart-list scope as a clean 0-checked result (exit 0; an unknown --contact is still the API 404); drips audit refuses a non-UUID or second positional (usage error); imports blame/watch take --latest (the account's newest import job; no job is an exit-0 answer); every novel command answers --dry-run --json with the {dry_run, action, would} object; the three text-response endpoints (contacts export, contacts get-import-template, activity) answer --dry-run with it instead of the bare client sentinel; contacts verify-line-type --estimate carries dry_run/action under --dry-run; local-data purge names its action; tail reports an empty page as one {event: empty} line.",
+      "reason": "The live dogfood matrix (and agents) read --dry-run --json as a contract and an empty stdout or a not-found exit on an empty scope as a failure; the novel commands and three 4.34.2 framework paths broke it.",
+      "files": [
+        "internal/cli/send_check.go",
+        "internal/cli/drips_audit.go",
+        "internal/cli/imports_blame.go",
+        "internal/cli/imports_watch.go",
+        "internal/cli/imports_latest.go",
+        "internal/cli/contacts_verify_line_type.go",
+        "internal/cli/contacts_export.go",
+        "internal/cli/contacts_get-import-template.go",
+        "internal/cli/promoted_activity.go",
+        "internal/cli/local_data.go",
+        "internal/cli/tail.go",
+        "internal/cli/live_gate_defects_test.go"
+      ],
+      "markers": [
+        "PATCH(gocli1219-live-gate-defects)"
+      ],
+      "validated_outcome": "TestSendCheckEmptyScopeIsACleanAnswer, TestSendCheckUnknownContactIsStillNotFound, TestDripsAuditRefusesAJunkCampaignID, TestNovelDryRunJSONIsADryRunObject, TestImportsLatestResolvesTheNewestJob, TestVerifyLineTypeEstimateUnderDryRunCarriesTheMarker, TestTailEmptyPageEmitsOneEvent, TestLocalDataPurgeDryRunNamesItsAction; the FULL live gate against the demo workspace passes."
+    },
+    {
+      "id": "gocli1219-live-gate-fixtures",
+      "summary": "One table (internal/cli/live_gate_fixtures.go, applied at the end of newRootCmd) carries the command metadata the live matrix reads, so generated files stay as printed: pp:typed-exit-codes for documented errors of workspace-off features or by-design answers (chat get-agents 404 ai_teammates_off, scim get-v2-users / sso get-connection / sso get-scim-tokens 404, settings get-project-blue-lines 409 not_configured, conduyt-auth read-sso-signup-consent 410, chat get-agents-me-mcp 405, companies/deals get-export --json refused with 2); pp:happy-args with real inputs (dialer get-inbound-lookup --phone, emails get-sequences-senders --channel=email, imports blame/watch --latest, tail messages, contacts verify-line-type --estimate with pp:preview-happy-path); help examples for drips, users, push unsubscribe and a parseable me put-my-email-signature example.",
+      "reason": "Demo-workspace gaps (triage class b) and placeholder inputs are not CLI defects; the press's own annotations declare them without weakening any check (a declared non-zero exit is recorded as a skip, never a pass).",
+      "files": [
+        "internal/cli/live_gate_fixtures.go",
+        "internal/cli/root.go",
+        "internal/cli/live_gate_defects_test.go"
+      ],
+      "markers": [
+        "PATCH(gocli1219-live-gate-fixtures)"
+      ],
+      "validated_outcome": "TestLiveGateFixturesTargetExistingCommands fails when a listed path is renamed or dropped."
     }
   ]
 }

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
+
 	"github.com/ptaramona/conduyt-crm-cli/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -24,9 +26,21 @@ func newNovelDripsAuditCmd(flags *rootFlags) *cobra.Command {
   conduyt-crm-pp-cli drips audit --since 2026-07-01
   conduyt-crm-pp-cli drips audit 9b8c7d6e-0000-0000-0000-000000000000 --json`, "\n"),
 		Annotations: map[string]string{"mcp:read-only": "true", "pp:typed-exit-codes": "0,2"},
+		Args: func(cmd *cobra.Command, args []string) error {
+			// PATCH(gocli1219-live-gate-defects): one optional campaign UUID; a junk value is a usage error, not an audit of nothing
+			if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
+				return usageErr(err)
+			}
+			if len(args) == 1 {
+				if err := cliutil.CheckUUID("campaignId", args[0]); err != nil {
+					return usageErr(err)
+				}
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if dryRunOK(flags) {
-				return nil
+				return writeDryRun(cmd.OutOrStdout(), flags, "drips audit")
 			}
 			if dbPath == "" {
 				dbPath = defaultDBPath("conduyt-crm-pp-cli")
