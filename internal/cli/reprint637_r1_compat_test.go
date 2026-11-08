@@ -4,6 +4,7 @@ package cli
 // PATCH(reprint-637-renamed-command-aliases), PATCH(reprint-637-conditional-requirements).
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -80,3 +81,67 @@ func TestRenamedDncCommandKeepsItsOldName(t *testing.T) {
 	}
 }
 
+func TestDeleteSessionsNeedsExactlyOneTarget(t *testing.T) {
+	for _, bad := range [][]string{
+		{"conduyt-auth", "delete-sessions", "--scope", "all"},
+		{"conduyt-auth", "delete-sessions", "--id", "s1", "--scope", "others"},
+		{"conduyt-auth", "delete-sessions", "--id", ""},
+		{"conduyt-auth", "delete-sessions", "--yes"},
+	} {
+		srv, reqs := recordingServer(t)
+		err := runCLI(t, srv.URL, bad...)
+		if err == nil || ExitCode(err) != 2 {
+			t.Errorf("%v: err %v (exit %d), want a usage error", bad, err, ExitCode(err))
+		}
+		if n := len(reqs()); n != 0 {
+			t.Errorf("%v sent %d request(s), want none", bad, n)
+		}
+	}
+	for _, good := range []struct {
+		args  []string
+		query string
+	}{
+		{[]string{"conduyt-auth", "delete-sessions", "--id", "s1"}, "id=s1"},
+		{[]string{"conduyt-auth", "delete-sessions", "--scope", "others"}, "scope=others"},
+	} {
+		srv, reqs := recordingServer(t)
+		if err := runCLI(t, srv.URL, append(good.args, "--yes")...); err != nil {
+			t.Fatalf("%v: %v", good.args, err)
+		}
+		got := reqs()
+		if len(got) != 1 || got[0].Method != "DELETE" || got[0].Query != good.query {
+			t.Fatalf("%v sent %+v, want DELETE ?%s", good.args, got, good.query)
+		}
+	}
+}
+
+func TestUpdateUserPreferencesNeedsPreferencesOrSounds(t *testing.T) {
+	srv, reqs := recordingServer(t)
+	err := runCLI(t, srv.URL, "users", "notifications", "update-user-preferences", "u1", "--yes")
+	if err == nil || ExitCode(err) != 2 || len(reqs()) != 0 {
+		t.Fatalf("no body flag: err %v, %d request(s); want a usage error and none", err, len(reqs()))
+	}
+	for _, tc := range []struct {
+		args []string
+		want map[string]any
+	}{
+		{[]string{"--sounds-team-chat=false"}, map[string]any{"sounds": map[string]any{"teamChat": false}}},
+		{[]string{"--preferences", `{"deal.won":{"email":false}}`}, map[string]any{"preferences": map[string]any{"deal.won": map[string]any{"email": false}}}},
+	} {
+		srv, reqs := recordingServer(t)
+		if err := runCLI(t, srv.URL, append([]string{"users", "notifications", "update-user-preferences", "u1", "--yes"}, tc.args...)...); err != nil {
+			t.Fatalf("%v: %v", tc.args, err)
+		}
+		got := reqs()
+		if len(got) != 1 || got[0].Method != "PATCH" {
+			t.Fatalf("%v sent %+v", tc.args, got)
+		}
+		var body map[string]any
+		_ = json.Unmarshal([]byte(got[0].Body), &body)
+		wb, _ := json.Marshal(tc.want)
+		gb, _ := json.Marshal(body)
+		if string(wb) != string(gb) {
+			t.Fatalf("%v body %s, want %s", tc.args, gb, wb)
+		}
+	}
+}

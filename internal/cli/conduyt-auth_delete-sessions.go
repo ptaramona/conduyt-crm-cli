@@ -19,9 +19,17 @@ func newConduytAuthDeleteSessionsCmd(flags *rootFlags) *cobra.Command {
 		Use:         "delete-sessions",
 		Aliases:     []string{"delete"},
 		Short:       "Delete auth sessions",
-		Example:     "  conduyt-crm-pp-cli conduyt-auth delete-sessions",
+		Example:     "  conduyt-crm-pp-cli conduyt-auth delete-sessions --id 550e8400-e29b-41d4-a716-446655440000\n  conduyt-crm-pp-cli conduyt-auth delete-sessions --scope others",
 		Annotations: map[string]string{"pp:endpoint": "conduyt-auth.delete-sessions", "pp:method": "DELETE", "pp:path": "/auth/sessions"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// PATCH(reprint-637-conditional-requirements): exactly one of --id (one session) or --scope others (every
+			// other session); the fresh spec types both as optional, the route refuses neither / both.
+			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
+				return cmd.Help()
+			}
+			if err := checkDeleteSessionsTarget(cmd.Flags().Changed("id"), flagId, cmd.Flags().Changed("scope"), flagScope); err != nil {
+				return err
+			}
 			path := "/auth/sessions"
 			c, err := flags.newClient()
 			if err != nil {

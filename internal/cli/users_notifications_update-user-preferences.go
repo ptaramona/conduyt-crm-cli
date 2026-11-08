@@ -28,6 +28,10 @@ func newUsersNotificationsUpdateUserPreferencesCmd(flags *rootFlags) *cobra.Comm
 				return cmd.Help()
 			}
 			if !stdinBody {
+				// PATCH(reprint-637-conditional-requirements): the body needs preferences, sounds, or both.
+				if !cmd.Flags().Changed("preferences") && !cmd.Flags().Changed("sounds-team-chat") {
+					return usageErr(fmt.Errorf("send --preferences, --sounds-team-chat, or both (or the whole body with --stdin)"))
+				}
 			}
 			path := "/users/{id}/notifications"
 			if len(args) < 1 || args[0] == "" {

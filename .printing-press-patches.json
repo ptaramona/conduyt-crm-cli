@@ -218,6 +218,18 @@
         "internal/mcp/legacy_endpoint_ids_test.go"
       ],
       "validated_outcome": "TestBareAccountExportsStillListsThem, TestRenamedDncCommandKeepsItsOldName and TestLegacyEndpointIDsResolveToLiveEndpoints pass; the two CLI tests fail at 401de41. A reprint compares the command tree before and after and adds an alias for every renamed command."
+    },
+    {
+      "id": "reprint-637-conditional-requirements",
+      "summary": "Pre-request checks the public document cannot express (it types the inputs optional): `conduyt-auth delete-sessions` needs exactly one of --id <session> or --scope others; `users notifications update-user-preferences` needs --preferences, --sounds-team-chat, or both (unless --stdin). Each is a usage error (exit 2) before any request; bare delete-sessions prints help. Checks live in internal/cli/conditional_requirements.go plus one call per command.",
+      "reason": "The old prints had them as generator-emitted required-flag checks (the earlier spec marked id and preferences required); the 86cb86329 document made id optional beside the new scope and preferences optional beside the new sounds, so the fresh generator dropped them (Codex reprint637-r1 P2). Source: the generator, not a ledger entry.",
+      "files": [
+        "internal/cli/conditional_requirements.go",
+        "internal/cli/conduyt-auth_delete-sessions.go",
+        "internal/cli/users_notifications_update-user-preferences.go",
+        "internal/cli/reprint637_r1_compat_test.go"
+      ],
+      "validated_outcome": "TestDeleteSessionsNeedsExactlyOneTarget and TestUpdateUserPreferencesNeedsPreferencesOrSounds: refusals send zero requests, the valid forms send the expected query or body; both fail at 401de41."
     }
   ]
 }
