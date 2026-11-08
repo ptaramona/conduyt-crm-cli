@@ -1223,7 +1223,7 @@ func (c *Client) dryRun(method, targetURL, path string, params map[string]string
 			enc := json.NewEncoder(os.Stderr)
 			enc.SetIndent("  ", "  ")
 			fmt.Fprintf(os.Stderr, "  Body:\n")
-			enc.Encode(redactJSON(doc, false))
+			enc.Encode(redactBodyFields(redactJSON(doc, false), path)) // PATCH(reprint-637-sensitive-body-fields)
 		}
 	}
 	if authHeader != "" {
@@ -2084,6 +2084,103 @@ var sensitivePathParams = map[string][]string{
 	"/webhooks/inbound/forms/{token}":   {"token"}, // inbound form webhook token (reprint637: new public path)
 }
 
+// PATCH(reprint-637-sensitive-body-fields): body fields secret on one operation only.
+// sensitiveBodyFields lists path templates whose top-level JSON body fields carry
+// a credential although their names read as ordinary. PUT /chat/agents/{id}/webhook
+// (Grok Bot connect): `paste` is the whole pasted block (the webhook URL and its
+// crsr_ key), `address` is the webhook URL. Globally sensitive names (`key`, ...)
+// are already masked by isSensitiveName; these are masked only on these paths, so
+// an email `address` elsewhere stays readable.
+var sensitiveBodyFields = map[string][]string{
+	"/chat/agents/{id}/webhook": {"paste", "address"},
+}
+
+// sensitiveBodyFieldNames returns the operation-scoped secret body fields of a concrete path.
+func sensitiveBodyFieldNames(path string) map[string]bool {
+	path, _, _ = strings.Cut(path, "?")
+	have := strings.Split(strings.Trim(path, "/"), "/")
+	out := map[string]bool{}
+	for tmpl, fields := range sensitiveBodyFields {
+		want := strings.Split(strings.Trim(tmpl, "/"), "/")
+		if len(want) != len(have) {
+			continue
+		}
+		match := true
+		for i, seg := range want {
+			if !isTemplateSegment(seg) && seg != have[i] {
+				match = false
+				break
+			}
+		}
+		if match {
+			for _, f := range fields {
+				out[f] = true
+			}
+		}
+	}
+	return out
+}
+
+// redactBodyFields masks the operation-scoped secret fields of a decoded top-level body.
+func redactBodyFields(doc any, path string) any {
+	m, ok := doc.(map[string]any)
+	if !ok {
+		return doc
+	}
+	names := sensitiveBodyFieldNames(path)
+	if len(names) == 0 {
+		return doc
+	}
+	for k, v := range m {
+		if names[k] {
+			m[k] = redactJSON(v, true)
+		}
+	}
+	return m
+}
+
+// addScopedBodySecrets adds the operation-scoped secret field values of a JSON body
+// to the sink: the whole value, every whitespace-separated piece of it (a paste
+// holds the URL and the key on separate lines, and the server may echo either one
+// alone) and what a URL piece carries in its query.
+func addScopedBodySecrets(sink *secretSink, path string, bodyBytes []byte) {
+	names := sensitiveBodyFieldNames(path)
+	if len(names) == 0 || len(bodyBytes) == 0 {
+		return
+	}
+	var m map[string]any
+	if json.Unmarshal(bodyBytes, &m) != nil {
+		return
+	}
+	var walk func(v any)
+	walk = func(v any) {
+		switch t := v.(type) {
+		case string:
+			if len(t) >= minBodySecretLen {
+				sink.add(t)
+			}
+			for _, piece := range strings.Fields(t) {
+				if len(piece) >= minBodySecretLen {
+					sink.addUnsafe(piece)
+				}
+			}
+		case []any:
+			for _, e := range t {
+				walk(e)
+			}
+		case map[string]any:
+			for _, e := range t {
+				walk(e)
+			}
+		}
+	}
+	for k, v := range m {
+		if names[k] {
+			walk(v)
+		}
+	}
+}
+
 // sensitivePathValues returns the secret path-parameter values of a concrete path.
 func sensitivePathValues(path string) []string {
 	path, _, _ = strings.Cut(path, "?")
@@ -2211,6 +2308,7 @@ func (c *Client) sentSecrets(req *http.Request, resp *http.Response, doErr error
 		dec := json.NewDecoder(bytes.NewReader(bodyBytes))
 		dec.UseNumber()
 		collectJSONSecrets(dec, sink, false)
+		addScopedBodySecrets(sink, path, bodyBytes) // PATCH(reprint-637-sensitive-body-fields)
 	}
 	return sink
 }
