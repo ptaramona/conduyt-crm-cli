@@ -156,7 +156,6 @@
       "summary": "The API dry_run query parameter is the local flag --server-dry-run on all 161 commands that have it (plus calls link call-to-contact and imports repair post-imports-id for their body dry-run); no command registers a local --dry-run (import <resource> uses the global one), so the global --dry-run always prints and sends nothing. email send/send-bulk unchanged (exempt). Prose note: .printing-press-patches/reprint-637-server-dry-run.md. Round 4: feedback --send and --deliver webhook:<url> under the global --dry-run print the POST they would make and send nothing.",
       "reason": "4.28.0 prints dry_run as a local --dry-run that shadows the global preview, so a requested local preview sent a real request on 153 pre-existing commands after the full reprint.",
       "files": [
-        "internal/cli/*.go (161 generated commands, // PATCH(reprint-637-server-dry-run))",
         "internal/cli/calls_link_call-to-contact.go",
         "internal/cli/imports_repair_post-imports-id.go",
         "internal/cli/import.go",
@@ -238,7 +237,6 @@
       "reason": "Printing Press 4.28.0 guards every scalar body field with `!= \"\"` / `!= 0` / `!= 0.0`, so a required flag passed with its zero value passed the required check and was then dropped from the body; Codex found the class three rounds running (reprint637-r2 --folders=0, r3 --tag-prefix \"\" and --price 0). The template is upstream (the press pinned at 4.28.0), so the rule lives in a codemod the reprint recipe runs, pinned by a manifest-wide test.",
       "files": [
         ".printing-press-patches/required-on-changed.pl",
-        "internal/cli/*.go (165 commands, 297 guards: 294 codemod + 3 hand, // PATCH(reprint-637-required-on-changed))",
         "internal/cli/required_on_changed_test.go",
         "internal/cli/reprint637_r2_test.go",
         "internal/cli/emails_create-template.go",
