@@ -96,7 +96,7 @@ func newPublicMintBookingDocumentUploadCmd(flags *rootFlags) *cobra.Command {
 				if bodyKind != "" {
 					bodyMap["kind"] = bodyKind
 				}
-				if bodySize != 0 {
+				if cmd.Flags().Changed("size") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
 					bodyMap["size"] = bodySize
 				}
 			}

@@ -72,7 +72,7 @@ func newNotificationsUpdateDigestSettingsCmd(flags *rootFlags) *cobra.Command {
 				if bodyFrequency != "" {
 					bodyMap["frequency"] = bodyFrequency
 				}
-				if bodyHour != 0 {
+				if cmd.Flags().Changed("hour") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
 					bodyMap["hour"] = bodyHour
 				}
 			}

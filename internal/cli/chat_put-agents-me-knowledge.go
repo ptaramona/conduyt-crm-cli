@@ -73,7 +73,7 @@ func newChatPutAgentsMeKnowledgeCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["configured"] = parsedConfigured
 				}
-				if bodyFolders != 0 {
+				if cmd.Flags().Changed("folders") { // PATCH(reprint-637-required-zero-values): folders is required and 0 is valid
 					bodyMap["folders"] = bodyFolders
 				}
 				if bodyListenerId != "" {

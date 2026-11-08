@@ -53,7 +53,7 @@ func newSettingsPatchDormancyCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyDormancyDays != 0 {
+				if cmd.Flags().Changed("dormancy-days") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
 					bodyMap["dormancyDays"] = bodyDormancyDays
 				}
 			}

@@ -230,6 +230,21 @@
         "internal/cli/reprint637_r1_compat_test.go"
       ],
       "validated_outcome": "TestDeleteSessionsNeedsExactlyOneTarget and TestUpdateUserPreferencesNeedsPreferencesOrSounds: refusals send zero requests, the valid forms send the expected query or body; both fail at 401de41."
+    },
+    {
+      "id": "reprint-637-required-zero-values",
+      "summary": "A REQUIRED numeric body flag is serialized when it was passed (cmd.Flags().Changed), not when it is non-zero, so an explicit 0 reaches the API: chat put-agents-me-knowledge --folders, rep-shifts post --day-of-week/--start-minute/--end-minute, notifications update-digest-settings --hour, public mint-booking-document-upload --size, scoring-rules create --points, settings patch-dormancy --dormancy-days.",
+      "reason": "4.28.0 guards every int body field with `!= 0`; on a required field that drops a valid 0 (no knowledge folders, Sunday, minute 0, midnight) after the required-flag check passed, and the API answers 400 (Codex reprint637-r2 P2 on --folders; the other six are the same pattern found by a sweep of every required int flag).",
+      "files": [
+        "internal/cli/chat_put-agents-me-knowledge.go",
+        "internal/cli/rep-shifts_post.go",
+        "internal/cli/notifications_update-digest-settings.go",
+        "internal/cli/public_mint-booking-document-upload.go",
+        "internal/cli/scoring-rules_create.go",
+        "internal/cli/settings_patch-dormancy.go",
+        "internal/cli/reprint637_r2_test.go"
+      ],
+      "validated_outcome": "TestRequiredZeroValuesAreSent: --folders=0, --day-of-week 0, --start-minute 0 and --hour 0 each reach the body as 0. A reprint re-sweeps: every `required flag` int whose serializer is `if bodyX != 0`."
     }
   ]
 }

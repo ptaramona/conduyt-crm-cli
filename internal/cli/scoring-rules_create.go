@@ -106,7 +106,7 @@ func newScoringRulesCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
 				}
-				if bodyPoints != 0 {
+				if cmd.Flags().Changed("points") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
 					bodyMap["points"] = bodyPoints
 				}
 			}
