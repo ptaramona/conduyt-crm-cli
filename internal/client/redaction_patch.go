@@ -13,6 +13,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"syscall"
+	"time"
 	"unicode"
 )
 
@@ -69,7 +71,7 @@ func (c *Client) httpClientFor(replaySafe bool) *http.Client {
 		return c.HTTPClient
 	}
 	c.mutOnce.Do(func() {
-		tr, ok := c.HTTPClient.Transport.(*http.Transport)
+		tr, ok := standardTransport(c.HTTPClient.Transport)
 		if !ok {
 			c.mutClient = c.HTTPClient
 			return
@@ -163,14 +165,64 @@ func mutationCarriesCallKey(method string, headerOverrides map[string]string) bo
 	return false
 }
 
+// attemptHTTPClient picks the HTTP client for one attempt (PATCH(retry-policy), gocli1219 r3):
+//   - replay-safe calls use the shared pooled client;
+//   - a mutation the CLI will not replay uses the HTTP/1-only mutation client;
+//   - a mutation carrying a per-call key uses the keep-alive-free HTTP/1 client, or is refused when the transport
+//     cannot be proven non-reusing (never the ordinary keep-alive client);
+//   - a binary (streaming) response wraps the client chosen above, so its transport policy survives.
+//
+// streamIdle is the idle window of a streaming read (0 when the call does not stream).
+func (c *Client) attemptHTTPClient(method string, headerOverrides map[string]string, replaySafe, binaryResponse bool) (*http.Client, time.Duration, error) {
+	httpClient := c.httpClientFor(replaySafe)
+	if !replaySafe && mutationCarriesCallKey(method, headerOverrides) {
+		keyed, err := c.noReuseMutationClient()
+		if err != nil {
+			return nil, 0, err
+		}
+		httpClient = keyed
+	}
+	// Silence on a Timeout-0 transfer aborts that attempt. A body that keeps arriving may outlive the window. An
+	// explicit timeout, including 0, stays on the client deadline and is only size-limited.
+	var streamIdle time.Duration
+	if binaryResponse && !c.timeoutExplicit {
+		streamIdle = c.ConfiguredTimeout()
+		httpClient = StreamingHTTPClient(httpClient, streamIdle)
+	}
+	return httpClient, streamIdle, nil
+}
+
+// standardTransport returns the *http.Transport behind rt; a nil transport is net/http's DefaultTransport (callers
+// clone it, never mutate it). Any other RoundTripper cannot be inspected and reports false.
+func standardTransport(rt http.RoundTripper) (*http.Transport, bool) {
+	if rt == nil {
+		tr, ok := http.DefaultTransport.(*http.Transport)
+		return tr, ok
+	}
+	tr, ok := rt.(*http.Transport)
+	return tr, ok
+}
+
+// errKeyedMutationTransport refuses a keyed mutation whose transport cannot be proven non-reusing
+// (PATCH(retry-policy) gocli1219 r3).
+type errKeyedMutationTransport struct{ transport string }
+
+func (e errKeyedMutationTransport) Error() string {
+	return fmt.Sprintf("refusing to send a mutation with an Idempotency-Key: the HTTP transport (%s) is not the standard transport, so it cannot be proven not to reuse a connection and silently resend the request; nothing was sent (drop the key or use the default transport)", e.transport)
+}
+
 // noReuseMutationClient is the HTTP/1-only mutation client with keep-alives off: every keyed mutation dials a fresh
 // connection, so the transport never holds a reused connection it could silently resend the request on.
-func (c *Client) noReuseMutationClient() *http.Client {
+// gocli1219 r3 (fail closed): a nil transport starts from a clone of DefaultTransport; a RoundTripper that is not a
+// *http.Transport (a wrapper) cannot be inspected or cloned, so the keyed mutation is refused before anything is
+// sent. The ordinary keep-alive client is never returned for a keyed mutation.
+func (c *Client) noReuseMutationClient() (*http.Client, error) {
 	base := c.httpClientFor(false)
 	c.keyedOnce.Do(func() {
-		tr, ok := base.Transport.(*http.Transport)
+		tr, ok := standardTransport(base.Transport)
 		if !ok {
-			c.keyedClient = base
+			// httpClientFor fell back to the shared client: its transport is not one we can clone.
+			c.keyedErr = errKeyedMutationTransport{transport: fmt.Sprintf("%T", c.HTTPClient.Transport)}
 			return
 		}
 		nt := tr.Clone()
@@ -179,7 +231,7 @@ func (c *Client) noReuseMutationClient() *http.Client {
 		cp.Transport = nt
 		c.keyedClient = &cp
 	})
-	return c.keyedClient
+	return c.keyedClient, c.keyedErr
 }
 
 type callCtxKey struct{}

@@ -314,6 +314,20 @@
         "gocli1219 r2"
       ],
       "validated_outcome": "TestPerCallKeyedMutationDroppedOnAWarmConnectionIsSentOnce, TestStreamingMutationKeepsTheNoReplayTransport, TestBrokenBodyRetryHonoursThePlatformRetryBudget and TestPlatformLimiterWaitOnARetryKeepsTheLastResponse each fail with their fix reverted and pass with it; TestPublicCrossOriginRedirectCarriesOnlyAllowlistedHeaders asserts the headers the target actually received."
+    },
+    {
+      "id": "gocli1219-r3-keyed-mutation-transport-fail-closed",
+      "summary": "A mutation with a per-call Idempotency-Key never reaches the ordinary keep-alive client (Codex gocli1219-r2 P1): attemptHTTPClient picks the client per attempt; noReuseMutationClient clones a *http.Transport (a nil transport is a clone of DefaultTransport) with keep-alives off and HTTP/1 only, and for any other RoundTripper (a wrapper it cannot inspect or clone) it returns no client and errKeyedMutationTransport, so the keyed mutation is refused before anything is sent. Reads and unkeyed mutations still use such a transport.",
+      "reason": "A wrapper or nil transport made the r2 no-reuse client fall back to the shared pooled client, where Go's transport may resend a keyed request on a dead reused connection.",
+      "files": [
+        "internal/client/redaction_patch.go",
+        "internal/client/client.go",
+        "internal/client/retry_r3_test.go"
+      ],
+      "markers": [
+        "gocli1219 r3"
+      ],
+      "validated_outcome": "TestKeyedMutationOnANilTransportIsSentOnce and TestKeyedMutationThroughAWrapperTransportIsRefusedAndSendsNothing fail with the r2 fallback restored and pass with the fix."
     }
   ]
 }

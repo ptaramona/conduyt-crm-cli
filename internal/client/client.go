@@ -88,6 +88,7 @@ type Client struct {
 	// keyedOnce / keyedClient: the HTTP/1 mutation client with keep-alives off, for mutations carrying a per-call key.
 	keyedOnce   sync.Once
 	keyedClient *http.Client
+	keyedErr    error
 }
 
 func (c *Client) IsDryRun() bool {
@@ -2522,19 +2523,10 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 		if c.platformSession != nil {
 			c.platformSession.RecordRateLimitRequest()
 		}
-		httpClient := c.httpClientFor(canRetryAmbiguousFailure) // PATCH(retry-policy): HTTP/1-only for unreplayable mutations
-		if !canRetryAmbiguousFailure && mutationCarriesCallKey(method, headerOverrides) {
-			// PATCH(retry-policy) gocli1219 r2: a per-call Idempotency-Key makes Go's transport treat the request as
-			// replayable on a reused connection; a keyed mutation rides a connection of its own, so nothing replays it.
-			httpClient = c.noReuseMutationClient()
-		}
-		// Silence on a Timeout-0 transfer aborts that attempt. A body that
-		// keeps arriving may outlive the window. An explicit timeout,
-		// including 0, stays on the client deadline and is only size-limited.
-		var streamIdle time.Duration
-		if binaryResponse && !c.timeoutExplicit {
-			streamIdle = c.ConfiguredTimeout()
-			httpClient = StreamingHTTPClient(httpClient, streamIdle) // PATCH(retry-policy) gocli1219 r2: keep the chosen transport policy
+		// PATCH(retry-policy) gocli1219 r3: the transport policy for this attempt lives in attemptHTTPClient.
+		httpClient, streamIdle, kerr := c.attemptHTTPClient(method, headerOverrides, canRetryAmbiguousFailure, binaryResponse)
+		if kerr != nil {
+			return nil, 0, kerr // fail closed, nothing sent
 		}
 		if uploadAllowance > 0 && httpClient != nil && httpClient.Timeout > 0 {
 			// Copy so the shared client's timeout is never mutated.

@@ -53,9 +53,13 @@ func TestPerCallKeyedMutationDroppedOnAWarmConnectionIsSentOnce(t *testing.T) {
 
 func TestKeyedMutationClientDisablesKeepAlivesAndStaysHTTP1(t *testing.T) {
 	c := newRetryClient("http://127.0.0.1:1", nil)
-	tr, ok := c.noReuseMutationClient().Transport.(*http.Transport)
+	keyed, err := c.noReuseMutationClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr, ok := keyed.Transport.(*http.Transport)
 	if !ok || !tr.DisableKeepAlives || tr.ForceAttemptHTTP2 {
-		t.Fatalf("keyed mutation transport = %#v, want an HTTP/1 transport with keep-alives off", c.noReuseMutationClient().Transport)
+		t.Fatalf("keyed mutation transport = %#v, want an HTTP/1 transport with keep-alives off", keyed.Transport)
 	}
 	if shared, ok := c.HTTPClient.Transport.(*http.Transport); ok && shared.DisableKeepAlives {
 		t.Fatal("the shared client must keep its keep-alives")
