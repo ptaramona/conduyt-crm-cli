@@ -57,7 +57,7 @@ func newEmailDomainsAddCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyDomain != "" {
+				if cmd.Flags().Changed("domain") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["domain"] = bodyDomain
 				}
 				if bodyFromAddress != "" {

@@ -62,10 +62,10 @@ func newMessagesCheckCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyBody != "" {
+				if cmd.Flags().Changed("body") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["body"] = bodyBody
 				}
-				if bodyChannel != "" {
+				if cmd.Flags().Changed("channel") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["channel"] = bodyChannel
 				}
 				if cmd.Flags().Changed("clean") {

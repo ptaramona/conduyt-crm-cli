@@ -75,7 +75,7 @@ func newCompaniesPostMergeCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("dry-run-2") {
 					bodyMap["dryRun"] = bodyDryRun2
 				}
-				if bodyDuplicateIds != "" {
+				if cmd.Flags().Changed("duplicate-ids") { // PATCH(reprint-637-required-on-changed)
 					parsedDuplicateIds, parseErr := cliutil.ParseStringList(bodyDuplicateIds)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --duplicate-ids list: %w", parseErr)
@@ -89,7 +89,7 @@ func newCompaniesPostMergeCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["expectedCounts"] = parsedExpectedCounts
 				}
-				if bodyPrimaryId != "" {
+				if cmd.Flags().Changed("primary-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["primaryId"] = bodyPrimaryId
 				}
 			}

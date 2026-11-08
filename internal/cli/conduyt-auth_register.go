@@ -93,7 +93,7 @@ func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAccountName != "" {
+				if cmd.Flags().Changed("account-name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["accountName"] = bodyAccountName
 				}
 				{
@@ -147,7 +147,7 @@ func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 						bodyMap["attribution"] = nestedAttribution
 					}
 				}
-				if bodyEmail != "" {
+				if cmd.Flags().Changed("email") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["email"] = bodyEmail
 				}
 				if bodyFirstName != "" {
@@ -156,14 +156,14 @@ func newConduytAuthRegisterCmd(flags *rootFlags) *cobra.Command {
 				if bodyLastName != "" {
 					bodyMap["lastName"] = bodyLastName
 				}
-				if bodyPassword != "" {
+				if cmd.Flags().Changed("password") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["password"] = bodyPassword
 				}
 				if bodySignupFunnelId != "" {
 					bodyMap["signupFunnelId"] = bodySignupFunnelId
 				}
 				// PATCH(register-terms-accepted-601): the API requires the const true
-				if bodyTermsAccepted {
+				if cmd.Flags().Changed("terms-accepted") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["termsAccepted"] = true
 				}
 			}

@@ -44,7 +44,7 @@ func newShortLinksPromotedCmd(flags *rootFlags) *cobra.Command {
 			// second store-backed POST-search consumer ships.
 			bodyMap := map[string]any{}
 			var body any = bodyMap
-			if bodyUrl != "" {
+			if cmd.Flags().Changed("url") { // PATCH(reprint-637-required-on-changed)
 				bodyMap["url"] = bodyUrl
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)

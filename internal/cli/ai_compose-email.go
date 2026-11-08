@@ -74,7 +74,7 @@ func newAiComposeEmailCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyCompanyName != "" {
+				if cmd.Flags().Changed("company-name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["companyName"] = bodyCompanyName
 				}
 				if bodyContactCompany != "" {
@@ -83,7 +83,7 @@ func newAiComposeEmailCmd(flags *rootFlags) *cobra.Command {
 				if bodyContactEmail != "" {
 					bodyMap["contactEmail"] = bodyContactEmail
 				}
-				if bodyContactName != "" {
+				if cmd.Flags().Changed("contact-name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["contactName"] = bodyContactName
 				}
 				if bodyContactTitle != "" {
@@ -102,10 +102,10 @@ func newAiComposeEmailCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["previousMessages"] = parsedPreviousMessages
 				}
-				if bodyPurpose != "" {
+				if cmd.Flags().Changed("purpose") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["purpose"] = bodyPurpose
 				}
-				if bodySenderName != "" {
+				if cmd.Flags().Changed("sender-name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["senderName"] = bodySenderName
 				}
 				if bodySenderTitle != "" {

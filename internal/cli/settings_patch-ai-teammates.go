@@ -54,7 +54,7 @@ func newSettingsPatchAiTeammatesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEnabled != "" {
+				if cmd.Flags().Changed("enabled") { // PATCH(reprint-637-required-on-changed)
 					parsedEnabled, err := strconv.ParseBool(bodyEnabled)
 					if err != nil {
 						return fmt.Errorf("parsing --enabled as bool: %w", err)

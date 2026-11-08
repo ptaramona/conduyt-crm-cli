@@ -67,13 +67,13 @@ func newIntegrationsPostPosthogIntentCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAccountId != "" {
+				if cmd.Flags().Changed("account-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["account_id"] = bodyAccountId
 				}
-				if bodyAccountSig != "" {
+				if cmd.Flags().Changed("account-sig") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["account_sig"] = bodyAccountSig
 				}
-				if bodyEvent != "" {
+				if cmd.Flags().Changed("event") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["event"] = bodyEvent
 				}
 				if bodyIntent != "" {
@@ -82,7 +82,7 @@ func newIntegrationsPostPosthogIntentCmd(flags *rootFlags) *cobra.Command {
 				if bodyPath != "" {
 					bodyMap["path"] = bodyPath
 				}
-				if bodyTimestamp != "" {
+				if cmd.Flags().Changed("timestamp") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["timestamp"] = bodyTimestamp
 				}
 			}

@@ -65,10 +65,10 @@ func newIntegrationsPutMailchimpSettingsCmd(flags *rootFlags) *cobra.Command {
 				}
 				{
 					nestedSource := map[string]any{}
-					if bodySourceId != "" {
+					if cmd.Flags().Changed("source-id") { // PATCH(reprint-637-required-on-changed)
 						nestedSource["id"] = bodySourceId
 					}
-					if bodySourceType != "" {
+					if cmd.Flags().Changed("source-type") { // PATCH(reprint-637-required-on-changed)
 						nestedSource["type"] = bodySourceType
 					}
 					if len(nestedSource) > 0 {

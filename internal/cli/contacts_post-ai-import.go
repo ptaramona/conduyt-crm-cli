@@ -72,7 +72,7 @@ func newContactsPostAiImportCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContacts != "" {
+				if cmd.Flags().Changed("contacts") { // PATCH(reprint-637-required-on-changed)
 					var parsedContacts any
 					if err := json.Unmarshal([]byte(bodyContacts), &parsedContacts); err != nil {
 						return fmt.Errorf("parsing --contacts JSON: %w", err)

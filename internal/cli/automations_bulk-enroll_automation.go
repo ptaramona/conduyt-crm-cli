@@ -62,7 +62,7 @@ func newAutomationsBulkEnrollAutomationCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContactIds != "" {
+				if cmd.Flags().Changed("contact-ids") { // PATCH(reprint-637-required-on-changed)
 					parsedContactIds, parseErr := cliutil.ParseStringList(bodyContactIds)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --contact-ids list: %w", parseErr)

@@ -75,10 +75,10 @@ func newPlaybooksPostCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
-				if bodySteps != "" {
+				if cmd.Flags().Changed("steps") { // PATCH(reprint-637-required-on-changed)
 					var parsedSteps any
 					if err := json.Unmarshal([]byte(bodySteps), &parsedSteps); err != nil {
 						return fmt.Errorf("parsing --steps JSON: %w", err)

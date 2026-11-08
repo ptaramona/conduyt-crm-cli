@@ -100,7 +100,7 @@ func newAppointmentsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
-				if bodyEndTime != "" {
+				if cmd.Flags().Changed("end-time") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["endTime"] = bodyEndTime
 				}
 				if bodyLocation != "" {
@@ -109,13 +109,13 @@ func newAppointmentsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyNotes != "" {
 					bodyMap["notes"] = bodyNotes
 				}
-				if bodyStartTime != "" {
+				if cmd.Flags().Changed("start-time") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["startTime"] = bodyStartTime
 				}
 				if bodyStatus != "" {
 					bodyMap["status"] = bodyStatus
 				}
-				if bodyTitle != "" {
+				if cmd.Flags().Changed("title") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["title"] = bodyTitle
 				}
 			}

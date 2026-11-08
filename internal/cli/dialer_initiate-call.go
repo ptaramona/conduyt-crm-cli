@@ -72,7 +72,7 @@ func newDialerInitiateCallCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("dnc-override") {
 					bodyMap["dncOverride"] = bodyDncOverride
 				}
-				if bodyTo != "" {
+				if cmd.Flags().Changed("to") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["to"] = bodyTo
 				}
 				if bodyVendorBridgeNonce != "" {

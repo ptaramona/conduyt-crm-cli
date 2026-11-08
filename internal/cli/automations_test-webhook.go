@@ -77,7 +77,7 @@ func newAutomationsTestWebhookCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["payload"] = parsedPayload
 				}
-				if bodyUrl != "" {
+				if cmd.Flags().Changed("url") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["url"] = bodyUrl
 				}
 			}

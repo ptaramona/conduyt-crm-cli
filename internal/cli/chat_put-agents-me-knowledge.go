@@ -66,17 +66,17 @@ func newChatPutAgentsMeKnowledgeCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("acknowledged") {
 					bodyMap["acknowledged"] = bodyAcknowledged
 				}
-				if bodyConfigured != "" {
+				if cmd.Flags().Changed("configured") { // PATCH(reprint-637-required-on-changed)
 					parsedConfigured, err := strconv.ParseBool(bodyConfigured)
 					if err != nil {
 						return fmt.Errorf("parsing --configured as bool: %w", err)
 					}
 					bodyMap["configured"] = parsedConfigured
 				}
-				if cmd.Flags().Changed("folders") { // PATCH(reprint-637-required-zero-values): folders is required and 0 is valid
+				if cmd.Flags().Changed("folders") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["folders"] = bodyFolders
 				}
-				if bodyListenerId != "" {
+				if cmd.Flags().Changed("listener-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["listenerId"] = bodyListenerId
 				}
 			}

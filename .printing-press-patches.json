@@ -233,19 +233,17 @@
       "validated_outcome": "TestDeleteSessionsNeedsExactlyOneTarget and TestUpdateUserPreferencesNeedsPreferencesOrSounds: refusals send zero requests, the valid forms send the expected query or body; both fail at 401de41. TestConditionalRequirementsLetTheDryRunPreviewPrint: --dry-run with no inputs prints the preview and sends nothing on both commands; --dry-run --scope all is still exit 2. TestEmptyPreferencesIsRefused."
     },
     {
-      "id": "reprint-637-required-zero-values",
-      "summary": "A REQUIRED numeric body flag is serialized when it was passed (cmd.Flags().Changed), not when it is non-zero, so an explicit 0 reaches the API: chat put-agents-me-knowledge --folders, rep-shifts post --day-of-week/--start-minute/--end-minute, notifications update-digest-settings --hour, public mint-booking-document-upload --size, scoring-rules create --points, settings patch-dormancy --dormancy-days.",
-      "reason": "4.28.0 guards every int body field with `!= 0`; on a required field that drops a valid 0 (no knowledge folders, Sunday, minute 0, midnight) after the required-flag check passed, and the API answers 400 (Codex reprint637-r2 P2 on --folders; the other six are the same pattern found by a sweep of every required int flag).",
+      "id": "reprint-637-required-on-changed",
+      "summary": "Every REQUIRED scalar body flag is serialized when it was passed (cmd.Flags().Changed), whatever its zero value (\"\", 0, 0.0, false), on every generated command: 287 guards in 158 files. Required = the generator's own `required flag` check list plus the body params tools-manifest.json marks required (a required param with a spec default gets no check, e.g. booking-pages create --duration-minutes). Applied by the post-print codemod .printing-press-patches/required-on-changed.pl (run from the repo root after every reprint: `perl .printing-press-patches/required-on-changed.pl internal/cli/*.go`; idempotent). Replaces the r2 per-flag entry reprint-637-required-zero-values (its seven guards are the same rule, now under this marker). Query flags and optional flags keep the generator's guard.",
+      "reason": "Printing Press 4.28.0 guards every scalar body field with `!= \"\"` / `!= 0` / `!= 0.0`, so a required flag passed with its zero value passed the required check and was then dropped from the body; Codex found the class three rounds running (reprint637-r2 --folders=0, r3 --tag-prefix \"\" and --price 0). The template is upstream (the press pinned at 4.28.0), so the rule lives in a codemod the reprint recipe runs, pinned by a manifest-wide test.",
       "files": [
-        "internal/cli/chat_put-agents-me-knowledge.go",
-        "internal/cli/rep-shifts_post.go",
-        "internal/cli/notifications_update-digest-settings.go",
-        "internal/cli/public_mint-booking-document-upload.go",
-        "internal/cli/scoring-rules_create.go",
-        "internal/cli/settings_patch-dormancy.go",
+        ".printing-press-patches/required-on-changed.pl",
+        "internal/cli/*.go (158 generated commands, // PATCH(reprint-637-required-on-changed))",
+        "internal/cli/required_on_changed_test.go",
         "internal/cli/reprint637_r2_test.go"
       ],
-      "validated_outcome": "TestRequiredZeroValuesAreSent: --folders=0, --day-of-week 0, --start-minute 0 and --hour 0 each reach the body as 0. A reprint re-sweeps: every `required flag` int whose serializer is `if bodyX != 0`."
+      "validated_outcome": "TestEveryRequiredBodyFlagSerializesItsZeroValue walks tools-manifest.json (every tool x required scalar body param, 242 checked, 8 documented exceptions that refuse their zero value on purpose: register --terms-accepted, decide-contact --decision, email send's hand-written set, the two multipart file paths) and asserts the dry-run body with the zero-valued flag differs from the body without it; 214 failures before the codemod, 0 after. Fails if the walk checks fewer than 200 params.",
+      "upstream_issue": "For the press board (not filed): serialize a required body field on Changed(), not on a non-zero value."
     }
   ]
 }

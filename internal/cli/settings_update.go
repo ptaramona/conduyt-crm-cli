@@ -275,7 +275,7 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 					if cmd.Flags().Changed("booking-message-guard-acknowledge-send-after-appointment") {
 						nestedBookingMessageGuard["acknowledgeSendAfterAppointment"] = bodyBookingMessageGuardAcknowledgeSendAfterAppointment
 					}
-					if bodyBookingMessageGuardEnabled != "" {
+					if cmd.Flags().Changed("booking-message-guard-enabled") { // PATCH(reprint-637-required-on-changed)
 						parsedBookingMessageGuardEnabled, err := strconv.ParseBool(bodyBookingMessageGuardEnabled)
 						if err != nil {
 							return fmt.Errorf("parsing --booking-message-guard-enabled as bool: %w", err)
@@ -339,17 +339,17 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 					if cmd.Flags().Changed("calling-window-acknowledge-any-hour") {
 						nestedCallingWindow["acknowledgeAnyHour"] = bodyCallingWindowAcknowledgeAnyHour
 					}
-					if bodyCallingWindowEnabled != "" {
+					if cmd.Flags().Changed("calling-window-enabled") { // PATCH(reprint-637-required-on-changed)
 						parsedCallingWindowEnabled, err := strconv.ParseBool(bodyCallingWindowEnabled)
 						if err != nil {
 							return fmt.Errorf("parsing --calling-window-enabled as bool: %w", err)
 						}
 						nestedCallingWindow["enabled"] = parsedCallingWindowEnabled
 					}
-					if bodyCallingWindowEnd != "" {
+					if cmd.Flags().Changed("calling-window-end") { // PATCH(reprint-637-required-on-changed)
 						nestedCallingWindow["end"] = bodyCallingWindowEnd
 					}
-					if bodyCallingWindowStart != "" {
+					if cmd.Flags().Changed("calling-window-start") { // PATCH(reprint-637-required-on-changed)
 						nestedCallingWindow["start"] = bodyCallingWindowStart
 					}
 					if bodyCallingWindowTimezone != "" {
@@ -364,14 +364,14 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 				}
 				{
 					nestedContactTableDefaults := map[string]any{}
-					if bodyContactTableDefaultsColumns != "" {
+					if cmd.Flags().Changed("contact-table-defaults-columns") { // PATCH(reprint-637-required-on-changed)
 						parsedContactTableDefaultsColumns, parseErr := cliutil.ParseStringList(bodyContactTableDefaultsColumns)
 						if parseErr != nil {
 							return fmt.Errorf("parsing --contact-table-defaults-columns list: %w", parseErr)
 						}
 						nestedContactTableDefaults["columns"] = parsedContactTableDefaultsColumns
 					}
-					if bodyContactTableDefaultsExpectedRevision != "" {
+					if cmd.Flags().Changed("contact-table-defaults-expected-revision") { // PATCH(reprint-637-required-on-changed)
 						nestedContactTableDefaults["expectedRevision"] = bodyContactTableDefaultsExpectedRevision
 					}
 					if len(nestedContactTableDefaults) > 0 {
@@ -461,20 +461,20 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 				}
 				{
 					nestedIntakeDeals := map[string]any{}
-					if bodyIntakeDealsEnabled != "" {
+					if cmd.Flags().Changed("intake-deals-enabled") { // PATCH(reprint-637-required-on-changed)
 						parsedIntakeDealsEnabled, err := strconv.ParseBool(bodyIntakeDealsEnabled)
 						if err != nil {
 							return fmt.Errorf("parsing --intake-deals-enabled as bool: %w", err)
 						}
 						nestedIntakeDeals["enabled"] = parsedIntakeDealsEnabled
 					}
-					if bodyIntakeDealsPipelineId != "" {
+					if cmd.Flags().Changed("intake-deals-pipeline-id") { // PATCH(reprint-637-required-on-changed)
 						nestedIntakeDeals["pipelineId"] = bodyIntakeDealsPipelineId
 					}
 					if bodyIntakeDealsReInbound != "" {
 						nestedIntakeDeals["reInbound"] = bodyIntakeDealsReInbound
 					}
-					if bodyIntakeDealsStageId != "" {
+					if cmd.Flags().Changed("intake-deals-stage-id") { // PATCH(reprint-637-required-on-changed)
 						nestedIntakeDeals["stageId"] = bodyIntakeDealsStageId
 					}
 					if len(nestedIntakeDeals) > 0 {
@@ -509,7 +509,7 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 				}
 				{
 					nestedLostPropagation := map[string]any{}
-					if bodyLostPropagationEnabled != "" {
+					if cmd.Flags().Changed("lost-propagation-enabled") { // PATCH(reprint-637-required-on-changed)
 						parsedLostPropagationEnabled, err := strconv.ParseBool(bodyLostPropagationEnabled)
 						if err != nil {
 							return fmt.Errorf("parsing --lost-propagation-enabled as bool: %w", err)
@@ -531,14 +531,14 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 					nestedMessageCheck := map[string]any{}
 					{
 						nestedMessageCheckMinimumGrade := map[string]any{}
-						if bodyMessageCheckMinimumGradeAdminOverride != "" {
+						if cmd.Flags().Changed("message-check-minimum-grade-admin-override") { // PATCH(reprint-637-required-on-changed)
 							parsedMessageCheckMinimumGradeAdminOverride, err := strconv.ParseBool(bodyMessageCheckMinimumGradeAdminOverride)
 							if err != nil {
 								return fmt.Errorf("parsing --message-check-minimum-grade-admin-override as bool: %w", err)
 							}
 							nestedMessageCheckMinimumGrade["adminOverride"] = parsedMessageCheckMinimumGradeAdminOverride
 						}
-						if bodyMessageCheckMinimumGradeEnabled != "" {
+						if cmd.Flags().Changed("message-check-minimum-grade-enabled") { // PATCH(reprint-637-required-on-changed)
 							parsedMessageCheckMinimumGradeEnabled, err := strconv.ParseBool(bodyMessageCheckMinimumGradeEnabled)
 							if err != nil {
 								return fmt.Errorf("parsing --message-check-minimum-grade-enabled as bool: %w", err)
@@ -606,7 +606,7 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 					if bodyPoolFilterCreatedWithinDays != "" {
 						nestedPoolFilter["createdWithinDays"] = bodyPoolFilterCreatedWithinDays
 					}
-					if bodyPoolFilterEnabled != "" {
+					if cmd.Flags().Changed("pool-filter-enabled") { // PATCH(reprint-637-required-on-changed)
 						parsedPoolFilterEnabled, err := strconv.ParseBool(bodyPoolFilterEnabled)
 						if err != nil {
 							return fmt.Errorf("parsing --pool-filter-enabled as bool: %w", err)
@@ -651,7 +651,7 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 							}
 							nestedPoolPagesLeadPool["displayedCustomFields"] = parsedPoolPagesLeadPoolDisplayedCustomFields
 						}
-						if bodyPoolPagesLeadPoolDisplayedFields != "" {
+						if cmd.Flags().Changed("pool-pages-lead-pool-displayed-fields") { // PATCH(reprint-637-required-on-changed)
 							parsedPoolPagesLeadPoolDisplayedFields, parseErr := cliutil.ParseStringList(bodyPoolPagesLeadPoolDisplayedFields)
 							if parseErr != nil {
 								return fmt.Errorf("parsing --pool-pages-lead-pool-displayed-fields list: %w", parseErr)
@@ -674,7 +674,7 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 							}
 							nestedPoolPagesUpForGrabs["displayedCustomFields"] = parsedPoolPagesUpForGrabsDisplayedCustomFields
 						}
-						if bodyPoolPagesUpForGrabsDisplayedFields != "" {
+						if cmd.Flags().Changed("pool-pages-up-for-grabs-displayed-fields") { // PATCH(reprint-637-required-on-changed)
 							parsedPoolPagesUpForGrabsDisplayedFields, parseErr := cliutil.ParseStringList(bodyPoolPagesUpForGrabsDisplayedFields)
 							if parseErr != nil {
 								return fmt.Errorf("parsing --pool-pages-up-for-grabs-displayed-fields list: %w", parseErr)
@@ -696,14 +696,14 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 					}
 					{
 						nestedProjectBlueRecordingDisclosure := map[string]any{}
-						if bodyProjectBlueRecordingDisclosureEnabled != "" {
+						if cmd.Flags().Changed("project-blue-recording-disclosure-enabled") { // PATCH(reprint-637-required-on-changed)
 							parsedProjectBlueRecordingDisclosureEnabled, err := strconv.ParseBool(bodyProjectBlueRecordingDisclosureEnabled)
 							if err != nil {
 								return fmt.Errorf("parsing --project-blue-recording-disclosure-enabled as bool: %w", err)
 							}
 							nestedProjectBlueRecordingDisclosure["enabled"] = parsedProjectBlueRecordingDisclosureEnabled
 						}
-						if bodyProjectBlueRecordingDisclosureOn != "" {
+						if cmd.Flags().Changed("project-blue-recording-disclosure-on") { // PATCH(reprint-637-required-on-changed)
 							nestedProjectBlueRecordingDisclosure["on"] = bodyProjectBlueRecordingDisclosureOn
 						}
 						if len(nestedProjectBlueRecordingDisclosure) > 0 {
@@ -730,14 +730,14 @@ func newSettingsUpdateCmd(flags *rootFlags) *cobra.Command {
 					}
 					{
 						nestedRecordingDisclosure := map[string]any{}
-						if bodyRecordingDisclosureEnabled != "" {
+						if cmd.Flags().Changed("recording-disclosure-enabled") { // PATCH(reprint-637-required-on-changed)
 							parsedRecordingDisclosureEnabled, err := strconv.ParseBool(bodyRecordingDisclosureEnabled)
 							if err != nil {
 								return fmt.Errorf("parsing --recording-disclosure-enabled as bool: %w", err)
 							}
 							nestedRecordingDisclosure["enabled"] = parsedRecordingDisclosureEnabled
 						}
-						if bodyRecordingDisclosureOn != "" {
+						if cmd.Flags().Changed("recording-disclosure-on") { // PATCH(reprint-637-required-on-changed)
 							nestedRecordingDisclosure["on"] = bodyRecordingDisclosureOn
 						}
 						if len(nestedRecordingDisclosure) > 0 {

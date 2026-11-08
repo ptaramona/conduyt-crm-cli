@@ -68,7 +68,7 @@ func newCallsLinkCallToContactCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("attach-number") {
 					bodyMap["attachNumber"] = bodyAttachNumber
 				}
-				if bodyContactId != "" {
+				if cmd.Flags().Changed("contact-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["contactId"] = bodyContactId
 				}
 				if cmd.Flags().Changed("server-dry-run") {

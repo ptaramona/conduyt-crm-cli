@@ -109,7 +109,7 @@ func newImportsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyMetadataFingerprint != "" {
 					bodyMap["metadataFingerprint"] = bodyMetadataFingerprint
 				}
-				if bodyObjectType != "" {
+				if cmd.Flags().Changed("object-type") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["objectType"] = bodyObjectType
 				}
 				if bodyReEnrollMode != "" {

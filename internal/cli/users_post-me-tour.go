@@ -53,7 +53,7 @@ func newUsersPostMeTourCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyOutcome != "" {
+				if cmd.Flags().Changed("outcome") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["outcome"] = bodyOutcome
 				}
 			}

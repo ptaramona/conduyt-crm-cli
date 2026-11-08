@@ -46,7 +46,7 @@ func newUsersAvatarPostUsersIdCmd(flags *rootFlags) *cobra.Command {
 			params := map[string]string{}
 			fields := map[string]string{}
 			fileFields := map[string]string{}
-			if bodyAvatar != "" {
+			if cmd.Flags().Changed("avatar") { // PATCH(reprint-637-required-on-changed)
 				fileFields["avatar"] = bodyAvatar
 			}
 

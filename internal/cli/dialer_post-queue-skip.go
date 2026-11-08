@@ -55,7 +55,7 @@ func newDialerPostQueueSkipCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContactId != "" {
+				if cmd.Flags().Changed("contact-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["contactId"] = bodyContactId
 				}
 				if bodyLeaseId != "" {

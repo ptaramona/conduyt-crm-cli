@@ -73,7 +73,7 @@ func newContactsCollaboratorsPostContactsIdCmd(flags *rootFlags) *cobra.Command 
 				if bodyExpectedRevision != 0 {
 					bodyMap["expectedRevision"] = bodyExpectedRevision
 				}
-				if bodyUserId != "" {
+				if cmd.Flags().Changed("user-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["userId"] = bodyUserId
 				}
 			}

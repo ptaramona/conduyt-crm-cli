@@ -71,7 +71,7 @@ func newCallsCreateRecordCmd(flags *rootFlags) *cobra.Command {
 				if bodyContactId != "" {
 					bodyMap["contactId"] = bodyContactId
 				}
-				if bodyDirection != "" {
+				if cmd.Flags().Changed("direction") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["direction"] = bodyDirection
 				}
 				if bodyDisposition != "" {
@@ -80,7 +80,7 @@ func newCallsCreateRecordCmd(flags *rootFlags) *cobra.Command {
 				if bodyDuration != 0 {
 					bodyMap["duration"] = bodyDuration
 				}
-				if bodyFromNumber != "" {
+				if cmd.Flags().Changed("from-number") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["fromNumber"] = bodyFromNumber
 				}
 				if bodyNotes != "" {
@@ -92,7 +92,7 @@ func newCallsCreateRecordCmd(flags *rootFlags) *cobra.Command {
 				if bodyStatus != "" {
 					bodyMap["status"] = bodyStatus
 				}
-				if bodyToNumber != "" {
+				if cmd.Flags().Changed("to-number") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["toNumber"] = bodyToNumber
 				}
 			}

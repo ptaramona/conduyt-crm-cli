@@ -74,7 +74,7 @@ func newChatPostAgentsMeMcpCmd(flags *rootFlags) *cobra.Command {
 				if bodyId != "" {
 					bodyMap["id"] = bodyId
 				}
-				if bodyJsonrpc != "" {
+				if cmd.Flags().Changed("jsonrpc") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["jsonrpc"] = bodyJsonrpc
 				}
 				if bodyMethod != "" {

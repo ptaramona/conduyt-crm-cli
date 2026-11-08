@@ -86,16 +86,16 @@ func newCalendarCreateEventCmd(flags *rootFlags) *cobra.Command {
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
-				if bodyEndAt != "" {
+				if cmd.Flags().Changed("end-at") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["endAt"] = bodyEndAt
 				}
 				if bodyLocation != "" {
 					bodyMap["location"] = bodyLocation
 				}
-				if bodyStartAt != "" {
+				if cmd.Flags().Changed("start-at") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["startAt"] = bodyStartAt
 				}
-				if bodyTitle != "" {
+				if cmd.Flags().Changed("title") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["title"] = bodyTitle
 				}
 			}

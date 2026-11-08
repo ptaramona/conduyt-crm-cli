@@ -74,7 +74,7 @@ func newSmartListsCreateCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["filters"] = parsedFilters
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyType != "" {

@@ -63,15 +63,15 @@ func newPushSubscribeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEndpoint != "" {
+				if cmd.Flags().Changed("endpoint") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["endpoint"] = bodyEndpoint
 				}
 				{
 					nestedKeys := map[string]any{}
-					if bodyKeysAuth != "" {
+					if cmd.Flags().Changed("keys-auth") { // PATCH(reprint-637-required-on-changed)
 						nestedKeys["auth"] = bodyKeysAuth
 					}
-					if bodyKeysP256dh != "" {
+					if cmd.Flags().Changed("keys-p256dh") { // PATCH(reprint-637-required-on-changed)
 						nestedKeys["p256dh"] = bodyKeysP256dh
 					}
 					if len(nestedKeys) > 0 {

@@ -63,7 +63,7 @@ func newAdminToggleCompCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyIsComp != "" {
+				if cmd.Flags().Changed("is-comp") { // PATCH(reprint-637-required-on-changed)
 					parsedIsComp, err := strconv.ParseBool(bodyIsComp)
 					if err != nil {
 						return fmt.Errorf("parsing --is-comp as bool: %w", err)

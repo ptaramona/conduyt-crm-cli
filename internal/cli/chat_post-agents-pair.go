@@ -54,7 +54,7 @@ func newChatPostAgentsPairCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyCode != "" {
+				if cmd.Flags().Changed("code") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["code"] = bodyCode
 				}
 			}

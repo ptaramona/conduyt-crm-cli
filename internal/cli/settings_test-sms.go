@@ -62,7 +62,7 @@ func newSettingsTestSmsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyTo != "" {
+				if cmd.Flags().Changed("to") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["to"] = bodyTo
 				}
 			}

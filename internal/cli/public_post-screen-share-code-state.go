@@ -62,7 +62,7 @@ func newPublicPostScreenShareCodeStateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyState != "" {
+				if cmd.Flags().Changed("state") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["state"] = bodyState
 				}
 			}

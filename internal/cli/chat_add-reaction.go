@@ -70,7 +70,7 @@ func newChatAddReactionCmd(flags *rootFlags) *cobra.Command {
 				if bodyClaimToken != "" {
 					bodyMap["claimToken"] = bodyClaimToken
 				}
-				if bodyEmoji != "" {
+				if cmd.Flags().Changed("emoji") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["emoji"] = bodyEmoji
 				}
 				if bodySourceMessageId != "" {

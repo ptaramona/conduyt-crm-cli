@@ -88,10 +88,10 @@ func newProductsCreateCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["metadata"] = parsedMetadata
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
-				if bodyPrice != 0.0 {
+				if cmd.Flags().Changed("price") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["price"] = bodyPrice
 				}
 				if bodySku != "" {

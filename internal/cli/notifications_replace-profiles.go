@@ -53,7 +53,7 @@ func newNotificationsReplaceProfilesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyProfiles != "" {
+				if cmd.Flags().Changed("profiles") { // PATCH(reprint-637-required-on-changed)
 					var parsedProfiles any
 					if err := json.Unmarshal([]byte(bodyProfiles), &parsedProfiles); err != nil {
 						return fmt.Errorf("parsing --profiles JSON: %w", err)

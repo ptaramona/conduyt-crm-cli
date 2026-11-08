@@ -64,7 +64,7 @@ func newWorkflowsCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyActions != "" {
+				if cmd.Flags().Changed("actions") { // PATCH(reprint-637-required-on-changed)
 					var parsedActions any
 					if err := json.Unmarshal([]byte(bodyActions), &parsedActions); err != nil {
 						return fmt.Errorf("parsing --actions JSON: %w", err)
@@ -77,10 +77,10 @@ func newWorkflowsCreateCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
-				if bodyTrigger != "" {
+				if cmd.Flags().Changed("trigger") { // PATCH(reprint-637-required-on-changed)
 					var parsedTrigger any
 					if err := json.Unmarshal([]byte(bodyTrigger), &parsedTrigger); err != nil {
 						return fmt.Errorf("parsing --trigger JSON: %w", err)

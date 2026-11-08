@@ -38,7 +38,7 @@ func newCallFlowsPostAudioCmd(flags *rootFlags) *cobra.Command {
 			params := map[string]string{}
 			fields := map[string]string{}
 			fileFields := map[string]string{}
-			if bodyFile != "" {
+			if cmd.Flags().Changed("file") { // PATCH(reprint-637-required-on-changed)
 				fileFields["file"] = bodyFile
 			}
 

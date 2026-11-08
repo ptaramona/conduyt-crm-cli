@@ -53,7 +53,7 @@ func newSettingsPutProjectBlueCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyApiKey != "" {
+				if cmd.Flags().Changed("api-key") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["apiKey"] = bodyApiKey
 				}
 			}

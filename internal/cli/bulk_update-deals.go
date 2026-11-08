@@ -54,7 +54,7 @@ func newBulkUpdateDealsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyUpdates != "" {
+				if cmd.Flags().Changed("updates") { // PATCH(reprint-637-required-on-changed)
 					var parsedUpdates any
 					if err := json.Unmarshal([]byte(bodyUpdates), &parsedUpdates); err != nil {
 						return fmt.Errorf("parsing --updates JSON: %w", err)

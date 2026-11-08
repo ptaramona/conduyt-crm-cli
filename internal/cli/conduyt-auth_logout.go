@@ -60,7 +60,7 @@ func newConduytAuthLogoutCmd(flags *rootFlags) *cobra.Command {
 				body = bodyMap
 				{
 					nestedScreenShare := map[string]any{}
-					if bodyScreenShareCode != "" {
+					if cmd.Flags().Changed("screen-share-code") { // PATCH(reprint-637-required-on-changed)
 						nestedScreenShare["code"] = bodyScreenShareCode
 					}
 					{
@@ -68,7 +68,7 @@ func newConduytAuthLogoutCmd(flags *rootFlags) *cobra.Command {
 						if cmd.Flags().Changed("screen-share-marks-drew") || bodyScreenShareMarksDrew != 0 { // PATCH(nested-required-flags-637): 0 is a valid count
 							nestedScreenShareMarks["drew"] = bodyScreenShareMarksDrew
 						}
-						if bodyScreenShareMarksPointed != "" {
+						if cmd.Flags().Changed("screen-share-marks-pointed") { // PATCH(reprint-637-required-on-changed)
 							parsedScreenShareMarksPointed, err := strconv.ParseBool(bodyScreenShareMarksPointed)
 							if err != nil {
 								return fmt.Errorf("parsing --screen-share-marks-pointed as bool: %w", err)

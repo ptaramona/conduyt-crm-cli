@@ -90,7 +90,7 @@ func newPipelinesStagesUpdatePipelineCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("is-won") {
 					bodyMap["isWon"] = bodyIsWon
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodySortOrder != 0 {

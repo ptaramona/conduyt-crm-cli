@@ -93,7 +93,7 @@ func newPublicBookAppointmentCmd(flags *rootFlags) *cobra.Command {
 				if bodyDuration != "" {
 					bodyMap["duration"] = bodyDuration
 				}
-				if bodyEmail != "" {
+				if cmd.Flags().Changed("email") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["email"] = bodyEmail
 				}
 				if bodyFirstName != "" {
@@ -108,7 +108,7 @@ func newPublicBookAppointmentCmd(flags *rootFlags) *cobra.Command {
 				if bodyLastName != "" {
 					bodyMap["lastName"] = bodyLastName
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyNotes != "" {
@@ -117,7 +117,7 @@ func newPublicBookAppointmentCmd(flags *rootFlags) *cobra.Command {
 				if bodyPhone != "" {
 					bodyMap["phone"] = bodyPhone
 				}
-				if bodyStartTime != "" {
+				if cmd.Flags().Changed("start-time") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["startTime"] = bodyStartTime
 				}
 				if bodyTimezone != "" {

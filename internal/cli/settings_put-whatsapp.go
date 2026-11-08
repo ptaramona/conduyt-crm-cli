@@ -53,7 +53,7 @@ func newSettingsPutWhatsappCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodySenderSid != "" {
+				if cmd.Flags().Changed("sender-sid") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["senderSid"] = bodySenderSid
 				}
 			}

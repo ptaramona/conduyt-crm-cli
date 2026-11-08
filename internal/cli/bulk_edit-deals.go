@@ -64,7 +64,7 @@ func newBulkEditDealsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyIds != "" {
+				if cmd.Flags().Changed("ids") { // PATCH(reprint-637-required-on-changed)
 					parsedIds, parseErr := cliutil.ParseStringList(bodyIds)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --ids list: %w", parseErr)

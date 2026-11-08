@@ -77,19 +77,19 @@ func newCustomFieldsCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEntityType != "" {
+				if cmd.Flags().Changed("entity-type") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["entityType"] = bodyEntityType
 				}
-				if bodyFieldKey != "" {
+				if cmd.Flags().Changed("field-key") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["fieldKey"] = bodyFieldKey
 				}
-				if bodyFieldType != "" {
+				if cmd.Flags().Changed("field-type") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["fieldType"] = bodyFieldType
 				}
 				if cmd.Flags().Changed("is-required") {
 					bodyMap["isRequired"] = bodyIsRequired
 				}
-				if bodyLabel != "" {
+				if cmd.Flags().Changed("label") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["label"] = bodyLabel
 				}
 				if bodyOptions != "" {

@@ -62,17 +62,17 @@ func newNotificationsUpdateDigestSettingsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEnabled != "" {
+				if cmd.Flags().Changed("enabled") { // PATCH(reprint-637-required-on-changed)
 					parsedEnabled, err := strconv.ParseBool(bodyEnabled)
 					if err != nil {
 						return fmt.Errorf("parsing --enabled as bool: %w", err)
 					}
 					bodyMap["enabled"] = parsedEnabled
 				}
-				if bodyFrequency != "" {
+				if cmd.Flags().Changed("frequency") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["frequency"] = bodyFrequency
 				}
-				if cmd.Flags().Changed("hour") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
+				if cmd.Flags().Changed("hour") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["hour"] = bodyHour
 				}
 			}

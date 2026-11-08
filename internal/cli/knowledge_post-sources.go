@@ -58,7 +58,7 @@ func newKnowledgePostSourcesCmd(flags *rootFlags) *cobra.Command {
 				if bodyName != "" {
 					bodyMap["name"] = bodyName
 				}
-				if bodyUrl != "" {
+				if cmd.Flags().Changed("url") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["url"] = bodyUrl
 				}
 			}

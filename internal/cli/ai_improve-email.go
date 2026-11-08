@@ -59,13 +59,13 @@ func newAiImproveEmailCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyBody != "" {
+				if cmd.Flags().Changed("body") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["body"] = bodyBody
 				}
 				if bodyInstructions != "" {
 					bodyMap["instructions"] = bodyInstructions
 				}
-				if bodySubject != "" {
+				if cmd.Flags().Changed("subject") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["subject"] = bodySubject
 				}
 			}

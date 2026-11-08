@@ -53,7 +53,7 @@ func newAiDealInsightsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyDealId != "" {
+				if cmd.Flags().Changed("deal-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["dealId"] = bodyDealId
 				}
 			}

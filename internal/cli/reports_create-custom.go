@@ -92,7 +92,7 @@ func newReportsCreateCustomCmd(flags *rootFlags) *cobra.Command {
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
-				if bodyEntity != "" {
+				if cmd.Flags().Changed("entity") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["entity"] = bodyEntity
 				}
 				if bodyFilters != "" {
@@ -117,7 +117,7 @@ func newReportsCreateCustomCmd(flags *rootFlags) *cobra.Command {
 				if bodyMeasureField != "" {
 					bodyMap["measureField"] = bodyMeasureField
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				{

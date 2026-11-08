@@ -72,7 +72,7 @@ func newScreenShareDeleteSessionCodeCmd(flags *rootFlags) *cobra.Command {
 					if cmd.Flags().Changed("marks-drew") || bodyMarksDrew != 0 { // PATCH(nested-required-flags-637): 0 is a valid count
 						nestedMarks["drew"] = bodyMarksDrew
 					}
-					if bodyMarksPointed != "" {
+					if cmd.Flags().Changed("marks-pointed") { // PATCH(reprint-637-required-on-changed)
 						parsedMarksPointed, err := strconv.ParseBool(bodyMarksPointed)
 						if err != nil {
 							return fmt.Errorf("parsing --marks-pointed as bool: %w", err)

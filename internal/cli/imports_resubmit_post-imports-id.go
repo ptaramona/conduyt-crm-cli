@@ -61,7 +61,7 @@ func newImportsResubmitPostImportsIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyCorrections != "" {
+				if cmd.Flags().Changed("corrections") { // PATCH(reprint-637-required-on-changed)
 					var parsedCorrections any
 					if err := json.Unmarshal([]byte(bodyCorrections), &parsedCorrections); err != nil {
 						return fmt.Errorf("parsing --corrections JSON: %w", err)

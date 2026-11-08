@@ -309,3 +309,9 @@ the fresh print has is added (32), every other file the fresh print changed is a
 the curated tree text; `calls link call-to-contact` re-emitted the body dryRun as a local `--dry-run` (re-applied as `--server-dry-run`,
 the new `--replace-slot` kept). Every `PATCH(<id>)` marker count under internal/ and cmd/ is identical before and after (12 ids).
 Tooling and logs: Cerebro `domains/conduyt/projects/session-tools-2026-10-08/briefs/reprint637-logs/` (merge.sh, merge-report.txt).
+
+## Post-print step (2026-11-08, Codex reprint637-r3)
+
+After the 3-way merge, run `perl .printing-press-patches/required-on-changed.pl internal/cli/*.go` from the repo root (ledger entry
+reprint-637-required-on-changed): every required scalar body flag is serialized on Changed(). TestEveryRequiredBodyFlagSerializesItsZeroValue
+fails until it has run.

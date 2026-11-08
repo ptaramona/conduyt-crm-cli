@@ -67,7 +67,7 @@ func newConduytHelpPostGuidesSlugFeedbackCmd(flags *rootFlags) *cobra.Command {
 				if bodyComment != "" {
 					bodyMap["comment"] = bodyComment
 				}
-				if bodyHelpful != "" {
+				if cmd.Flags().Changed("helpful") { // PATCH(reprint-637-required-on-changed)
 					parsedHelpful, err := strconv.ParseBool(bodyHelpful)
 					if err != nil {
 						return fmt.Errorf("parsing --helpful as bool: %w", err)

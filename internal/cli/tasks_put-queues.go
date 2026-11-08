@@ -62,7 +62,7 @@ func newTasksPutQueuesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyQueues != "" {
+				if cmd.Flags().Changed("queues") { // PATCH(reprint-637-required-on-changed)
 					var parsedQueues any
 					if err := json.Unmarshal([]byte(bodyQueues), &parsedQueues); err != nil {
 						return fmt.Errorf("parsing --queues JSON: %w", err)

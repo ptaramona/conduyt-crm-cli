@@ -53,7 +53,7 @@ func newNotificationsApplyProfileCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyProfileId != "" {
+				if cmd.Flags().Changed("profile-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["profileId"] = bodyProfileId
 				}
 			}

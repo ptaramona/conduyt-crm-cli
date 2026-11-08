@@ -1,6 +1,6 @@
 package cli
 
-// Codex reprint637-r2. PATCH(reprint-637-required-zero-values), PATCH(reprint-637-conditional-requirements).
+// Codex reprint637-r2. PATCH(reprint-637-required-on-changed), PATCH(reprint-637-conditional-requirements).
 
 import (
 	"encoding/json"

@@ -88,7 +88,7 @@ func newInvoicesCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyInvoiceNumber != "" {
 					bodyMap["invoiceNumber"] = bodyInvoiceNumber
 				}
-				if bodyItems != "" {
+				if cmd.Flags().Changed("items") { // PATCH(reprint-637-required-on-changed)
 					var parsedItems any
 					if err := json.Unmarshal([]byte(bodyItems), &parsedItems); err != nil {
 						return fmt.Errorf("parsing --items JSON: %w", err)

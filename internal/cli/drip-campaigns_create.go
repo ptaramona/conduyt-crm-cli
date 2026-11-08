@@ -85,16 +85,16 @@ func newDripCampaignsCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyBaseUrl != "" {
+				if cmd.Flags().Changed("base-url") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["baseUrl"] = bodyBaseUrl
 				}
 				if bodyBatchSize != 0 {
 					bodyMap["batchSize"] = bodyBatchSize
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
-				if bodyProvider != "" {
+				if cmd.Flags().Changed("provider") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["provider"] = bodyProvider
 				}
 				if bodySendDays != "" {
@@ -120,7 +120,7 @@ func newDripCampaignsCreateCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["stepDelays"] = parsedStepDelays
 				}
-				if bodyTagPrefix != "" {
+				if cmd.Flags().Changed("tag-prefix") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["tagPrefix"] = bodyTagPrefix
 				}
 				if bodyTimezone != "" {
@@ -129,7 +129,7 @@ func newDripCampaignsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyTotalSteps != 0 {
 					bodyMap["totalSteps"] = bodyTotalSteps
 				}
-				if bodyUrlSegment != "" {
+				if cmd.Flags().Changed("url-segment") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["urlSegment"] = bodyUrlSegment
 				}
 			}

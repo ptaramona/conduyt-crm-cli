@@ -113,7 +113,7 @@ func newAutomationsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyN8nWorkflowId != "" {
 					bodyMap["n8nWorkflowId"] = bodyN8nWorkflowId
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyNodes != "" {
@@ -142,7 +142,7 @@ func newAutomationsCreateCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["triggerConditions"] = parsedTriggerConditions
 				}
-				if bodyTriggerEvent != "" {
+				if cmd.Flags().Changed("trigger-event") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["triggerEvent"] = bodyTriggerEvent
 				}
 			}

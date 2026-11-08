@@ -101,7 +101,7 @@ func newLeadRoutingCreateRuleCmd(flags *rootFlags) *cobra.Command {
 				if bodyMethod != "" {
 					bodyMap["method"] = bodyMethod
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyRedistributeAfterDays != "" {

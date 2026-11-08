@@ -74,7 +74,7 @@ func newMessagesSendSmsCmd(flags *rootFlags) *cobra.Command {
 				if bodyBody != "" {
 					bodyMap["body"] = bodyBody
 				}
-				if bodyContactId != "" {
+				if cmd.Flags().Changed("contact-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["contactId"] = bodyContactId
 				}
 				if bodyFromNumber != "" {

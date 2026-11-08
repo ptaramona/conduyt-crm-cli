@@ -54,7 +54,7 @@ func newPushUnsubscribeCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEndpoint != "" {
+				if cmd.Flags().Changed("endpoint") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["endpoint"] = bodyEndpoint
 				}
 			}

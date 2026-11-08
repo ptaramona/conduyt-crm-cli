@@ -62,13 +62,13 @@ func newSettingsPutZoomCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAccountId != "" {
+				if cmd.Flags().Changed("account-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["accountId"] = bodyAccountId
 				}
-				if bodyClientId != "" {
+				if cmd.Flags().Changed("client-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["clientId"] = bodyClientId
 				}
-				if bodyClientSecret != "" {
+				if cmd.Flags().Changed("client-secret") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["clientSecret"] = bodyClientSecret
 				}
 				if cmd.Flags().Changed("force") {

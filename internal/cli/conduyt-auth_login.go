@@ -61,10 +61,10 @@ func newConduytAuthLoginCmd(flags *rootFlags) *cobra.Command {
 				if bodyAccountId != "" {
 					bodyMap["accountId"] = bodyAccountId
 				}
-				if bodyEmail != "" {
+				if cmd.Flags().Changed("email") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["email"] = bodyEmail
 				}
-				if bodyPassword != "" {
+				if cmd.Flags().Changed("password") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["password"] = bodyPassword
 				}
 			}

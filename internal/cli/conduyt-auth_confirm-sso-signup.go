@@ -58,14 +58,14 @@ func newConduytAuthConfirmSsoSignupCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyTermsAccepted != "" {
+				if cmd.Flags().Changed("terms-accepted") { // PATCH(reprint-637-required-on-changed)
 					parsedTermsAccepted, err := strconv.ParseBool(bodyTermsAccepted)
 					if err != nil {
 						return fmt.Errorf("parsing --terms-accepted as bool: %w", err)
 					}
 					bodyMap["termsAccepted"] = parsedTermsAccepted
 				}
-				if bodyToken != "" {
+				if cmd.Flags().Changed("token") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["token"] = bodyToken
 				}
 			}

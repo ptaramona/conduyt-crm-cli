@@ -75,19 +75,19 @@ func newRepShiftsPostCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if cmd.Flags().Changed("day-of-week") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
+				if cmd.Flags().Changed("day-of-week") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["dayOfWeek"] = bodyDayOfWeek
 				}
-				if cmd.Flags().Changed("end-minute") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
+				if cmd.Flags().Changed("end-minute") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["endMinute"] = bodyEndMinute
 				}
 				if cmd.Flags().Changed("is-active") {
 					bodyMap["isActive"] = bodyIsActive
 				}
-				if cmd.Flags().Changed("start-minute") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
+				if cmd.Flags().Changed("start-minute") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["startMinute"] = bodyStartMinute
 				}
-				if bodyUserId != "" {
+				if cmd.Flags().Changed("user-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["userId"] = bodyUserId
 				}
 			}

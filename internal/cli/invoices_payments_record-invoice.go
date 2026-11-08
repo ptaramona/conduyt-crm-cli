@@ -73,7 +73,7 @@ func newInvoicesPaymentsRecordInvoiceCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAmount != 0.0 {
+				if cmd.Flags().Changed("amount") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["amount"] = bodyAmount
 				}
 				if bodyMethod != "" {

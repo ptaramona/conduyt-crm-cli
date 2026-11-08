@@ -70,17 +70,17 @@ func newPublicBindBookingDocumentsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAppointmentId != "" {
+				if cmd.Flags().Changed("appointment-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["appointmentId"] = bodyAppointmentId
 				}
-				if bodyDocuments != "" {
+				if cmd.Flags().Changed("documents") { // PATCH(reprint-637-required-on-changed)
 					var parsedDocuments any
 					if err := json.Unmarshal([]byte(bodyDocuments), &parsedDocuments); err != nil {
 						return fmt.Errorf("parsing --documents JSON: %w", err)
 					}
 					bodyMap["documents"] = parsedDocuments
 				}
-				if bodyDocumentsPass != "" {
+				if cmd.Flags().Changed("documents-pass") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["documentsPass"] = bodyDocumentsPass
 				}
 			}

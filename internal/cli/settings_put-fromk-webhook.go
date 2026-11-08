@@ -54,7 +54,7 @@ func newSettingsPutFromkWebhookCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodySecret != "" {
+				if cmd.Flags().Changed("secret") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["secret"] = bodySecret
 				}
 			}

@@ -61,13 +61,13 @@ func newStatusMetadataPostDryRunCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyContactId != "" {
+				if cmd.Flags().Changed("contact-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["contactId"] = bodyContactId
 				}
-				if bodyDealId != "" {
+				if cmd.Flags().Changed("deal-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["dealId"] = bodyDealId
 				}
-				if bodyTargetStageId != "" {
+				if cmd.Flags().Changed("target-stage-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["targetStageId"] = bodyTargetStageId
 				}
 			}

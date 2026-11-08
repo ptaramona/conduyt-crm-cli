@@ -85,7 +85,7 @@ func newAccountExportsPostCmd(flags *rootFlags) *cobra.Command {
 						bodyMap["activityFilters"] = nestedActivityFilters
 					}
 				}
-				if bodyEntities != "" {
+				if cmd.Flags().Changed("entities") { // PATCH(reprint-637-required-on-changed)
 					parsedEntities, parseErr := cliutil.ParseStringList(bodyEntities)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --entities list: %w", parseErr)

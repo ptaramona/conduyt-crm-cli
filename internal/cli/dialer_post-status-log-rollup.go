@@ -55,7 +55,7 @@ func newDialerPostStatusLogRollupCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyDate != "" {
+				if cmd.Flags().Changed("date") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["date"] = bodyDate
 				}
 				if bodyUserIds != "" {

@@ -66,7 +66,7 @@ func newAppointmentsOutcomePostAppointmentsIdCmd(flags *rootFlags) *cobra.Comman
 				if bodyEndTime != "" {
 					bodyMap["endTime"] = bodyEndTime
 				}
-				if bodyOutcome != "" {
+				if cmd.Flags().Changed("outcome") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["outcome"] = bodyOutcome
 				}
 				if bodyStartTime != "" {

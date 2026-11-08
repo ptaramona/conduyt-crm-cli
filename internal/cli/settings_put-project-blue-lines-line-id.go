@@ -60,7 +60,7 @@ func newSettingsPutProjectBlueLinesLineIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyUserId != "" {
+				if cmd.Flags().Changed("user-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["userId"] = bodyUserId
 				}
 			}

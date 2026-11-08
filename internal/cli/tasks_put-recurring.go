@@ -62,7 +62,7 @@ func newTasksPutRecurringCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyRecurringTasks != "" {
+				if cmd.Flags().Changed("recurring-tasks") { // PATCH(reprint-637-required-on-changed)
 					var parsedRecurringTasks any
 					if err := json.Unmarshal([]byte(bodyRecurringTasks), &parsedRecurringTasks); err != nil {
 						return fmt.Errorf("parsing --recurring-tasks JSON: %w", err)

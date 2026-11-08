@@ -66,7 +66,7 @@ func newApiKeysCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyIpAllowlist != "" {
 					bodyMap["ipAllowlist"] = bodyIpAllowlist
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyRateLimit != "" {

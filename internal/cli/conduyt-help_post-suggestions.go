@@ -58,7 +58,7 @@ func newConduytHelpPostSuggestionsCmd(flags *rootFlags) *cobra.Command {
 				if bodyQuery != "" {
 					bodyMap["query"] = bodyQuery
 				}
-				if bodyText != "" {
+				if cmd.Flags().Changed("text") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["text"] = bodyText
 				}
 			}

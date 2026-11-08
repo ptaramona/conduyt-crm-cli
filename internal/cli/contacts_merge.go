@@ -114,7 +114,7 @@ func newContactsMergeCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("partial") {
 					bodyMap["partial"] = bodyPartial
 				}
-				if bodyPrimaryId != "" {
+				if cmd.Flags().Changed("primary-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["primaryId"] = bodyPrimaryId
 				}
 				if bodySecondaryIds != "" {

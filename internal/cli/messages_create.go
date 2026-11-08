@@ -102,7 +102,7 @@ func newMessagesCreateCmd(flags *rootFlags) *cobra.Command {
 						bodyMap["bcc"] = bodyBcc
 					}
 				}
-				if bodyBody != "" {
+				if cmd.Flags().Changed("body") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["body"] = bodyBody
 				}
 				if bodyBodyHtml != "" {
@@ -119,13 +119,13 @@ func newMessagesCreateCmd(flags *rootFlags) *cobra.Command {
 						bodyMap["cc"] = bodyCc
 					}
 				}
-				if bodyChannel != "" {
+				if cmd.Flags().Changed("channel") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["channel"] = bodyChannel
 				}
-				if bodyContactId != "" {
+				if cmd.Flags().Changed("contact-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["contactId"] = bodyContactId
 				}
-				if bodyDirection != "" {
+				if cmd.Flags().Changed("direction") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["direction"] = bodyDirection
 				}
 				if bodyFromEmail != "" {

@@ -80,7 +80,7 @@ func newChatSendMessageCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("also-in-channel") {
 					bodyMap["alsoInChannel"] = bodyAlsoInChannel
 				}
-				if bodyBody != "" {
+				if cmd.Flags().Changed("body") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["body"] = bodyBody
 				}
 				{

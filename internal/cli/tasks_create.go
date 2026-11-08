@@ -97,7 +97,7 @@ func newTasksCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyStatus != "" {
 					bodyMap["status"] = bodyStatus
 				}
-				if bodyTitle != "" {
+				if cmd.Flags().Changed("title") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["title"] = bodyTitle
 				}
 			}

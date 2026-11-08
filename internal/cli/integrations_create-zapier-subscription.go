@@ -58,10 +58,10 @@ func newIntegrationsCreateZapierSubscriptionCmd(flags *rootFlags) *cobra.Command
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEvent != "" {
+				if cmd.Flags().Changed("event") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["event"] = bodyEvent
 				}
-				if bodyTargetUrl != "" {
+				if cmd.Flags().Changed("target-url") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["targetUrl"] = bodyTargetUrl
 				}
 			}

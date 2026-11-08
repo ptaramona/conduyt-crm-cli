@@ -65,14 +65,14 @@ func newConduytAuthPatchSecurityCenterCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAllowedSignupDomains != "" {
+				if cmd.Flags().Changed("allowed-signup-domains") { // PATCH(reprint-637-required-on-changed)
 					parsedAllowedSignupDomains, parseErr := cliutil.ParseStringList(bodyAllowedSignupDomains)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --allowed-signup-domains list: %w", parseErr)
 					}
 					bodyMap["allowedSignupDomains"] = parsedAllowedSignupDomains
 				}
-				if bodyDomainSignupMode != "" {
+				if cmd.Flags().Changed("domain-signup-mode") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["domainSignupMode"] = bodyDomainSignupMode
 				}
 				if bodyIdleTimeout != "" {
@@ -85,7 +85,7 @@ func newConduytAuthPatchSecurityCenterCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["loginIpAllowlist"] = parsedLoginIpAllowlist
 				}
-				if bodyMfaMode != "" {
+				if cmd.Flags().Changed("mfa-mode") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["mfaMode"] = bodyMfaMode
 				}
 			}

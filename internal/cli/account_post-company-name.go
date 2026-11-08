@@ -54,7 +54,7 @@ func newAccountPostCompanyNameCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAccountName != "" {
+				if cmd.Flags().Changed("account-name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["accountName"] = bodyAccountName
 				}
 			}

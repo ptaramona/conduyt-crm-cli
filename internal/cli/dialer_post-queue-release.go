@@ -53,7 +53,7 @@ func newDialerPostQueueReleaseCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyLeaseId != "" {
+				if cmd.Flags().Changed("lease-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["leaseId"] = bodyLeaseId
 				}
 			}

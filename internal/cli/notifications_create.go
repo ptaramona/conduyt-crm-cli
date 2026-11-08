@@ -66,7 +66,7 @@ func newNotificationsCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyMessage != "" {
+				if cmd.Flags().Changed("message") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["message"] = bodyMessage
 				}
 				if bodyMetadata != "" {
@@ -79,10 +79,10 @@ func newNotificationsCreateCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("push") {
 					bodyMap["push"] = bodyPush
 				}
-				if bodyTitle != "" {
+				if cmd.Flags().Changed("title") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["title"] = bodyTitle
 				}
-				if bodyType != "" {
+				if cmd.Flags().Changed("type") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["type"] = bodyType
 				}
 				if bodyUrl != "" {

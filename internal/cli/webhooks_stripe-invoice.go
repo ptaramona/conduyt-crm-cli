@@ -61,17 +61,17 @@ func newWebhooksStripeInvoiceCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyData != "" {
+				if cmd.Flags().Changed("data") { // PATCH(reprint-637-required-on-changed)
 					var parsedData any
 					if err := json.Unmarshal([]byte(bodyData), &parsedData); err != nil {
 						return fmt.Errorf("parsing --data JSON: %w", err)
 					}
 					bodyMap["data"] = parsedData
 				}
-				if bodyId != "" {
+				if cmd.Flags().Changed("id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["id"] = bodyId
 				}
-				if bodyType != "" {
+				if cmd.Flags().Changed("type") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["type"] = bodyType
 				}
 			}

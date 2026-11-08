@@ -64,7 +64,7 @@ func newDialerPostCallIdSuperviseCmd(flags *rootFlags) *cobra.Command {
 				if bodyAgentCallSid != "" {
 					bodyMap["agentCallSid"] = bodyAgentCallSid
 				}
-				if bodyMode != "" {
+				if cmd.Flags().Changed("mode") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["mode"] = bodyMode
 				}
 			}

@@ -61,7 +61,7 @@ func newPlaybookEnrollmentsPostIdCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAction != "" {
+				if cmd.Flags().Changed("action") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["action"] = bodyAction
 				}
 				if bodyNote != "" {

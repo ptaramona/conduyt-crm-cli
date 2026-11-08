@@ -158,7 +158,7 @@ func newBookingPagesCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyDocumentsPageUrl != "" {
 					bodyMap["documentsPageUrl"] = bodyDocumentsPageUrl
 				}
-				if bodyDurationMinutes != 0 {
+				if cmd.Flags().Changed("duration-minutes") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["durationMinutes"] = bodyDurationMinutes
 				}
 				if bodyDurationOptions != "" {
@@ -284,7 +284,7 @@ func newBookingPagesCreateCmd(flags *rootFlags) *cobra.Command {
 						bodyMap["reviews"] = nestedReviews
 					}
 				}
-				if bodySlug != "" {
+				if cmd.Flags().Changed("slug") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["slug"] = bodySlug
 				}
 				if bodyStripePriceId != "" {
@@ -299,7 +299,7 @@ func newBookingPagesCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyThankYouMessage != "" {
 					bodyMap["thankYouMessage"] = bodyThankYouMessage
 				}
-				if bodyTitle != "" {
+				if cmd.Flags().Changed("title") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["title"] = bodyTitle
 				}
 				if bodyUserId != "" {

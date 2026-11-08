@@ -45,7 +45,7 @@ func newFeatureInterestPromotedCmd(flags *rootFlags) *cobra.Command {
 			// second store-backed POST-search consumer ships.
 			bodyMap := map[string]any{}
 			var body any = bodyMap
-			if bodyFeature != "" {
+			if cmd.Flags().Changed("feature") { // PATCH(reprint-637-required-on-changed)
 				bodyMap["feature"] = bodyFeature
 			}
 			data, statusCode, err := c.PostWithParams(cmd.Context(), path, params, body)

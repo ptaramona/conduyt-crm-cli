@@ -67,10 +67,10 @@ func newConduytAuthAcceptInviteCmd(flags *rootFlags) *cobra.Command {
 				if bodyLastName != "" {
 					bodyMap["lastName"] = bodyLastName
 				}
-				if bodyPassword != "" {
+				if cmd.Flags().Changed("password") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["password"] = bodyPassword
 				}
-				if bodyToken != "" {
+				if cmd.Flags().Changed("token") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["token"] = bodyToken
 				}
 			}

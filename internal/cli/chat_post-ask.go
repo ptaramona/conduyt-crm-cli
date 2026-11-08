@@ -62,7 +62,7 @@ func newChatPostAskCmd(flags *rootFlags) *cobra.Command {
 				if bodyUrgent != "" {
 					bodyMap["urgent"] = bodyUrgent
 				}
-				if bodyWhy != "" {
+				if cmd.Flags().Changed("why") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["why"] = bodyWhy
 				}
 			}

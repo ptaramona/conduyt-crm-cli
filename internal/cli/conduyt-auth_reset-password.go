@@ -58,10 +58,10 @@ func newConduytAuthResetPasswordCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyPassword != "" {
+				if cmd.Flags().Changed("password") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["password"] = bodyPassword
 				}
-				if bodyToken != "" {
+				if cmd.Flags().Changed("token") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["token"] = bodyToken
 				}
 			}

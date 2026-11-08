@@ -62,7 +62,7 @@ func newStatusMetadataPostImportCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyItems != "" {
+				if cmd.Flags().Changed("items") { // PATCH(reprint-637-required-on-changed)
 					var parsedItems any
 					if err := json.Unmarshal([]byte(bodyItems), &parsedItems); err != nil {
 						return fmt.Errorf("parsing --items JSON: %w", err)

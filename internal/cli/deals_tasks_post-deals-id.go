@@ -85,7 +85,7 @@ func newDealsTasksPostDealsIdCmd(flags *rootFlags) *cobra.Command {
 				if bodyPriority != "" {
 					bodyMap["priority"] = bodyPriority
 				}
-				if bodyTitle != "" {
+				if cmd.Flags().Changed("title") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["title"] = bodyTitle
 				}
 			}

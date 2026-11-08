@@ -80,7 +80,7 @@ func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
-				if bodyFields != "" {
+				if cmd.Flags().Changed("fields") { // PATCH(reprint-637-required-on-changed)
 					var parsedFields any
 					if err := json.Unmarshal([]byte(bodyFields), &parsedFields); err != nil {
 						return fmt.Errorf("parsing --fields JSON: %w", err)
@@ -93,7 +93,7 @@ func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyIsActive != "" {
 					bodyMap["isActive"] = bodyIsActive
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyRedirectUrl != "" {
@@ -125,7 +125,7 @@ func newFormsCreateCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["settings"] = parsedSettings
 				}
-				if bodySlug != "" {
+				if cmd.Flags().Changed("slug") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["slug"] = bodySlug
 				}
 				if bodyTemplate != "" {

@@ -61,13 +61,13 @@ func newSettingsPutAiByoCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyKey != "" {
+				if cmd.Flags().Changed("key") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["key"] = bodyKey
 				}
-				if bodyModel != "" {
+				if cmd.Flags().Changed("model") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["model"] = bodyModel
 				}
-				if bodyProvider != "" {
+				if cmd.Flags().Changed("provider") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["provider"] = bodyProvider
 				}
 			}

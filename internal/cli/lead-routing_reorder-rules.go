@@ -63,7 +63,7 @@ func newLeadRoutingReorderRulesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyOrder != "" {
+				if cmd.Flags().Changed("order") { // PATCH(reprint-637-required-on-changed)
 					parsedOrder, parseErr := cliutil.ParseStringList(bodyOrder)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --order list: %w", parseErr)

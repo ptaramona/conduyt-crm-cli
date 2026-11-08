@@ -63,7 +63,7 @@ func newUsersInviteCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEmail != "" {
+				if cmd.Flags().Changed("email") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["email"] = bodyEmail
 				}
 				if bodyExtension != "" {
@@ -81,7 +81,7 @@ func newUsersInviteCmd(flags *rootFlags) *cobra.Command {
 				if bodyPhone != "" {
 					bodyMap["phone"] = bodyPhone
 				}
-				if bodyRole != "" {
+				if cmd.Flags().Changed("role") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["role"] = bodyRole
 				}
 			}

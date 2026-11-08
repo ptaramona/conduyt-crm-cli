@@ -67,7 +67,7 @@ func newChatCreateChannelCmd(flags *rootFlags) *cobra.Command {
 				if bodyKind != "" {
 					bodyMap["kind"] = bodyKind
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyTopic != "" {

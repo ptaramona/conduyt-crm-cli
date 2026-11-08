@@ -61,7 +61,7 @@ func newDocumentTemplatesCreateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyBodyHtml != "" {
+				if cmd.Flags().Changed("body-html") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["bodyHtml"] = bodyBodyHtml
 				}
 				if bodyCategory != "" {
@@ -77,7 +77,7 @@ func newDocumentTemplatesCreateCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["mergeFields"] = parsedMergeFields
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 			}

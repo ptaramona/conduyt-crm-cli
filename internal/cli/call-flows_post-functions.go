@@ -61,13 +61,13 @@ func newCallFlowsPostFunctionsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
-				if bodySecret != "" {
+				if cmd.Flags().Changed("secret") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["secret"] = bodySecret
 				}
-				if bodyUrl != "" {
+				if cmd.Flags().Changed("url") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["url"] = bodyUrl
 				}
 			}

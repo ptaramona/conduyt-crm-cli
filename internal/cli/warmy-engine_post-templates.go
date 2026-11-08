@@ -74,14 +74,14 @@ func newWarmyEnginePostTemplatesCmd(flags *rootFlags) *cobra.Command {
 				if bodyAccountSlug != "" {
 					bodyMap["accountSlug"] = bodyAccountSlug
 				}
-				if bodyTemplates != "" {
+				if cmd.Flags().Changed("templates") { // PATCH(reprint-637-required-on-changed)
 					var parsedTemplates any
 					if err := json.Unmarshal([]byte(bodyTemplates), &parsedTemplates); err != nil {
 						return fmt.Errorf("parsing --templates JSON: %w", err)
 					}
 					bodyMap["templates"] = parsedTemplates
 				}
-				if bodyWebhookSecret != "" {
+				if cmd.Flags().Changed("webhook-secret") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["webhookSecret"] = bodyWebhookSecret
 				}
 			}

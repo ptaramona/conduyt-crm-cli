@@ -59,7 +59,7 @@ func newIntegrationsPatchCalendlyEventTypesCmd(flags *rootFlags) *cobra.Command 
 				if bodyConnectionId != "" {
 					bodyMap["connectionId"] = bodyConnectionId
 				}
-				if bodyEventTypeUris != "" {
+				if cmd.Flags().Changed("event-type-uris") { // PATCH(reprint-637-required-on-changed)
 					parsedEventTypeUris, parseErr := cliutil.ParseStringList(bodyEventTypeUris)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --event-type-uris list: %w", parseErr)

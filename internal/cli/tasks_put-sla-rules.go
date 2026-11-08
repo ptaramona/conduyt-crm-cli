@@ -62,7 +62,7 @@ func newTasksPutSlaRulesCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyRules != "" {
+				if cmd.Flags().Changed("rules") { // PATCH(reprint-637-required-on-changed)
 					var parsedRules any
 					if err := json.Unmarshal([]byte(bodyRules), &parsedRules); err != nil {
 						return fmt.Errorf("parsing --rules JSON: %w", err)

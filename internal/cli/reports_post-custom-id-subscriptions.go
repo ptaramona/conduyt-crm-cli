@@ -77,13 +77,13 @@ func newReportsPostCustomIdSubscriptionsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyCadence != "" {
+				if cmd.Flags().Changed("cadence") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["cadence"] = bodyCadence
 				}
 				if cmd.Flags().Changed("enabled") {
 					bodyMap["enabled"] = bodyEnabled
 				}
-				if bodyFormats != "" {
+				if cmd.Flags().Changed("formats") { // PATCH(reprint-637-required-on-changed)
 					parsedFormats, parseErr := cliutil.ParseStringList(bodyFormats)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --formats list: %w", parseErr)
@@ -105,7 +105,7 @@ func newReportsPostCustomIdSubscriptionsCmd(flags *rootFlags) *cobra.Command {
 				if bodyRangeMode != "" {
 					bodyMap["rangeMode"] = bodyRangeMode
 				}
-				if bodyRecipients != "" {
+				if cmd.Flags().Changed("recipients") { // PATCH(reprint-637-required-on-changed)
 					var parsedRecipients any
 					if err := json.Unmarshal([]byte(bodyRecipients), &parsedRecipients); err != nil {
 						return fmt.Errorf("parsing --recipients JSON: %w", err)

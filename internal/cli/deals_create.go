@@ -111,7 +111,7 @@ func newDealsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyLostReason != "" {
 					bodyMap["lostReason"] = bodyLostReason
 				}
-				if bodyPipelineId != "" {
+				if cmd.Flags().Changed("pipeline-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["pipelineId"] = bodyPipelineId
 				}
 				if bodyPriority != "" {
@@ -130,13 +130,13 @@ func newDealsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodySource != "" {
 					bodyMap["source"] = bodySource
 				}
-				if bodyStageId != "" {
+				if cmd.Flags().Changed("stage-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["stageId"] = bodyStageId
 				}
 				if bodyStatus != "" {
 					bodyMap["status"] = bodyStatus
 				}
-				if bodyTitle != "" {
+				if cmd.Flags().Changed("title") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["title"] = bodyTitle
 				}
 				if bodyValue != "" {

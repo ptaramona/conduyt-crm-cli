@@ -53,7 +53,7 @@ func newSettingsPatchLeadVisibilityCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyMode != "" {
+				if cmd.Flags().Changed("mode") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["mode"] = bodyMode
 				}
 			}

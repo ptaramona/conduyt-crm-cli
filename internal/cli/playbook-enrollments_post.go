@@ -63,10 +63,10 @@ func newPlaybookEnrollmentsPostCmd(flags *rootFlags) *cobra.Command {
 				if bodyAssignTo != "" {
 					bodyMap["assignTo"] = bodyAssignTo
 				}
-				if bodyContactId != "" {
+				if cmd.Flags().Changed("contact-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["contactId"] = bodyContactId
 				}
-				if bodyPlaybookId != "" {
+				if cmd.Flags().Changed("playbook-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["playbookId"] = bodyPlaybookId
 				}
 				if cmd.Flags().Changed("restart") {

@@ -62,7 +62,7 @@ func newMessagesCheckLinksCmd(flags *rootFlags) *cobra.Command {
 				if bodyBody != "" {
 					bodyMap["body"] = bodyBody
 				}
-				if bodyChannel != "" {
+				if cmd.Flags().Changed("channel") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["channel"] = bodyChannel
 				}
 				if bodyDraft != "" {

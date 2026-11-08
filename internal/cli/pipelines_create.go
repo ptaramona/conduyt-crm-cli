@@ -74,7 +74,7 @@ func newPipelinesCreateCmd(flags *rootFlags) *cobra.Command {
 				if cmd.Flags().Changed("is-default") {
 					bodyMap["isDefault"] = bodyIsDefault
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyStages != "" {

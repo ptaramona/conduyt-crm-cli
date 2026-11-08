@@ -70,7 +70,7 @@ func newCalendarsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyIsDefault != "" {
 					bodyMap["isDefault"] = bodyIsDefault
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyTimezone != "" {

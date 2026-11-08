@@ -65,10 +65,10 @@ func newCallFlowsPostCmd(flags *rootFlags) *cobra.Command {
 				body = bodyMap
 				{
 					nestedDraftGraph := map[string]any{}
-					if bodyDraftGraphEntryId != "" {
+					if cmd.Flags().Changed("draft-graph-entry-id") { // PATCH(reprint-637-required-on-changed)
 						nestedDraftGraph["entryId"] = bodyDraftGraphEntryId
 					}
-					if bodyDraftGraphNodes != "" {
+					if cmd.Flags().Changed("draft-graph-nodes") { // PATCH(reprint-637-required-on-changed)
 						var parsedDraftGraphNodes any
 						if err := json.Unmarshal([]byte(bodyDraftGraphNodes), &parsedDraftGraphNodes); err != nil {
 							return fmt.Errorf("parsing --draft-graph-nodes JSON: %w", err)
@@ -79,7 +79,7 @@ func newCallFlowsPostCmd(flags *rootFlags) *cobra.Command {
 						bodyMap["draftGraph"] = nestedDraftGraph
 					}
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if bodyPhoneNumber != "" {

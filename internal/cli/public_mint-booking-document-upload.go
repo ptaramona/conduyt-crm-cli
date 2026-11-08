@@ -81,22 +81,22 @@ func newPublicMintBookingDocumentUploadCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAppointmentId != "" {
+				if cmd.Flags().Changed("appointment-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["appointmentId"] = bodyAppointmentId
 				}
-				if bodyContentType != "" {
+				if cmd.Flags().Changed("content-type") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["contentType"] = bodyContentType
 				}
-				if bodyDocumentsPass != "" {
+				if cmd.Flags().Changed("documents-pass") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["documentsPass"] = bodyDocumentsPass
 				}
-				if bodyFilename != "" {
+				if cmd.Flags().Changed("filename") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["filename"] = bodyFilename
 				}
-				if bodyKind != "" {
+				if cmd.Flags().Changed("kind") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["kind"] = bodyKind
 				}
-				if cmd.Flags().Changed("size") { // PATCH(reprint-637-required-zero-values): required, an explicit 0 is sent
+				if cmd.Flags().Changed("size") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["size"] = bodySize
 				}
 			}

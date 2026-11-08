@@ -59,10 +59,10 @@ func newFilesCreateRecordCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEntityId != "" {
+				if cmd.Flags().Changed("entity-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["entityId"] = bodyEntityId
 				}
-				if bodyEntityType != "" {
+				if cmd.Flags().Changed("entity-type") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["entityType"] = bodyEntityType
 				}
 				if bodyUploadId != "" {

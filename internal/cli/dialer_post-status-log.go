@@ -54,7 +54,7 @@ func newDialerPostStatusLogCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyStatus != "" {
+				if cmd.Flags().Changed("status") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["status"] = bodyStatus
 				}
 				if bodyStatusCode != "" {

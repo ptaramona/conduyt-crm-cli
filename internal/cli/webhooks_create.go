@@ -71,7 +71,7 @@ func newWebhooksCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyDescription != "" {
 					bodyMap["description"] = bodyDescription
 				}
-				if bodyEvents != "" {
+				if cmd.Flags().Changed("events") { // PATCH(reprint-637-required-on-changed)
 					parsedEvents, parseErr := cliutil.ParseStringList(bodyEvents)
 					if parseErr != nil {
 						return fmt.Errorf("parsing --events list: %w", parseErr)
@@ -81,7 +81,7 @@ func newWebhooksCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyIsActive != "" {
 					bodyMap["isActive"] = bodyIsActive
 				}
-				if bodyUrl != "" {
+				if cmd.Flags().Changed("url") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["url"] = bodyUrl
 				}
 			}

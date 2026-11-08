@@ -92,14 +92,14 @@ func newAutomationsPostImportCmd(flags *rootFlags) *cobra.Command {
 				}
 				{
 					nestedGraph := map[string]any{}
-					if bodyGraphNodes != "" {
+					if cmd.Flags().Changed("graph-nodes") { // PATCH(reprint-637-required-on-changed)
 						var parsedGraphNodes any
 						if err := json.Unmarshal([]byte(bodyGraphNodes), &parsedGraphNodes); err != nil {
 							return fmt.Errorf("parsing --graph-nodes JSON: %w", err)
 						}
 						nestedGraph["nodes"] = parsedGraphNodes
 					}
-					if bodyGraphStartNodeId != "" {
+					if cmd.Flags().Changed("graph-start-node-id") { // PATCH(reprint-637-required-on-changed)
 						nestedGraph["startNodeId"] = bodyGraphStartNodeId
 					}
 					if len(nestedGraph) > 0 {
@@ -109,7 +109,7 @@ func newAutomationsPostImportCmd(flags *rootFlags) *cobra.Command {
 				if bodyKind != "" {
 					bodyMap["kind"] = bodyKind
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 				if cmd.Flags().Changed("resolve-names") {
@@ -162,7 +162,7 @@ func newAutomationsPostImportCmd(flags *rootFlags) *cobra.Command {
 						bodyMap["triggerConditions"] = nestedTriggerConditions
 					}
 				}
-				if bodyTriggerEvent != "" {
+				if cmd.Flags().Changed("trigger-event") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["triggerEvent"] = bodyTriggerEvent
 				}
 			}

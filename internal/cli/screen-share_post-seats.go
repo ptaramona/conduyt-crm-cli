@@ -59,14 +59,14 @@ func newScreenSharePostSeatsCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyEnabled != "" {
+				if cmd.Flags().Changed("enabled") { // PATCH(reprint-637-required-on-changed)
 					parsedEnabled, err := strconv.ParseBool(bodyEnabled)
 					if err != nil {
 						return fmt.Errorf("parsing --enabled as bool: %w", err)
 					}
 					bodyMap["enabled"] = parsedEnabled
 				}
-				if bodyUserId != "" {
+				if cmd.Flags().Changed("user-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["userId"] = bodyUserId
 				}
 			}

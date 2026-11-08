@@ -98,10 +98,10 @@ func newAiPostInsightsCmd(flags *rootFlags) *cobra.Command {
 					}
 					{
 						nestedFiltersDateRange := map[string]any{}
-						if bodyFiltersDateRangeFrom != "" {
+						if cmd.Flags().Changed("filters-date-range-from") { // PATCH(reprint-637-required-on-changed)
 							nestedFiltersDateRange["from"] = bodyFiltersDateRangeFrom
 						}
-						if bodyFiltersDateRangeTo != "" {
+						if cmd.Flags().Changed("filters-date-range-to") { // PATCH(reprint-637-required-on-changed)
 							nestedFiltersDateRange["to"] = bodyFiltersDateRangeTo
 						}
 						if len(nestedFiltersDateRange) > 0 {
@@ -140,7 +140,7 @@ func newAiPostInsightsCmd(flags *rootFlags) *cobra.Command {
 				if bodyPerPage != 0 {
 					bodyMap["perPage"] = bodyPerPage
 				}
-				if bodyQuery != "" {
+				if cmd.Flags().Changed("query") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["query"] = bodyQuery
 				}
 				{

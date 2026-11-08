@@ -65,16 +65,16 @@ func newSettingsPutProjectBlueVoiceCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAccountSid != "" {
+				if cmd.Flags().Changed("account-sid") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["accountSid"] = bodyAccountSid
 				}
-				if bodyApiKeySecret != "" {
+				if cmd.Flags().Changed("api-key-secret") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["apiKeySecret"] = bodyApiKeySecret
 				}
-				if bodyApiKeySid != "" {
+				if cmd.Flags().Changed("api-key-sid") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["apiKeySid"] = bodyApiKeySid
 				}
-				if bodyTwimlAppSid != "" {
+				if cmd.Flags().Changed("twiml-app-sid") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["twimlAppSid"] = bodyTwimlAppSid
 				}
 			}

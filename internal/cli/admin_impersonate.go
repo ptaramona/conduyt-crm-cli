@@ -55,7 +55,7 @@ func newAdminImpersonateCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAccountId != "" {
+				if cmd.Flags().Changed("account-id") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["accountId"] = bodyAccountId
 				}
 				if bodyReason != "" {

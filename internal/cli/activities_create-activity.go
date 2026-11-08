@@ -116,10 +116,10 @@ func newActivitiesCreateActivityCmd(flags *rootFlags) *cobra.Command {
 					}
 					bodyMap["metadata"] = parsedMetadata
 				}
-				if bodyTitle != "" {
+				if cmd.Flags().Changed("title") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["title"] = bodyTitle
 				}
-				if bodyType != "" {
+				if cmd.Flags().Changed("type") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["type"] = bodyType
 				}
 			}

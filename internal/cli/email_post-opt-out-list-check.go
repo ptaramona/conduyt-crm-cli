@@ -53,7 +53,7 @@ func newEmailPostOptOutListCheckCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				bodyMap := map[string]any{}
 				body = bodyMap
-				if bodyAddress != "" {
+				if cmd.Flags().Changed("address") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["address"] = bodyAddress
 				}
 			}

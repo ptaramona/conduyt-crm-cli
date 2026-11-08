@@ -65,7 +65,7 @@ func newTagsCreateCmd(flags *rootFlags) *cobra.Command {
 				if bodyColor != "" {
 					bodyMap["color"] = bodyColor
 				}
-				if bodyName != "" {
+				if cmd.Flags().Changed("name") { // PATCH(reprint-637-required-on-changed)
 					bodyMap["name"] = bodyName
 				}
 			}
