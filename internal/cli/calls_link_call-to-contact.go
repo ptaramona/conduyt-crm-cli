@@ -230,7 +230,7 @@ func newCallsLinkCallToContactCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&bodyAttachAs, "attach-as", "", "(#632) The one-click 'Add this number' choice; needs attachNumber true.")
 	cmd.Flags().BoolVar(&bodyAttachNumber, "attach-number", false, "Also write the call's number into the contact's next free phone slot.")
 	cmd.Flags().StringVar(&bodyContactId, "contact-id", "", "Contact id")
-	cmd.Flags().BoolVar(&bodyDryRun, "dry-run", false, "Run every check and answer what the request would do (attached.")
+	cmd.Flags().BoolVar(&bodyDryRun, "server-dry-run", false, "Ask the server to run every check and answer what the link would do (body dryRun: true), without linking; the request IS sent (the global --dry-run prints the request and sends nothing)") // PATCH(reprint-637-server-dry-run)
 	cmd.Flags().StringVar(&bodyReplaceSlot, "replace-slot", "", "(#632) With attachAs, when every slot is taken: the filled slot to replace.")
 	cmd.Flags().BoolVar(&stdinBody, "stdin", false, "Read request body as JSON from stdin")
 
