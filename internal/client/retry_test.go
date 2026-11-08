@@ -1372,27 +1372,14 @@ func TestCrossHostRedirectDropsEveryCredentialHeader(t *testing.T) {
 		"X-AccessToken": "at-FFFF-6666", "X-CSRFToken": "csrf-GGGG-7777", "X-APIToken": "apit-HHHH-8888", "X-Custom-Whatever": "w-1",
 	}
 	c := newRetryClient(origin.URL, nil)
-	if _, _, err := c.do(context.Background(), "GET", "/start", nil, nil, creds); err != nil {
-		// gocli1219: Printing Press 4.34.2 refuses a cross-origin hop to a loopback/private literal outright (stricter
-		// than dropping the credentials): nothing reaches the target.
-		if !errors.Is(err, ErrRedirectPrivateDestination) {
-			t.Fatal(err)
-		}
-		mu.Lock()
-		if got != nil {
-			t.Fatalf("refused redirect still reached the target: %v", got)
-		}
-		got = http.Header{"X-Request-Id": {"req-1"}} // nothing was sent: the allowlist question does not arise
-		mu.Unlock()
+	// gocli1219: Printing Press 4.34.2 refuses a cross-origin hop to a loopback/private literal outright: nothing
+	// reaches the target. The allowlist on a followed public hop is TestPublicCrossOriginRedirectCarriesOnlyAllowlistedHeaders.
+	if _, _, err := c.do(context.Background(), "GET", "/start", nil, nil, creds); !errors.Is(err, ErrRedirectPrivateDestination) {
+		t.Fatalf("cross-origin redirect to a loopback literal: err=%v, want ErrRedirectPrivateDestination", err)
 	}
 	mu.Lock()
-	for name := range creds {
-		if name != "X-Request-Id" && got.Get(name) != "" {
-			t.Errorf("cross-host redirect target received %s", name)
-		}
-	}
-	if got.Get("X-Request-Id") != "req-1" {
-		t.Errorf("a harmless header must still travel: %v", got)
+	if got != nil {
+		t.Fatalf("refused redirect still reached the target: %v", got)
 	}
 	mu.Unlock()
 

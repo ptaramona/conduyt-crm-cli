@@ -146,6 +146,42 @@ func (c *Client) httpClientFor(replaySafe bool) *http.Client {
 	return c.mutClient
 }
 
+// PATCH(retry-policy) gocli1219 r2: mutationCarriesCallKey reports a mutation sent with a per-call key header (a
+// spec-declared --idempotency-key flag). Such a request is sent but never replayed: not by the CLI (it is not
+// replay-safe) and not by Go's transport, which replays a keyed request on a dead reused connection.
+func mutationCarriesCallKey(method string, headerOverrides map[string]string) bool {
+	if isReadMethod(method) {
+		return false
+	}
+	for _, h := range []string{"Idempotency-Key", "X-Idempotency-Key"} {
+		for k, v := range headerOverrides {
+			if strings.EqualFold(k, h) && strings.TrimSpace(v) != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// noReuseMutationClient is the HTTP/1-only mutation client with keep-alives off: every keyed mutation dials a fresh
+// connection, so the transport never holds a reused connection it could silently resend the request on.
+func (c *Client) noReuseMutationClient() *http.Client {
+	base := c.httpClientFor(false)
+	c.keyedOnce.Do(func() {
+		tr, ok := base.Transport.(*http.Transport)
+		if !ok {
+			c.keyedClient = base
+			return
+		}
+		nt := tr.Clone()
+		nt.DisableKeepAlives = true
+		cp := *base
+		cp.Transport = nt
+		c.keyedClient = &cp
+	})
+	return c.keyedClient
+}
+
 type callCtxKey struct{}
 
 // linkCallCtx returns a context that ends when either ctx or the call context

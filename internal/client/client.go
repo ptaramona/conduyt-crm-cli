@@ -85,6 +85,9 @@ type Client struct {
 	CallBudget time.Duration
 	mutOnce    sync.Once
 	mutClient  *http.Client
+	// keyedOnce / keyedClient: the HTTP/1 mutation client with keep-alives off, for mutations carrying a per-call key.
+	keyedOnce   sync.Once
+	keyedClient *http.Client
 }
 
 func (c *Client) IsDryRun() bool {
@@ -2411,7 +2414,7 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 
 	for attempt := 0; ; attempt++ {
 		if err := c.waitForPlatformBudget(opCtx, endpointClass); err != nil {
-			return nil, 0, err
+			return nil, 0, failCtx(err) // PATCH(retry-policy): same stop classification as the adaptive limiter (gocli1219 r2)
 		}
 		// Proactive rate limiting — wait before sending
 		adaptiveStarted := time.Now()
@@ -2520,13 +2523,18 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 			c.platformSession.RecordRateLimitRequest()
 		}
 		httpClient := c.httpClientFor(canRetryAmbiguousFailure) // PATCH(retry-policy): HTTP/1-only for unreplayable mutations
+		if !canRetryAmbiguousFailure && mutationCarriesCallKey(method, headerOverrides) {
+			// PATCH(retry-policy) gocli1219 r2: a per-call Idempotency-Key makes Go's transport treat the request as
+			// replayable on a reused connection; a keyed mutation rides a connection of its own, so nothing replays it.
+			httpClient = c.noReuseMutationClient()
+		}
 		// Silence on a Timeout-0 transfer aborts that attempt. A body that
 		// keeps arriving may outlive the window. An explicit timeout,
 		// including 0, stays on the client deadline and is only size-limited.
 		var streamIdle time.Duration
 		if binaryResponse && !c.timeoutExplicit {
 			streamIdle = c.ConfiguredTimeout()
-			httpClient = StreamingHTTPClient(c.HTTPClient, streamIdle)
+			httpClient = StreamingHTTPClient(httpClient, streamIdle) // PATCH(retry-policy) gocli1219 r2: keep the chosen transport policy
 		}
 		if uploadAllowance > 0 && httpClient != nil && httpClient.Timeout > 0 {
 			// Copy so the shared client's timeout is never mutated.
@@ -2619,6 +2627,9 @@ func (c *Client) doInternal(ctx context.Context, method, path string, params map
 					wait := time.Duration(math.Pow(2, float64(attempt))) * time.Second
 					if !canWait(wait) {
 						return nil, 0, stopErr(lastErr)
+					}
+					if !retryWithinBudget(wait) { // gocli1219 r2: the provider retry budget, as the network/429/5xx branches
+						return nil, 0, lastErr
 					}
 					if serr := retrySleep(opCtx, wait); serr != nil {
 						return nil, 0, failCtx(serr)
