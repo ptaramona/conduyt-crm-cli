@@ -2,11 +2,11 @@
   "schema_version": 1,
   "applied_at": "2026-11-08",
   "base_run_id": "20261108-052151",
-  "base_printing_press_version": "4.28.0",
+  "base_printing_press_version": "4.34.2",
   "patches": [
     {
       "id": "retry-policy",
-      "summary": "Retry loop honours Retry-After on 429/503 (cap 30 s, up to 50% jitter), replays only GET/HEAD or CLI-keyed allowlisted mutations, bounds every call with a 120 s budget, and prints one gate_busy line.",
+      "summary": "Retry loop honours Retry-After on 429/503 (cap 30 s, up to 50% jitter), replays only GET/HEAD or CLI-keyed allowlisted mutations, bounds every call with a 120 s budget, and prints one gate_busy line. Reprint gocli1219: internal/client/client.go is the 4.34.2 file, which absorbed the bounded retry budget, the limiter Wait(ctx) and the redirect guards; the call sites are re-applied there (whole-call --call-budget with its stop classification, replay only reads (PUT/DELETE included, keyed or not, are never resent), Retry-After on 429/503 from the header or the busy body, one gate_busy line, no refill-and-continue after the last attempt, HTTP/1-only client for unreplayable mutations, config-level and empty key headers never on a mutation, a mutation never redirected cross-origin, a non-replay-safe 307/308 refused). A per-call Idempotency-Key from a spec-declared --idempotency-key flag (new in 4.34.2) is sent but not replayed.",
       "reason": "The generated loop retried every method on 5xx and network errors after a fixed 1/2/4 s and ignored Retry-After, which replays mutations and amplifies the API's gate_busy queue (Codex found it 2026-10-14).",
       "files": [
         "internal/client/retry.go",
@@ -15,14 +15,15 @@
         "internal/cli/root.go",
         "internal/client/client_test.go",
         "internal/client/client.go",
-        "internal/client/retry_test.go"
+        "internal/client/retry_test.go",
+        "internal/client/redaction_patch.go"
       ],
       "validated_outcome": "Unkeyed POST gets exactly one request on 429, 5xx, a dropped connection, a body reset and a 307; a warm-connection POST with a user Idempotency-Key header is still sent once with the header stripped.",
       "upstream_issue": "To file against mvanhorn/cli-printing-press: never retry non-idempotent verbs on 429/5xx/network errors, honour Retry-After on 5xx, offer a per-call budget."
     },
     {
       "id": "redirect-and-redaction-policy",
-      "summary": "Redirect rules (a mutation is never sent to another origin; cross-origin GET/HEAD forwards only an allowlist of headers) and request-aware credential redaction (headers, cookies, query, fragment, secret path codes, JSON/multipart bodies, redirect targets, Referer/Link) with a lazy, budgeted mask set that withholds output when it overflows. Redaction keeps the original error class (errors.Is/As to url.Error, net.OpError, DNSError with masked text) so the local-data fallback still works; MCP path parameters are PathEscape-d; doctor, dry-run bodies and local-lookup messages are redacted. Webhook delivery and feedback endpoints are masked in errors and output (client.MaskErrorForURL / MaskURL); the cyclic-safe error identity walk is budgeted. Reprint 637: the two new public paths with a secret path code (/public/screen-share/{code}/state, /webhooks/inbound/forms/{token}) are in sensitivePathParams and their envelopes mask the path.",
+      "summary": "Redirect rules (a mutation is never sent to another origin; cross-origin GET/HEAD forwards only an allowlist of headers) and request-aware credential redaction (headers, cookies, query, fragment, secret path codes, JSON/multipart bodies, redirect targets, Referer/Link) with a lazy, budgeted mask set that withholds output when it overflows. Redaction keeps the original error class (errors.Is/As to url.Error, net.OpError, DNSError with masked text) so the local-data fallback still works; MCP path parameters are PathEscape-d; doctor, dry-run bodies and local-lookup messages are redacted. Webhook delivery and feedback endpoints are masked in errors and output (client.MaskErrorForURL / MaskURL); the cyclic-safe error identity walk is budgeted. Reprint 637: the two new public paths with a secret path code (/public/screen-share/{code}/state, /webhooks/inbound/forms/{token}) are in sensitivePathParams and their envelopes mask the path. Reprint gocli1219: the hand-written redaction set (maskSet, secretSink, sensitive path and body fields, maskedError identity, MaskURL / MaskPath / MaskErrorForURL) lives in internal/client/redaction_patch.go beside the 4.34.2 client.go; doInternal builds the per-attempt mask set and the dry-run preview masks secret path codes, sensitive query names and body fields; cross-origin redirects carry only the allowlisted headers on top of the 4.34.2 guard (which refuses loopback/private targets and https->http downgrades outright).",
       "reason": "Error bodies, error text, URLs and envelopes echo what the server or the redirect chain returns, so credentials sent in headers, bodies, query strings or path codes could reach the terminal, logs or an external redirect target.",
       "files": [
         "internal/client/client.go",
@@ -39,7 +40,8 @@
         "internal/cli/feedback.go",
         "internal/cli/root.go",
         "internal/cli/public_post-screen-share-code-state.go",
-        "internal/cli/webhooks_inbound-form-submission.go"
+        "internal/cli/webhooks_inbound-form-submission.go",
+        "internal/client/redaction_patch.go"
       ],
       "validated_outcome": "A 308 to another origin for a keyed POST sends nothing; an echoed Authorization, X-API-Key, cookie, password, token array, Location/Referer token or screen-share code never appears in APIError, err.Error(), stderr, dry-run or the JSON envelopes; with more than 256 secrets the output is withheld.",
       "upstream_issue": "To file against mvanhorn/cli-printing-press: client-level redirect policy and secret redaction as generator features; path-parameter secrecy as spec metadata (x-secret) so generated envelopes mask it."
@@ -173,7 +175,7 @@
     },
     {
       "id": "reprint-637-users-invite",
-      "summary": "`users invite` is the POST /users/invite endpoint command (the press name) and carries the cancel/resend children; duplicate AddCommand registrations (contacts duplicate-proposals, users invite) and the generated `create` alias on email post-opt-out-list (it shadowed email send's) are removed. Prose: reprint-637-full-public-api.md, round 4.",
+      "summary": "`users invite` is the POST /users/invite endpoint command (the press name) and carries the cancel/resend children; duplicate AddCommand registrations (contacts duplicate-proposals, users invite) and the generated `create` alias on email post-opt-out-list (it shadowed email send's) are removed. Prose: reprint-637-full-public-api.md, round 4. Reprint gocli1219: 4.34.2 renames the children to `users item-invite ...` and refuses the old paths; this tree keeps `users invite post-users-id-cancel|resend` (the 4.34.2 users_item_invite*.go files are not carried) and TestDeclaredAPISurfaceReachable lists the kept paths.",
       "reason": "The press names the endpoint and the sub-resource group alike and keeps only the group, so POST /users/invite was unreachable from the CLI; cobra keeps duplicate children silently.",
       "files": [
         "internal/cli/users_invite.go",
@@ -233,7 +235,7 @@
     },
     {
       "id": "reprint-637-required-on-changed",
-      "summary": "Every REQUIRED scalar body flag is serialized when it was passed (cmd.Flags().Changed), whatever its zero value (\"\", 0, 0.0, false), on every generated command: 297 guards in 165 files (294 written by the codemod, 3 by hand: emails create-template --body/--channel/--name). A complete regeneration shows exactly 297 `// PATCH(reprint-637-required-on-changed)` serializer guards across 165 non-test files under internal/cli/; fewer means the codemod or the hand guards were not re-applied. Required = the generator's own `required flag` check list plus the body params tools-manifest.json marks required (a required param with a spec default gets no check, e.g. booking-pages create --duration-minutes). Applied by the post-print codemod .printing-press-patches/required-on-changed.pl (run from the repo root after every reprint: `perl .printing-press-patches/required-on-changed.pl internal/cli/*.go`; idempotent). Replaces the r2 per-flag entry reprint-637-required-zero-values (its seven guards are the same rule, now under this marker). Query flags and optional flags keep the generator's guard. Round 5 (Codex reprint637-r4): the codemod also rewrites the required whole-body --body-json (flagBodyJSON) of the seven anyOf/oneOf commands (ai post-tasks, automations post-validate, batch-operations post, chat post-agents-me-inbox-ack/-claim, conduyt-auth post-signup-events, emails create-template): an empty value is a local parse error instead of a silent {}; emails create-template's hand-shaped required set --body/--channel/--name is serialized on Changed() by hand (same marker); conduyt-auth register refuses an explicit --terms-accepted=false under --dry-run too.",
+      "summary": "Every REQUIRED scalar body flag is serialized when it was passed (cmd.Flags().Changed), whatever its zero value (\"\", 0, 0.0, false), on every generated command: 297 guards in 165 files (294 written by the codemod, 3 by hand: emails create-template --body/--channel/--name). A complete regeneration shows exactly 297 `// PATCH(reprint-637-required-on-changed)` serializer guards across 165 non-test files under internal/cli/; fewer means the codemod or the hand guards were not re-applied. Required = the generator's own `required flag` check list plus the body params tools-manifest.json marks required (a required param with a spec default gets no check, e.g. booking-pages create --duration-minutes). Applied by the post-print codemod .printing-press-patches/required-on-changed.pl (run from the repo root after every reprint: `perl .printing-press-patches/required-on-changed.pl internal/cli/*.go`; idempotent). Replaces the r2 per-flag entry reprint-637-required-zero-values (its seven guards are the same rule, now under this marker). Query flags and optional flags keep the generator's guard. Round 5 (Codex reprint637-r4): the codemod also rewrites the required whole-body --body-json (flagBodyJSON) of the seven anyOf/oneOf commands (ai post-tasks, automations post-validate, batch-operations post, chat post-agents-me-inbox-ack/-claim, conduyt-auth post-signup-events, emails create-template): an empty value is a local parse error instead of a silent {}; emails create-template's hand-shaped required set --body/--channel/--name is serialized on Changed() by hand (same marker); conduyt-auth register refuses an explicit --terms-accepted=false under --dry-run too. Reprint gocli1219 (Printing Press 4.34.2): the press now serializes every body flag on `cmd.Flags().Changed(\"<flag>\") || <non-zero>`, so the scalar rule is absorbed upstream and the 292 codemod guards are gone from generated files. The codemod stays the re-runnable post-print step: on 4.34.2 output it rewrites only the seven required whole-body --body-json guards (`required-on-changed: 7 guards in 7 files`). The true count after gocli1219 is 20 `// PATCH(reprint-637-required-on-changed)` markers in 12 non-test files: 7 codemod (--body-json) + 13 in hand-kept files (emails create-template --body/--channel/--name 3, conduyt-auth register 4, users invite 2, conduyt-auth logout 2, screen-share delete-session-code 1, calls link call-to-contact 1). TestEveryRequiredBodyFlagSerializesItsZeroValue still walks every required scalar body param (245) and now runs as the dogfood harness (4.34.2 enforces the other required flags under a user's --dry-run); the two multipart file paths are no longer exceptions (the 4.34.2 dry-run preview opens no file).",
       "reason": "Printing Press 4.28.0 guards every scalar body field with `!= \"\"` / `!= 0` / `!= 0.0`, so a required flag passed with its zero value passed the required check and was then dropped from the body; Codex found the class three rounds running (reprint637-r2 --folders=0, r3 --tag-prefix \"\" and --price 0). The template is upstream (the press pinned at 4.28.0), so the rule lives in a codemod the reprint recipe runs, pinned by a manifest-wide test.",
       "files": [
         ".printing-press-patches/required-on-changed.pl",
@@ -244,6 +246,22 @@
       ],
       "validated_outcome": "TestEveryRequiredBodyFlagSerializesItsZeroValue walks tools-manifest.json (every tool x required scalar body param, 242 checked, 8 documented exceptions that refuse their zero value on purpose: register --terms-accepted, decide-contact --decision, email send's hand-written set, the two multipart file paths) and asserts the dry-run body with the zero-valued flag differs from the body without it; 214 failures before the codemod, 0 after. Fails if the walk checks fewer than 200 params. Round 5: the walk includes DELETE bodies (245 checked, incl. contacts collaborators --user-id-2 and screen-share --marks-drew/--marks-pointed); every documented exception must refuse its zero value under --dry-run; TestRequiredFlagsOutsideTheManifestWalk covers the seven --body-json commands and the create-template set (all fail at 80c843e).",
       "upstream_issue": "For the press board (not filed): serialize a required body field on Changed(), not on a non-zero value."
+    },
+    {
+      "id": "gocli1219-reprint-4342",
+      "summary": "Reprint under Printing Press 4.34.2 by a 3-way merge of the 4.34.2 print onto the tree (method and every conflict decision in the lane logs: gen.sh, merge.sh, unguard.py, decisions.json). Carried on top of the print: MCP explicit empty array/scalar query values reach the API as name= (codeOrchSplitQuery); renamed endpoint ids resolve before both code-orchestration lookups; the novel-feature command-mirror context names each CLI command and its MCP tool (registeredCommandMirrorCapabilities, the 4.34.2 template's novel-features branch); `feedback` keeps its own --dry-run preview instead of the generic short-circuit; the error-path --deliver goes through finishDelivery (masked, previewed under --dry-run).",
+      "reason": "The 4.34.2 print changes generator contracts the hand patches and their tests were written against (read/execute MCP split, retainCLIQueryParams, required flags enforced under a user's --dry-run, client rewrite).",
+      "files": [
+        "internal/mcp/code_orch.go",
+        "internal/mcp/tools.go",
+        "internal/mcp/code_orch_confirm_helper_test.go",
+        "internal/cli/feedback.go",
+        "internal/cli/root.go",
+        "internal/cli/root_test.go",
+        "internal/client/client.go",
+        "internal/client/redaction_patch.go"
+      ],
+      "validated_outcome": "go build, go vet and go test -count=1 ./... green; every earlier patch test passes (MCP guard tests through codeOrchTestInvoke; tests that pinned 4.28.0 generator defaults re-pinned to the 4.34.2 contract, each marked gocli1219)."
     }
   ]
 }
