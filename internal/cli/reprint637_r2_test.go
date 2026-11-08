@@ -68,3 +68,18 @@ func TestConditionalRequirementsLetTheDryRunPreviewPrint(t *testing.T) {
 		t.Errorf("--dry-run --scope all: err %v, want a usage error and no request", err)
 	}
 }
+
+// An empty --preferences is refused before any request (the serializer would drop it and send {}).
+func TestEmptyPreferencesIsRefused(t *testing.T) {
+	for _, extra := range [][]string{{"--preferences", ""}, {"--preferences", "  "}, {"--preferences=", "--dry-run"}} {
+		srv, reqs := recordingServer(t)
+		err := runCLI(t, srv.URL, append([]string{"users", "notifications", "update-user-preferences", "u1", "--yes"}, extra...)...)
+		if err == nil || ExitCode(err) != 2 || len(reqs()) != 0 {
+			t.Errorf("%v: err %v, %d request(s); want a usage error and none", extra, err, len(reqs()))
+		}
+	}
+	srv, reqs := recordingServer(t)
+	if err := runCLI(t, srv.URL, "users", "notifications", "update-user-preferences", "u1", "--yes", "--preferences", "", "--sounds-team-chat"); err == nil || len(reqs()) != 0 {
+		t.Errorf("empty --preferences beside sounds: err %v, %d request(s); want a refusal", err, len(reqs()))
+	}
+}
