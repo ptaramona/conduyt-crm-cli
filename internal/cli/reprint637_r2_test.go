@@ -4,6 +4,7 @@ package cli
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -39,5 +40,31 @@ func TestRequiredZeroValuesAreSent(t *testing.T) {
 		if v, ok := body[tc.key]; !ok || v != float64(0) {
 			t.Fatalf("%v: body %s, want %s: 0", tc.args, got[0].Body, tc.key)
 		}
+	}
+}
+
+// Under the global --dry-run a missing required input is not an error: the preview prints and nothing is sent.
+// A passed-but-wrong value is still refused.
+func TestConditionalRequirementsLetTheDryRunPreviewPrint(t *testing.T) {
+	for _, args := range [][]string{
+		{"conduyt-auth", "delete-sessions", "--dry-run"},
+		{"users", "notifications", "update-user-preferences", "u1", "--dry-run"},
+	} {
+		srv, reqs := recordingServer(t)
+		var runErr error
+		errOut := captureStderr(t, func() { runErr = runCLI(t, srv.URL, args...) })
+		if runErr != nil {
+			t.Errorf("%v: %v, want the preview", args, runErr)
+		}
+		if n := len(reqs()); n != 0 {
+			t.Errorf("%v sent %d request(s)", args, n)
+		}
+		if !strings.Contains(errOut, "(dry run - no request sent)") {
+			t.Errorf("%v printed no preview:\n%s", args, errOut)
+		}
+	}
+	srv, reqs := recordingServer(t)
+	if err := runCLI(t, srv.URL, "conduyt-auth", "delete-sessions", "--dry-run", "--scope", "all"); err == nil || ExitCode(err) != 2 || len(reqs()) != 0 {
+		t.Errorf("--dry-run --scope all: err %v, want a usage error and no request", err)
 	}
 }

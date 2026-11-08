@@ -4,10 +4,12 @@ import "fmt"
 
 // PATCH(reprint-637-conditional-requirements): pre-request checks the fresh spec cannot express (it types the
 // inputs as optional). Kept in a hand-written file so a reprint only has to restore the one-line calls.
+// Under the global --dry-run a MISSING input is not an error (the preview prints, as for every generated
+// required flag); a value that is passed and wrong still is.
 
 // checkDeleteSessionsTarget: DELETE /auth/sessions revokes one session (--id) or every other session
 // (--scope others); exactly one of the two.
-func checkDeleteSessionsTarget(idSet bool, id string, scopeSet bool, scope string) error {
+func checkDeleteSessionsTarget(idSet bool, id string, scopeSet bool, scope string, dryRun bool) error {
 	switch {
 	case idSet && scopeSet:
 		return usageErr(fmt.Errorf("--id and --scope cannot be combined: pass --id <session> or --scope others"))
@@ -20,7 +22,17 @@ func checkDeleteSessionsTarget(idSet bool, id string, scopeSet bool, scope strin
 			return usageErr(fmt.Errorf("--id must not be empty"))
 		}
 	default:
-		return usageErr(fmt.Errorf("pass --id <session> or --scope others"))
+		if !dryRun {
+			return usageErr(fmt.Errorf("pass --id <session> or --scope others"))
+		}
+	}
+	return nil
+}
+
+// checkNotificationPreferencesBody: PATCH /users/{id}/notifications needs preferences, sounds, or both.
+func checkNotificationPreferencesBody(preferencesSet bool, preferences string, soundsSet bool, dryRun bool) error {
+	if !preferencesSet && !soundsSet && !dryRun {
+		return usageErr(fmt.Errorf("send --preferences, --sounds-team-chat, or both (or the whole body with --stdin)"))
 	}
 	return nil
 }

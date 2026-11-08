@@ -27,7 +27,7 @@ func newConduytAuthDeleteSessionsCmd(flags *rootFlags) *cobra.Command {
 			if cmd.Flags().NFlag() == 0 && len(args) == 0 && !flags.dryRun {
 				return cmd.Help()
 			}
-			if err := checkDeleteSessionsTarget(cmd.Flags().Changed("id"), flagId, cmd.Flags().Changed("scope"), flagScope); err != nil {
+			if err := checkDeleteSessionsTarget(cmd.Flags().Changed("id"), flagId, cmd.Flags().Changed("scope"), flagScope, flags.dryRun); err != nil {
 				return err
 			}
 			path := "/auth/sessions"
