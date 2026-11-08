@@ -94,13 +94,13 @@
     "checked": 9
   },
   "print_json_filtered_check": {
-    "checked": 1207
+    "checked": 1209
   },
   "test_presence": {
     "checked": 2
   },
   "naming_check": {
-    "checked": 1207
+    "checked": 1209
   },
   "sync_param_drop_check": {
     "checked": 0,
