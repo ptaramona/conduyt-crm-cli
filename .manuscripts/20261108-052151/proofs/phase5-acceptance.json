@@ -12,7 +12,7 @@
     "type": "bearer_token",
     "api_key_available": true
   },
-  "source_fingerprint": "1173ce97d193e0348e3393fd289cd7f6f4757aa67fa7cdfecbe1e4820d5d4e9c",
+  "source_fingerprint": "2c6a6e8bbc383eba38e5d9cce0d5c4e3d3685c6f8fe82950ba7586b3dd7ef1fd",
   "source_files": {
     "cmd/conduyt-crm-pp-cli/main.go": "29be83c171af167f619beecc63a7e80862bb1c40cbdbeab07982e9a9d475b1c5",
     "cmd/conduyt-crm-pp-mcp/http_auth_test.go": "09c877f6db31e530ea1938af19a29b6fd7e93ae2b7fa948f114523c0e368880e",
@@ -116,7 +116,7 @@
     "internal/cli/automations_get-schema.go": "9fe4b8c045a9ba88edfe75d1033d6bf07f40a2bffafaf2162ff2d421d327a9f1",
     "internal/cli/automations_get-step-logs.go": "9af44044279fdd1b379ec6a295bdc0f1fc587edec7eba2573181e659f9fbba32",
     "internal/cli/automations_get.go": "0704919745478e16d8e9325b4d7c5d3ef03dbe56921199fd97c6777b34aa7724",
-    "internal/cli/automations_hours_audit.go": "0e4da99e65c605639f2f4782cdf943d3bad3b5720968c7b893e41b57e708a125",
+    "internal/cli/automations_hours_audit.go": "5d5044b20298a6d7325801a44912d101e9019e64cf29ac9c2e405732e04a75fb",
     "internal/cli/automations_hours_audit_test.go": "c4811bbd9c9ac1d90d503482ea967ce5a5d9bcbd64c48247d1fce2def50969ad",
     "internal/cli/automations_list-actions.go": "75c56dd4dbfd673fce5e9bbc3ed457250f823fa3c46fbe1145233181ec4cba82",
     "internal/cli/automations_list-condition-fields.go": "051710535384d64652248e796792c806eb0332f3cbe7c77294a425151a1c5102",
@@ -856,7 +856,7 @@
     "internal/cli/notifications_update-digest-settings.go": "cb1394628b834198d7d03d925ce161cca2fd183c92192cfb2a00b83c22fe4e9d",
     "internal/cli/novel1219_regressions_test.go": "277fda2851a3b7901017cfd7518a4589e13743aa9180d9b72a07dea577d96588",
     "internal/cli/novel1219_restored_commands.go": "1e85b8283d4e79c311fc7a988c2ec7a0104f839d6120febc7af68fa16338aef7",
-    "internal/cli/novel1219_restored_test.go": "d03d7a07a86f76f0893621c4ab3ef1ab8d4a9d62de8c20111b8fcdbb24efe606",
+    "internal/cli/novel1219_restored_test.go": "2e1d159daacddd75efa8246ff1a6cd8f5dfd091eea7629dd2c5854bb06c2acf3",
     "internal/cli/novel_port_helpers.go": "edf3aa819ae47991d188cd89ab85938091487a99599a4133f92ecedf814e78f1",
     "internal/cli/phone_identity.go": "b265978556b046540ab58f68ff9de0219eb7d12229756eafc6e640f59fc347b7",
     "internal/cli/phone_identity_test.go": "7f6a06c9f17de538d94ef06bd7e6b75725b081cddeb990d1aadceca618efe801",
