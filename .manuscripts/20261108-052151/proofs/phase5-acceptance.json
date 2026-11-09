@@ -12,7 +12,7 @@
     "type": "bearer_token",
     "api_key_available": true
   },
-  "source_fingerprint": "e757bdd6632abd9d9d6c3ae295fb03a8a298f5f12df4d61212f812e20cb89f26",
+  "source_fingerprint": "b414ccac0c3d2a40f1293e5283d7c73d7f2708340c3639f146e11e550e0e2ce6",
   "source_files": {
     "cmd/conduyt-crm-pp-cli/main.go": "29be83c171af167f619beecc63a7e80862bb1c40cbdbeab07982e9a9d475b1c5",
     "cmd/conduyt-crm-pp-mcp/http_auth_test.go": "09c877f6db31e530ea1938af19a29b6fd7e93ae2b7fa948f114523c0e368880e",
@@ -1344,10 +1344,10 @@
     "internal/cliutil/unknown_caller_guards.go": "bf0a88b8d51238ab2f65304462e0f7aa12a2f0f1f3fbae006ea35102b10c027b",
     "internal/cliutil/verifyenv.go": "12b05863ec4698c292ad98dc2d34dbc2a9dd1ef4b8e107353713655631435726",
     "internal/cliutil/windows_account.go": "7bdc977912bcf4e0c25be29ad94f6bbbcc771e12f0d40995b74d75ab793ceb2d",
-    "internal/config/config.go": "488ff286870b73066c6de92a61fd731f782056255e3984404f027d642715e980",
+    "internal/config/config.go": "2b07b38ff0b4ad51c89f16a183c8e18b9de4c4caa3ef663dac555e653ac65154",
     "internal/config/config_perms_test.go": "b657fc7ca5b6974743ce9a6cc339d9f3a2519a2144b32ddfc13c0cc11d04cec0",
-    "internal/config/legacy_auth.go": "cf47b9d9250f7c7380f4c3978d2895b43cc2770ae52b7fbbbe2d0d6cee5182a9",
-    "internal/config/legacy_auth_test.go": "3dca26c5970ea49afde7ce17614f080cf500eeed46a5f3c55abd7b62a471b905",
+    "internal/config/legacy_auth.go": "4a77d7839565ac118be66d7e0cf1ba81a2514ec66c69ba4a7a8d37adc310206a",
+    "internal/config/legacy_auth_test.go": "aee549bf7f31969414de3d33618d636dd26d1ff704f87c88cc8ac8333db419fe",
     "internal/learn/derive.go": "48c1700bc6da4fc68128b197a864c5b5ffb0d103fe7f577d7308feb69c6176de",
     "internal/learn/derive_test.go": "d442e0c793f0842ef0f5788449e068c421dc40b6a17c865248ffe6ffd830ac10",
     "internal/learn/doc.go": "b9c5d40db8b7c1789824b8be1f7020d2c1b6f77789272bc0b399786b7720a79f",
