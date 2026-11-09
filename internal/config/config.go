@@ -48,8 +48,8 @@ type Config struct {
 	envOverrides         map[string]bool `toml:"-"`
 	fileConfig           *Config         `toml:"-"`
 	ConduytCrmBearerAuth string          `toml:"crm_bearer_auth"`
-	// legacyAuth is the earlier entry's saved key that supplied the token, if any. PATCH(novel1219-auth-compat)
-	legacyAuth *legacyAuthSource
+	// legacyKey is the earlier entry's saved key that supplied the token, if any. PATCH(novel1219-auth-compat)
+	legacyKey *legacyKeySource
 }
 
 func Load(configPath string) (*Config, error) {
@@ -82,15 +82,7 @@ func Load(configPath string) (*Config, error) {
 		}
 	}
 	cfg.Path = path
-	// PATCH(novel1219-auth-compat): a legacy key in the profile's credentials file comes before the global file.
-	if err := cfg.applyLegacyProfileCredentials(explicitConfigFile, path); err != nil {
-		return nil, err
-	}
 	if err := cfg.applyStoredCredentials(explicitConfigFile, path); err != nil {
-		return nil, err
-	}
-	// PATCH(novel1219-auth-compat): then a legacy key in the global credentials file, with the global-origin check.
-	if err := cfg.applyLegacyGlobalCredentials(explicitConfigFile); err != nil {
 		return nil, err
 	}
 	// Label credentials that arrived from the config or credentials file
@@ -168,7 +160,7 @@ func Load(configPath string) (*Config, error) {
 	if v := cliutil.EnvOverride("CONDUYT_CRM_BASE_URL"); v != "" {
 		cfg.BaseURL = v
 	}
-	cfg.finishLegacyAuth() // PATCH(novel1219-auth-compat): migrate the one legacy source that supplied the token
+	cfg.noteLegacyKey() // PATCH(novel1219-auth-compat): one notice when an earlier saved key supplied the token
 	return cfg, nil
 }
 
@@ -765,6 +757,9 @@ func (c *Config) applyCredentials(creds *cliutil.Credentials) {
 	}
 	if c.ConduytCrmBearerAuth == "" {
 		c.ConduytCrmBearerAuth = creds.ConduytCrmBearerAuth
+		if creds.LegacyKey != "" && creds.ConduytCrmBearerAuth != "" { // PATCH(novel1219-auth-compat)
+			c.legacyKey = &legacyKeySource{Path: creds.LegacyPath, Key: creds.LegacyKey, Token: creds.ConduytCrmBearerAuth}
+		}
 	}
 }
 

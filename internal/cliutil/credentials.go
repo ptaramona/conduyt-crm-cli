@@ -36,6 +36,29 @@ type Credentials struct {
 	ClientID             string    `toml:"client_id"`
 	ClientSecret         string    `toml:"client_secret"`
 	ConduytCrmBearerAuth string    `toml:"crm_bearer_auth"`
+	// PATCH(novel1219-auth-compat): the earlier library entry saved the token as bearer_auth / api_key. They are
+	// read from the same checked-descriptor bytes as every other field, count as credentials for the trust and
+	// refusal rules, and are never written (saves build a fresh Credentials without them).
+	LegacyBearerAuth string `toml:"bearer_auth,omitempty"`
+	LegacyAPIKey     string `toml:"api_key,omitempty"`
+	// LegacyKey names the earlier key that supplied ConduytCrmBearerAuth after loading ("" when none did).
+	LegacyKey string `toml:"-"`
+	// LegacyPath is the file LegacyKey was read from.
+	LegacyPath string `toml:"-"`
+}
+
+// ApplyLegacyKeys fills ConduytCrmBearerAuth from an earlier key when the document has no current key: bearer_auth
+// first, then api_key. A document that carries crm_bearer_auth uses it only. PATCH(novel1219-auth-compat)
+func (c *Credentials) ApplyLegacyKeys() {
+	if c == nil || c.ConduytCrmBearerAuth != "" {
+		return
+	}
+	switch {
+	case strings.TrimSpace(c.LegacyBearerAuth) != "":
+		c.ConduytCrmBearerAuth, c.LegacyKey = c.LegacyBearerAuth, "bearer_auth"
+	case strings.TrimSpace(c.LegacyAPIKey) != "":
+		c.ConduytCrmBearerAuth, c.LegacyKey = c.LegacyAPIKey, "api_key"
+	}
 }
 
 // CredentialsPermissionError means the credentials bytes were published but
@@ -115,7 +138,7 @@ func credentialsFileFrom(creds *Credentials) map[string]interface{} {
 	credsType := credsValue.Type()
 	for i := 0; i < credsType.NumField(); i++ {
 		key := credentialTomlKey(credsType.Field(i))
-		if key == "" {
+		if key == "" || key == "bearer_auth" || key == "api_key" { // PATCH(novel1219-auth-compat): earlier keys are read, never written
 			continue
 		}
 		value := credsValue.Field(i)
@@ -243,6 +266,10 @@ func loadCredentialsWithStatus(path string, explicit bool) (*Credentials, Creden
 		}
 		return nil, status, nil
 	}
+	creds.ApplyLegacyKeys() // PATCH(novel1219-auth-compat): same trusted bytes, same document
+	if creds.LegacyKey != "" {
+		creds.LegacyPath = path
+	}
 	status.Loaded = true
 	return &creds, status, nil
 }
@@ -275,7 +302,9 @@ func (c *Credentials) HasValues() bool {
 		c.RefreshToken != "" ||
 		c.ClientID != "" ||
 		c.ClientSecret != "" ||
-		c.ConduytCrmBearerAuth != ""
+		c.ConduytCrmBearerAuth != "" ||
+		c.LegacyBearerAuth != "" || // PATCH(novel1219-auth-compat): a legacy-only document holds a credential
+		c.LegacyAPIKey != ""
 }
 
 func credentialsBytesHaveValues(data []byte) bool {

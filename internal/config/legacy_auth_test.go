@@ -2,13 +2,12 @@
 
 package config
 
-// PATCH(novel1219-auth-compat): env precedence; legacy keys read in place through the normal sources, order and
-// trust rules; one-source migration (lock + compare, verified owner-only files, unique backup); Windows reads in
-// place; no secret in any notice. Greptile PR #2450 round 2 P1 and Codex novel1219-r6.
+// PATCH(novel1219-auth-compat): env precedence; the earlier entry's saved keys read through the existing
+// checked-descriptor loaders as extra field names of the same documents (same trust, refusal and fallback rules as
+// crm_bearer_auth); nothing rewritten; no secret in any output. Greptile PR #2450 round 2 P1, Codex novel1219-r6/r7.
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +21,7 @@ const (
 	legacyTokenA = "LEGACY-BEARER-AUTH-SECRET-1111"
 	legacyTokenB = "LEGACY-API-KEY-SECRET-2222"
 	currentToken = "CURRENT-CRM-BEARER-SECRET-3333"
+	headerToken  = "Bearer AUTH-HEADER-SECRET-4444"
 	defaultBase  = "https://conduyt.app/api/v1"
 )
 
@@ -32,11 +32,11 @@ func isolateLegacyAuth(t *testing.T) *bytes.Buffer {
 	t.Setenv("CONDUYT_BEARER_AUTH", "")
 	t.Setenv("CONDUYT_API_KEY", "")
 	var buf bytes.Buffer
-	prevW, prevR := legacyAuthNoticeWriter, legacyAuthRewriteSupported
+	prev := legacyAuthNoticeWriter
 	legacyAuthNoticeWriter = &buf
 	legacyAuthNoticeOnce = sync.Map{}
 	t.Cleanup(func() {
-		legacyAuthNoticeWriter, legacyAuthRewriteSupported = prevW, prevR
+		legacyAuthNoticeWriter = prev
 		legacyAuthNoticeOnce = sync.Map{}
 	})
 	return &buf
@@ -54,20 +54,41 @@ func writeOwnerOnly(t *testing.T, path, body string) {
 
 func assertNoSecret(t *testing.T, where, text string) {
 	t.Helper()
-	for _, s := range []string{legacyTokenA, legacyTokenB, currentToken} {
+	for _, s := range []string{legacyTokenA, legacyTokenB, currentToken, headerToken} {
 		if strings.Contains(text, s) {
 			t.Fatalf("%s leaks a secret value: %q", where, text)
 		}
 	}
 }
 
-func backupsOf(t *testing.T, path string) []string {
+func assertUnchanged(t *testing.T, path, body string) {
 	t.Helper()
-	matches, err := filepath.Glob(path + ".legacy-auth-*.bak")
+	raw, err := os.ReadFile(path)
+	if err != nil || string(raw) != body {
+		t.Fatalf("%s was rewritten (err %v)", filepath.Base(path), err)
+	}
+	if extra, _ := filepath.Glob(path + ".*"); len(extra) != 0 {
+		t.Fatalf("files written beside %s: %v", filepath.Base(path), extra)
+	}
+}
+
+func profilePaths(t *testing.T) (configPath, credsPath string) {
+	t.Helper()
+	configPath = filepath.Join(t.TempDir(), "profile", "config.toml")
+	credsPath, err := cliutil.CredentialsFilePathForConfig(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return matches
+	return configPath, credsPath
+}
+
+func globalCredsPath(t *testing.T) string {
+	t.Helper()
+	p, err := cliutil.CredentialsFilePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
 }
 
 func TestLegacyAuthEnvPrecedence(t *testing.T) {
@@ -107,283 +128,210 @@ func TestLegacyAuthEnvPrecedence(t *testing.T) {
 	}
 }
 
-func TestLegacyAuthConfigMigratesOnceAndIsIdempotent(t *testing.T) {
+// Saved earlier keys in the config file are honoured in place, never rewritten, with one notice naming the file and
+// the re-save command; a document with crm_bearer_auth uses it only; repeated loads behave the same.
+func TestLegacyAuthConfigKeysReadInPlace(t *testing.T) {
 	for _, tc := range []struct {
 		name, body, want, wantKey string
-		migrates                  bool
 	}{
-		{"bearer_auth", "base_url = \"" + defaultBase + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n", legacyTokenA, "bearer_auth", true},
-		{"api_key", "api_key = \"" + legacyTokenB + "\"\n", legacyTokenB, "api_key", true},
-		{"both prefer bearer_auth", "api_key = \"" + legacyTokenB + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n", legacyTokenA, "bearer_auth", true},
-		{"current already set wins and the file is left alone", "crm_bearer_auth = \"" + currentToken + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n", currentToken, "", false},
+		{"bearer_auth", "base_url = \"" + defaultBase + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n", legacyTokenA, "bearer_auth"},
+		{"api_key", "api_key = \"" + legacyTokenB + "\"\n", legacyTokenB, "api_key"},
+		{"both prefer bearer_auth", "api_key = \"" + legacyTokenB + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n", legacyTokenA, "bearer_auth"},
+		{"current key wins", "crm_bearer_auth = \"" + currentToken + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n", currentToken, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			notices := isolateLegacyAuth(t)
 			path := filepath.Join(t.TempDir(), "config.toml")
 			writeOwnerOnly(t, path, tc.body)
-			cfg, err := Load(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if cfg.ConduytCrmBearerAuth != tc.want || cfg.AuthHeader() != "Bearer "+tc.want || cfg.CredentialSource != "config-kind path" {
-				t.Fatalf("legacy credential not honoured with its provenance (source %q / %q)", cfg.AuthSource, cfg.CredentialSource)
-			}
-			after, _ := os.ReadFile(path)
-			if !tc.migrates {
-				if string(after) != tc.body || len(backupsOf(t, path)) != 0 || notices.Len() != 0 {
-					t.Fatalf("a file whose current key wins was rewritten or noticed: %q", notices.String())
+			for run := 0; run < 2; run++ {
+				legacyAuthNoticeOnce = sync.Map{}
+				notices.Reset()
+				cfg, err := Load(path)
+				if err != nil {
+					t.Fatal(err)
 				}
-				return
-			}
-			doc := string(after)
-			if strings.Contains(doc, "api_key") || strings.Contains(strings.ReplaceAll(doc, "crm_bearer_auth", ""), "bearer_auth") || !strings.Contains(doc, tc.want) {
-				t.Fatalf("migration result wrong (legacy keys left or token missing)")
-			}
-			if err := cliutil.VerifyCredsPerms(path); err != nil {
-				t.Fatalf("rewritten file is not owner-only: %v", err)
-			}
-			backups := backupsOf(t, path)
-			if len(backups) != 1 {
-				t.Fatalf("backups = %v, want exactly one", backups)
-			}
-			if raw, _ := os.ReadFile(backups[0]); string(raw) != tc.body || cliutil.VerifyCredsPerms(backups[0]) != nil {
-				t.Fatal("backup is not the owner-only original")
-			}
-			if !strings.Contains(notices.String(), "migrated the saved "+tc.wantKey) {
-				t.Fatalf("notices = %q", notices.String())
-			}
-			assertNoSecret(t, "notice", notices.String())
-
-			// Idempotence: a second load (a new process) changes nothing and prints nothing.
-			legacyAuthNoticeOnce = sync.Map{}
-			notices.Reset()
-			cfg2, err := Load(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			again, _ := os.ReadFile(path)
-			if cfg2.ConduytCrmBearerAuth != tc.want || string(again) != string(after) || notices.Len() != 0 || len(backupsOf(t, path)) != 1 {
-				t.Fatalf("second load changed state: same=%t notices=%q", string(again) == string(after), notices.String())
+				if cfg.ConduytCrmBearerAuth != tc.want || cfg.AuthHeader() != "Bearer "+tc.want || cfg.CredentialSource != "config-kind path" {
+					t.Fatalf("run %d: saved credential not honoured with its provenance (%q / %q)", run, cfg.AuthSource, cfg.CredentialSource)
+				}
+				if tc.wantKey == "" && notices.Len() != 0 || tc.wantKey != "" && (!strings.Contains(notices.String(), path) || !strings.Contains(notices.String(), "earlier key "+tc.wantKey) || !strings.Contains(notices.String(), legacyResaveCommand)) {
+					t.Fatalf("run %d: notices = %q", run, notices.String())
+				}
+				assertNoSecret(t, "notice", notices.String())
+				assertUnchanged(t, path, tc.body)
 			}
 		})
 	}
 }
 
-// Codex r6 P1 #1: an explicit profile still falls back to the global credentials file, as the earlier entry did,
-// so a legacy key there is honoured when its origin matches, refused (never applied, never migrated) when it does
-// not, and a legacy key in the profile's own credentials file wins over a global credential.
-func TestLegacyAuthExplicitProfileGlobalCredentials(t *testing.T) {
-	t.Run("matching origin is honoured and migrated", func(t *testing.T) {
+// Legacy keys in a profile's own credentials file and in the global credentials file are read by the existing
+// loader, in the earlier entry's precedence (profile first) and with the global-origin check.
+func TestLegacyAuthCredentialsFilesReadInPlace(t *testing.T) {
+	t.Run("profile file", func(t *testing.T) {
 		notices := isolateLegacyAuth(t)
-		globalPath, err := cliutil.CredentialsFilePath()
+		configPath, credsPath := profilePaths(t)
+		body := "base_url = \"" + defaultBase + "\"\napi_key = \"" + legacyTokenB + "\"\n"
+		writeOwnerOnly(t, credsPath, body)
+		writeOwnerOnly(t, globalCredsPath(t), "base_url = \""+defaultBase+"\"\ncrm_bearer_auth = \""+currentToken+"\"\n")
+		cfg, err := Load(configPath)
 		if err != nil {
 			t.Fatal(err)
 		}
-		writeOwnerOnly(t, globalPath, "base_url = \""+defaultBase+"\"\nbearer_auth = \""+legacyTokenA+"\"\n")
-		cfg, err := Load(filepath.Join(t.TempDir(), "profile", "config.toml"))
-		if err != nil {
-			t.Fatal(err)
+		if cfg.ConduytCrmBearerAuth != legacyTokenB || cfg.CredentialSource != "credentials file" || !strings.Contains(notices.String(), credsPath) {
+			t.Fatalf("profile legacy credential: honoured=%t source=%q notices=%q", cfg.ConduytCrmBearerAuth == legacyTokenB, cfg.CredentialSource, notices.String())
 		}
-		if cfg.ConduytCrmBearerAuth != legacyTokenA || cfg.CredentialSource != "credentials file" {
-			t.Fatalf("global legacy credential not honoured (source %q, refusals %v)", cfg.CredentialSource, cfg.CredentialRefusalSummaries())
-		}
-		if raw, _ := os.ReadFile(globalPath); strings.Contains(string(raw), "\nbearer_auth") || !strings.Contains(string(raw), "crm_bearer_auth") {
-			t.Fatal("global credentials file not migrated")
-		}
+		assertUnchanged(t, credsPath, body)
 		assertNoSecret(t, "notice", notices.String())
 	})
-	t.Run("mismatched origin is refused", func(t *testing.T) {
+	t.Run("global file, matching origin", func(t *testing.T) {
 		isolateLegacyAuth(t)
-		globalPath, err := cliutil.CredentialsFilePath()
+		configPath, _ := profilePaths(t)
+		body := "base_url = \"" + defaultBase + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n"
+		writeOwnerOnly(t, globalCredsPath(t), body)
+		cfg, err := Load(configPath)
 		if err != nil {
 			t.Fatal(err)
 		}
-		body := "base_url = \"https://other.example.com/api/v1\"\nbearer_auth = \"" + legacyTokenA + "\"\n"
-		writeOwnerOnly(t, globalPath, body)
-		cfg, err := Load(filepath.Join(t.TempDir(), "profile", "config.toml"))
+		if cfg.ConduytCrmBearerAuth != legacyTokenA {
+			t.Fatalf("global legacy credential not honoured (refusals %v)", cfg.CredentialRefusalSummaries())
+		}
+		assertUnchanged(t, globalCredsPath(t), body)
+	})
+	t.Run("global file, other origin", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		configPath, _ := profilePaths(t)
+		writeOwnerOnly(t, globalCredsPath(t), "base_url = \"https://other.example.com/api/v1\"\nbearer_auth = \""+legacyTokenA+"\"\n")
+		cfg, err := Load(configPath)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if cfg.ConduytCrmBearerAuth != "" || !cfg.HasCredentialRefusals() {
-			t.Fatalf("a global legacy credential for another origin was applied (refusals %v)", cfg.CredentialRefusalSummaries())
-		}
-		if raw, _ := os.ReadFile(globalPath); string(raw) != body || len(backupsOf(t, globalPath)) != 0 {
-			t.Fatal("a refused global credentials file was rewritten")
+			t.Fatal("a global legacy credential for another origin was applied")
 		}
 		for _, s := range cfg.CredentialRefusalSummaries() {
 			assertNoSecret(t, "refusal", s)
 		}
 	})
-	t.Run("profile legacy key wins over a global credential", func(t *testing.T) {
-		isolateLegacyAuth(t)
-		globalPath, err := cliutil.CredentialsFilePath()
-		if err != nil {
-			t.Fatal(err)
-		}
-		writeOwnerOnly(t, globalPath, "base_url = \""+defaultBase+"\"\ncrm_bearer_auth = \""+currentToken+"\"\n")
-		profile := filepath.Join(t.TempDir(), "profile", "config.toml")
-		profileCreds, err := cliutil.CredentialsFilePathForConfig(profile)
-		if err != nil {
-			t.Fatal(err)
-		}
-		writeOwnerOnly(t, profileCreds, "base_url = \""+defaultBase+"\"\napi_key = \""+legacyTokenB+"\"\n")
-		cfg, err := Load(profile)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if cfg.ConduytCrmBearerAuth != legacyTokenB {
-			t.Fatal("the profile's own legacy credential did not win over the global credential")
-		}
-	})
 }
 
-// Codex r6 P1 #2: where an owner-only rewrite cannot be guaranteed (Windows: chmod does not set a private DACL), the
-// legacy key is read in place and the file is never rewritten; where it is, every landed file is verified owner-only.
-func TestLegacyAuthWindowsReadsInPlace(t *testing.T) {
-	notices := isolateLegacyAuth(t)
-	legacyAuthRewriteSupported = func() bool { return false }
-	path := filepath.Join(t.TempDir(), "config.toml")
-	body := "bearer_auth = \"" + legacyTokenA + "\"\n"
-	writeOwnerOnly(t, path, body)
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	after, _ := os.ReadFile(path)
-	if cfg.ConduytCrmBearerAuth != legacyTokenA || string(after) != body || len(backupsOf(t, path)) != 0 || !strings.Contains(notices.String(), "read in place on this platform") {
-		t.Fatalf("in-place read: honoured=%t unchanged=%t notices=%q", cfg.ConduytCrmBearerAuth == legacyTokenA, string(after) == body, notices.String())
-	}
-	assertNoSecret(t, "notice", notices.String())
-}
-
-func TestLegacyAuthLandedFilesAreVerifiedOwnerOnly(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "credentials.toml")
-	writeOwnerOnly(t, path, "old")
-	if err := os.Chmod(dir, 0o777); err != nil { // a permissive parent must not widen the landed files
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
-	if err := replacePrivateFileVerified(path, []byte("new")); err != nil {
-		t.Fatal(err)
-	}
-	backup, err := writeLegacyAuthBackup(path, []byte("old"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, p := range []string{path, backup} {
-		if err := cliutil.VerifyCredsPerms(p); err != nil {
-			t.Fatalf("%s landed with broader access: %v", filepath.Base(p), err)
+// Codex r7 P1 #2: an unsafe profile credentials file holding only an earlier key is a present refusal and suppresses
+// the global fallback (current or legacy key), exactly as the same file with crm_bearer_auth does.
+func TestLegacyAuthUnsafeProfileFileSuppressesGlobalFallback(t *testing.T) {
+	for _, profileKey := range []string{"bearer_auth", "api_key", "crm_bearer_auth"} {
+		for _, globalKey := range []string{"crm_bearer_auth", "bearer_auth"} {
+			t.Run(profileKey+"/"+globalKey, func(t *testing.T) {
+				isolateLegacyAuth(t)
+				configPath, credsPath := profilePaths(t)
+				writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\n"+profileKey+" = \""+legacyTokenA+"\"\n")
+				if err := os.Chmod(credsPath, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				writeOwnerOnly(t, globalCredsPath(t), "base_url = \""+defaultBase+"\"\n"+globalKey+" = \""+currentToken+"\"\n")
+				cfg, err := Load(configPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if cfg.ConduytCrmBearerAuth != "" || !cfg.HasCredentialRefusals() {
+					t.Fatalf("unsafe %s profile file: token applied=%t refusals=%v", profileKey, cfg.ConduytCrmBearerAuth != "", cfg.CredentialRefusalSummaries())
+				}
+				for _, s := range cfg.CredentialRefusalSummaries() {
+					assertNoSecret(t, "refusal", s)
+				}
+			})
 		}
 	}
 }
 
-// Codex r6 P2 #1: the token keeps its provenance: a failed rewrite still reports the file that supplied it, and an
-// inactive legacy config never supplies a token to an active primary config.
-func TestLegacyAuthFailedRewriteKeepsProvenance(t *testing.T) {
-	notices := isolateLegacyAuth(t)
-	dir := t.TempDir()
-	path := filepath.Join(dir, "config.toml")
-	writeOwnerOnly(t, path, "bearer_auth = \""+legacyTokenA+"\"\n")
-	if err := os.Chmod(dir, 0o500); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
-	if f, err := os.CreateTemp(dir, "probe"); err == nil {
-		_ = f.Close()
-		t.Skip("directory stays writable for this user (running as root?)")
-	}
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.ConduytCrmBearerAuth != legacyTokenA || cfg.AuthSource != "config" || cfg.CredentialSource != "config-kind path" || !strings.Contains(notices.String(), "was used but not migrated") {
-		t.Fatalf("failed rewrite: honoured=%t source=%q/%q notices=%q", cfg.ConduytCrmBearerAuth == legacyTokenA, cfg.AuthSource, cfg.CredentialSource, notices.String())
-	}
-	assertNoSecret(t, "notice", notices.String())
-}
-
-func TestLegacyAuthInactiveLegacyConfigNeverSupplies(t *testing.T) {
+// Codex r7 P2: a profile document with auth_header and an earlier key keeps the normal field precedence (auth_header
+// wins), and the same request goes out before and after the user re-saves the token under crm_bearer_auth.
+func TestLegacyAuthMixedDocumentKeepsFieldPrecedence(t *testing.T) {
 	isolateLegacyAuth(t)
-	primary, legacy := mustDefaultConfigPaths(t)
-	writeOwnerOnly(t, primary, "base_url = \"https://other.example.com/api/v1\"\n")
-	writeOwnerOnly(t, legacy, "bearer_auth = \""+legacyTokenA+"\"\n")
-	cfg, err := Load("")
+	configPath, credsPath := profilePaths(t)
+	writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\nauth_header = \""+headerToken+"\"\nbearer_auth = \""+legacyTokenA+"\"\n")
+	before, err := Load(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.ConduytCrmBearerAuth != "" {
-		t.Fatal("an inactive legacy config supplied a token to the active primary config")
-	}
-}
-
-func mustDefaultConfigPaths(t *testing.T) (string, string) {
-	t.Helper()
-	primary, _, err := resolveConfigPath("")
+	writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\nauth_header = \""+headerToken+"\"\ncrm_bearer_auth = \""+legacyTokenA+"\"\n")
+	after, err := Load(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	legacy, err := LegacyConfigPath()
+	if before.AuthHeader() != headerToken || after.AuthHeader() != headerToken {
+		t.Fatal("a mixed document does not keep auth_header ahead of the bearer token, before and after a re-save")
+	}
+	writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\ncrm_bearer_auth = \""+currentToken+"\"\nbearer_auth = \""+legacyTokenA+"\"\n")
+	both, err := Load(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if primary == legacy {
-		t.Skip("primary and legacy config paths coincide in this environment")
-	}
-	return primary, legacy
-}
-
-// Codex r6 P2 #2: a migration never overwrites a file that changed after the load read it.
-func TestLegacyAuthMigrationRefusesAChangedFile(t *testing.T) {
-	isolateLegacyAuth(t)
-	path := filepath.Join(t.TempDir(), "config.toml")
-	original := "bearer_auth = \"" + legacyTokenA + "\"\n"
-	writeOwnerOnly(t, path, original)
-	rotated := "crm_bearer_auth = \"" + currentToken + "\"\n"
-	writeOwnerOnly(t, path, rotated) // another process rotated the credential after this load read `original`
-	_, err := migrateLegacyAuthFile(&legacyAuthSource{Path: path, Key: "bearer_auth", Token: legacyTokenA, Data: []byte(original), Label: "config"})
-	if !errors.Is(err, errLegacyAuthChanged) {
-		t.Fatalf("err = %v, want the changed-file refusal", err)
-	}
-	if raw, _ := os.ReadFile(path); string(raw) != rotated || len(backupsOf(t, path)) != 0 {
-		t.Fatal("the rotated credential was overwritten")
+	if both.ConduytCrmBearerAuth != currentToken {
+		t.Fatal("a document with crm_bearer_auth and bearer_auth did not use crm_bearer_auth")
 	}
 }
 
-// Codex r6 P3: an existing file at any backup name is never reused; each migration writes a fresh, verified backup.
-func TestLegacyAuthNeverReusesAnExistingBackup(t *testing.T) {
-	notices := isolateLegacyAuth(t)
-	dir := t.TempDir()
-	path := filepath.Join(dir, "config.toml")
-	body := "bearer_auth = \"" + legacyTokenA + "\"\n"
-	writeOwnerOnly(t, path, body)
-	stale := path + ".legacy-auth.bak"
-	writeOwnerOnly(t, stale, "stale")
-	if err := os.Symlink(filepath.Join(dir, "elsewhere"), path+".legacy-auth-0-0.bak"); err != nil {
+// Codex r7 P1 #1: legacy keys are read only through the existing checked-descriptor loaders, so every trust rule
+// those loaders apply to crm_bearer_auth applies to bearer_auth / api_key with the identical outcome: a symlinked
+// profile data directory and a loose file are refused for both. legacy_auth.go holds no file read at all.
+func TestLegacyAuthTrustOutcomesMatchTheCurrentKey(t *testing.T) {
+	cases := map[string]func(t *testing.T, configPath, credsPath, body string){
+		"loose mode": func(t *testing.T, _, credsPath, body string) {
+			writeOwnerOnly(t, credsPath, body)
+			if err := os.Chmod(credsPath, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"symlinked profile data directory": func(t *testing.T, _, credsPath, body string) {
+			elsewhere := filepath.Join(t.TempDir(), "data")
+			writeOwnerOnly(t, filepath.Join(elsewhere, filepath.Base(credsPath)), body)
+			if err := os.MkdirAll(filepath.Dir(filepath.Dir(credsPath)), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(elsewhere, filepath.Dir(credsPath)); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"owner-only regular file": func(t *testing.T, _, credsPath, body string) {
+			writeOwnerOnly(t, credsPath, body)
+		},
+	}
+	for name, setup := range cases {
+		t.Run(name, func(t *testing.T) {
+			outcome := map[string]string{}
+			for _, key := range []string{"crm_bearer_auth", "bearer_auth", "api_key"} {
+				isolateLegacyAuth(t)
+				configPath, credsPath := profilePaths(t)
+				setup(t, configPath, credsPath, "base_url = \""+defaultBase+"\"\n"+key+" = \""+legacyTokenA+"\"\n")
+				cfg, err := Load(configPath)
+				result := "error"
+				if err == nil {
+					result = "applied=" + boolWord(cfg.ConduytCrmBearerAuth == legacyTokenA) + " refused=" + boolWord(cfg.HasCredentialRefusals())
+				}
+				outcome[key] = result
+			}
+			if outcome["bearer_auth"] != outcome["crm_bearer_auth"] || outcome["api_key"] != outcome["crm_bearer_auth"] {
+				t.Fatalf("%s: legacy keys diverge from the current key: %v", name, outcome)
+			}
+		})
+	}
+	src, err := os.ReadFile("legacy_auth.go")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(path); err != nil {
-		t.Fatal(err)
-	}
-	if raw, _ := os.ReadFile(stale); string(raw) != "stale" {
-		t.Fatal("a pre-existing backup was overwritten")
-	}
-	var fresh []string
-	for _, b := range backupsOf(t, path) {
-		if info, err := os.Lstat(b); err == nil && info.Mode().IsRegular() {
-			fresh = append(fresh, b)
+	for _, call := range []string{"os.ReadFile", "os.Open", "os.Lstat", "os.Stat", "os.WriteFile", "os.Rename", "os.CreateTemp"} {
+		if strings.Contains(string(src), call+"(") {
+			t.Fatalf("legacy_auth.go calls %s: legacy keys must be read only through the checked-descriptor loaders", call)
 		}
 	}
-	if len(fresh) != 1 {
-		t.Fatalf("regular backups = %v, want one fresh backup", fresh)
-	}
-	if raw, _ := os.ReadFile(fresh[0]); string(raw) != body {
-		t.Fatal("the fresh backup does not hold the original bytes")
-	}
-	assertNoSecret(t, "notice", notices.String())
 }
 
-func TestLegacyAuthNeverReadsOrRewritesAnUntrustedFile(t *testing.T) {
+func boolWord(b bool) string {
+	if b {
+		return "yes"
+	}
+	return "no"
+}
+
+func TestLegacyAuthUntrustedConfigFileIsRefused(t *testing.T) {
 	isolateLegacyAuth(t)
 	path := filepath.Join(t.TempDir(), "config.toml")
 	body := "bearer_auth = \"" + legacyTokenA + "\"\n"
@@ -395,8 +343,30 @@ func TestLegacyAuthNeverReadsOrRewritesAnUntrustedFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, _ := os.ReadFile(path)
-	if cfg.ConduytCrmBearerAuth != "" || string(after) != body || len(backupsOf(t, path)) != 0 {
-		t.Fatalf("an untrusted legacy file was used or rewritten (applied=%t)", cfg.ConduytCrmBearerAuth != "")
+	if cfg.ConduytCrmBearerAuth != "" || !cfg.HasCredentialRefusals() {
+		t.Fatalf("an untrusted config file's legacy key was used (refusals %v)", cfg.CredentialRefusalSummaries())
+	}
+	assertUnchanged(t, path, body)
+}
+
+func TestLegacyAuthSavesNeverWriteLegacyKeys(t *testing.T) {
+	isolateLegacyAuth(t)
+	if err := cliutil.SaveCredentials(&cliutil.Credentials{BaseURL: defaultBase, ConduytCrmBearerAuth: currentToken, LegacyBearerAuth: legacyTokenA, LegacyKey: "bearer_auth"}); err != nil {
+		t.Fatal(err)
+	}
+	cfgPath := filepath.Join(t.TempDir(), "config.toml")
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	persisted, err := os.ReadFile(globalCredsPath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ConduytCrmBearerAuth != currentToken {
+		t.Fatal("saved current key not loaded")
+	}
+	if strings.Contains(string(persisted), "bearer_auth =") && !strings.Contains(string(persisted), "crm_bearer_auth") || strings.Contains(strings.ReplaceAll(string(persisted), "crm_bearer_auth", ""), "bearer_auth") || strings.Contains(string(persisted), "api_key") || strings.Contains(string(persisted), legacyTokenA) || strings.Contains(string(persisted), "LegacyKey") {
+		t.Fatalf("internal provenance fields were persisted:\n%s", persisted)
 	}
 }
