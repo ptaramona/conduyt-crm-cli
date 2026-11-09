@@ -74,7 +74,10 @@ func (c *Config) applyLegacyConfigKey(data []byte, path string) {
 		return
 	}
 	if _, present := keys["crm_bearer_auth"]; present {
-		return // the current key is present (even empty, an explicitly cleared token): earlier keys are ignored
+		// the current key is present (even empty, an explicitly cleared token): earlier keys are ignored here and,
+		// once the document is accepted as trusted, everywhere (deferLegacyConfigToken sets legacyDisabled)
+		c.currentKeyDeclared = true
+		return
 	}
 	key, token := "", ""
 	switch {
@@ -93,6 +96,9 @@ func (c *Config) applyLegacyConfigKey(data []byte, path string) {
 // and survived the trust checks is held back, so the credentials files' current fields are read as if it were not
 // there.
 func (c *Config) deferLegacyConfigToken() {
+	if c.currentKeyDeclared || envNameDecides("CONDUYT_CRM_BEARER_AUTH") {
+		c.legacyDisabled = true // sticky for the rest of the resolution
+	}
 	src := c.legacyKey
 	c.legacyKey = nil
 	if src == nil || c.ConduytCrmBearerAuth != src.Token {
@@ -108,7 +114,7 @@ func (c *Config) deferLegacyConfigToken() {
 func (c *Config) resolveLegacyTokens() {
 	cfgSrc, globalSrc := c.legacyConfigToken, c.legacyGlobalToken
 	c.legacyConfigToken, c.legacyGlobalToken = nil, nil
-	if c.hasCredentialFields() {
+	if c.legacyDisabled || envNameDecides("CONDUYT_CRM_BEARER_AUTH") || c.hasCredentialFields() {
 		return
 	}
 	// The token is held in legacyToken, never in a persisted field, so the generated set-token and logout saves can
@@ -160,7 +166,7 @@ func legacyEnvBearer() (name, value string) {
 // applyLegacyEnvBearer is the env fallback: CONDUYT_CRM_BEARER_AUTH (applied by Load) wins; otherwise
 // CONDUYT_BEARER_AUTH, then CONDUYT_API_KEY, each with a one-line deprecation notice.
 func (c *Config) applyLegacyEnvBearer() {
-	if envNameDecides("CONDUYT_CRM_BEARER_AUTH") { // set, even blank: the current name decides
+	if envNameDecides("CONDUYT_CRM_BEARER_AUTH") || c.legacyDisabled { // the current name, or a declared current key, decides
 		return
 	}
 	name, v := legacyEnvBearer()

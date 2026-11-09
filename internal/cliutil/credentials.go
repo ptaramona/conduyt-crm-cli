@@ -50,6 +50,10 @@ type Credentials struct {
 	LegacyKey   string `toml:"-"`
 	// LegacyPath is the file LegacyKey was read from.
 	LegacyPath string `toml:"-"`
+	// CurrentKeyDeclared: the document has the crm_bearer_auth key at all, even empty. A declared current key is a
+	// credential decision (an explicit clear when empty): it stops the profile-to-global fallback and disables every
+	// earlier-key fallback for the rest of the resolution.
+	CurrentKeyDeclared bool `toml:"-"`
 }
 
 // LegacyNoticeWriter receives the one-line notice for an earlier key in a profile credentials file, which is not
@@ -307,6 +311,7 @@ func (c *Credentials) HasValues() bool {
 		c.ClientID != "" ||
 		c.ClientSecret != "" ||
 		c.ConduytCrmBearerAuth != "" ||
+		c.CurrentKeyDeclared || // PATCH(novel1219-auth-compat): a present-even-empty crm_bearer_auth is a decision
 		c.LegacyToken != "" // PATCH(novel1219-auth-compat): an honoured earlier key (global file only)
 }
 
@@ -332,6 +337,10 @@ func decodeCredentialsDocument(data []byte, allowLegacy bool) (Credentials, erro
 	}
 	bearer, apiKey := creds.LegacyBearerAuth, creds.LegacyAPIKey
 	creds.LegacyBearerAuth, creds.LegacyAPIKey = "", ""
+	var keys map[string]any
+	if toml.Unmarshal(data, &keys) == nil {
+		_, creds.CurrentKeyDeclared = keys["crm_bearer_auth"]
+	}
 	if !allowLegacy || documentHasCurrentCredential(data, &creds) {
 		return creds, nil
 	}

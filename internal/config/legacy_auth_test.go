@@ -414,3 +414,97 @@ func TestLegacyAuthAddsNoFileWriteOrDelete(t *testing.T) {
 		}
 	}
 }
+
+// ---- Codex novel1219-r11 regression (r12): one sticky rule ----
+
+// Once any trusted source declares the current key (present even empty) or CONDUYT_CRM_BEARER_AUTH is set (even blank),
+// earlier-key fallback is off for every source for the rest of the resolution; with the current key absent
+// everywhere the earlier key is still used.
+func TestLegacyAuthDeclaredCurrentKeyDisablesEveryLegacySource(t *testing.T) {
+	globalLegacy := "base_url = \"" + defaultBase + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n"
+	t.Run("config crm_bearer_auth empty + global legacy", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		path := filepath.Join(t.TempDir(), "config.toml")
+		writeOwnerOnly(t, path, "crm_bearer_auth = \"\"\n")
+		writeOwnerOnly(t, globalCredsPath(t), globalLegacy)
+		cfg, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.AuthHeader() != "" {
+			t.Fatal("a cleared config key let the global earlier key through")
+		}
+	})
+	t.Run("explicit profile with an empty current bearer + global legacy", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		configPath, credsPath := profilePaths(t)
+		writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\ncrm_bearer_auth = \"\"\n")
+		writeOwnerOnly(t, globalCredsPath(t), globalLegacy)
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.AuthHeader() != "" {
+			t.Fatal("an empty profile bearer fell through to the global earlier key")
+		}
+	})
+	t.Run("blank CONDUYT_CRM_BEARER_AUTH + file legacy", func(t *testing.T) {
+		for _, where := range []string{"global", "config"} {
+			isolateLegacyAuth(t)
+			path := filepath.Join(t.TempDir(), "config.toml")
+			if where == "global" {
+				writeOwnerOnly(t, globalCredsPath(t), globalLegacy)
+			} else {
+				writeOwnerOnly(t, path, "bearer_auth = \""+legacyTokenA+"\"\n")
+			}
+			setOrUnset(t, "CONDUYT_CRM_BEARER_AUTH", blankEnv)
+			cfg, err := Load(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.AuthHeader() != "" {
+				t.Fatalf("a blank CONDUYT_CRM_BEARER_AUTH let the %s earlier key through", where)
+			}
+		}
+	})
+	t.Run("declared current key + legacy env name", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		path := filepath.Join(t.TempDir(), "config.toml")
+		writeOwnerOnly(t, path, "crm_bearer_auth = \"\"\n")
+		setOrUnset(t, "CONDUYT_BEARER_AUTH", legacyTokenA)
+		cfg, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.AuthHeader() != "" {
+			t.Fatal("a cleared config key let a legacy env name through")
+		}
+	})
+	t.Run("untrusted declaration does not count", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		path := filepath.Join(t.TempDir(), "config.toml")
+		writeOwnerOnly(t, path, "crm_bearer_auth = \"\"\n")
+		if err := os.Chmod(path, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		writeOwnerOnly(t, globalCredsPath(t), globalLegacy)
+		cfg, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.AuthHeader() != "Bearer "+legacyTokenA {
+			t.Fatal("an untrusted document's declaration disabled the trusted global earlier key")
+		}
+	})
+	t.Run("absent everywhere: legacy still used", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		writeOwnerOnly(t, globalCredsPath(t), globalLegacy)
+		cfg, err := Load(filepath.Join(t.TempDir(), "config.toml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.AuthHeader() != "Bearer "+legacyTokenA {
+			t.Fatal("with the current key absent everywhere the global earlier key was not used")
+		}
+	})
+}

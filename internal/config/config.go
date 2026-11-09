@@ -56,6 +56,11 @@ type Config struct {
 	legacyGlobalToken *legacyKeySource
 	// legacyToken is the earlier-key token in use; AuthHeader sends it only when no current credential exists.
 	legacyToken string
+	// currentKeyDeclared: the config document being parsed has crm_bearer_auth at all (even empty).
+	// legacyDisabled: some trusted source declared the current key, or CONDUYT_CRM_BEARER_AUTH is set (even blank);
+	// earlier-key fallback is then off for every source for the rest of the resolution.
+	currentKeyDeclared bool
+	legacyDisabled     bool
 }
 
 func Load(configPath string) (*Config, error) {
@@ -313,6 +318,7 @@ func (c *Config) acceptOpenedConfig(opened cliutil.OpenedConfig, path, owner str
 	if opened.PermErr != nil {
 		parsed.dropUntrustedTLSSettings()
 		parsed.dropUntrustedRouting(defaultBase)
+		parsed.currentKeyDeclared = false // PATCH(novel1219-auth-compat): only a trusted document declares
 	}
 	*c = parsed
 	if fromLegacy {
@@ -771,7 +777,10 @@ func (c *Config) applyCredentials(creds *cliutil.Credentials) {
 	if c.ConduytCrmBearerAuth == "" {
 		c.ConduytCrmBearerAuth = creds.ConduytCrmBearerAuth
 	}
-	if creds.LegacyToken != "" && c.legacyGlobalToken == nil { // PATCH(novel1219-auth-compat): held, not applied
+	if creds.CurrentKeyDeclared { // PATCH(novel1219-auth-compat): a trusted file declared the current key
+		c.legacyDisabled = true
+	}
+	if creds.LegacyToken != "" && c.legacyGlobalToken == nil && !c.legacyDisabled { // PATCH(novel1219-auth-compat): held, not applied
 		c.legacyGlobalToken = &legacyKeySource{Path: creds.LegacyPath, Key: creds.LegacyKey, Token: creds.LegacyToken}
 	}
 }
