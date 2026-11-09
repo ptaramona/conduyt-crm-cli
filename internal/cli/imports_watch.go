@@ -22,10 +22,10 @@ import (
 func newNovelImportsWatchCmd(flags *rootFlags) *cobra.Command {
 	var verify, latest bool
 	interval, watchTimeout := secondsOrDuration(10*time.Second), secondsOrDuration(30*time.Minute)
-	cmd := &cobra.Command{Use: "watch [jobId]", Short: "Blocks until an import job reaches a terminal state", Long: "Use this command to block until an import job completes, then print the row-outcome recap. With --verify it re-reads the finished job and its job-scoped side effects (GET /imports/{id}/side-effects): queued, failed or held sends, or a verification fetch that fails, make the result partial and the exit non-zero. Do NOT use it for a finished job's per-row outcomes; use 'imports blame' instead. Exits 0 when complete (and verified with --verify), 2 on a usage error, 5 when the import failed or was cancelled, timed out, or the result is incomplete.", Example: strings.Trim(`
+	cmd := &cobra.Command{Use: "watch [jobId]", Short: "Blocks until an import job reaches a terminal state", Long: "Use this command to block until an import job completes, then print the row-outcome recap. With --verify it re-reads the finished job and its job-scoped side effects (GET /imports/{id}/side-effects): queued, failed or held sends, or a verification fetch that fails, make the result partial and the exit non-zero. Do NOT use it for a finished job's per-row outcomes; use 'imports blame' instead. Exits 0 when complete (and verified with --verify), 2 on a usage error, 3 when the job does not exist, 4 on an auth failure, 5 when the import failed or was cancelled, timed out, is still running, or the result is incomplete.", Example: strings.Trim(`
   conduyt-crm-pp-cli imports watch --latest --verify
   conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --verify
-  conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --interval 10s --json`, "\n"), Annotations: map[string]string{"mcp:read-only": "true", "pp:data-source": "live", "pp:typed-exit-codes": "0,2,5"}, RunE: func(cmd *cobra.Command, args []string) error {
+  conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --interval 10s --json`, "\n"), Annotations: map[string]string{"mcp:read-only": "true", "pp:data-source": "live", "pp:typed-exit-codes": "0,2,3,4,5"}, RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 && !latest && !cmd.Flags().Changed("verify") && !cmd.Flags().Changed("interval") && !cmd.Flags().Changed("timeout") {
 			return cmd.Help()
 		}
@@ -48,9 +48,9 @@ func newNovelImportsWatchCmd(flags *rootFlags) *cobra.Command {
 		if dryRunOK(flags) {
 			return writeDryRun(cmd.OutOrStdout(), flags, "imports watch") // PATCH(gocli1219-live-gate-defects)
 		}
-		base, cancel := boundCtx(cmd.Context(), flags)
-		defer cancel()
-		ctx, stop := context.WithTimeout(base, time.Duration(watchTimeout))
+		// PATCH(novel1219-imports-watch) r2: the overall deadline is --timeout from the command context; the root
+		// request timeout stays per request in the client, so it never caps the watch.
+		ctx, stop := context.WithTimeout(cmd.Context(), time.Duration(watchTimeout))
 		defer stop()
 		c, err := flags.newClient()
 		if err != nil {
@@ -122,6 +122,11 @@ func newNovelImportsWatchCmd(flags *rootFlags) *cobra.Command {
 			}
 		}
 		view := watchView{JobID: jobID, Status: strAny(job, "status"), Stage: strAny(monitor, "stage"), FailureType: strAny(monitor, "failureType", "failure_type"), Failures: []string{}}
+		if !terminalImportStatus(view.Status) {
+			// The dogfood poll cap ends the loop early; a job that is still running is never a successful watch.
+			view.Partial = true
+			view.Failures = append(view.Failures, fmt.Sprintf("import is still %s after %d polls", view.Status, polls))
+		}
 		missingCounters := make([]string, 0, 4)
 		for name, spec := range map[string][]string{
 			"created": {"createdRows", "created_rows", "created"},
@@ -299,6 +304,24 @@ type watchSideEffects struct {
 // noJobSideEffects reports a job that recorded no side effects at all: every counter present and zero. The route
 // answers isComplete=false for total 0 (its "complete" means "all recorded work drained"), so a job with nothing
 // to deliver is not an unfinished one; any queued, retryable, exhausted, failed or held send still is.
+// sideEffectProblems names every job-scoped side effect that keeps an import from being delivered: queued,
+// retryable, exhausted, failed or held sends, and actionRequired. A counter that is absent was reported already.
+func sideEffectProblems(queued, retryable, exhausted, failed, held *int, actionRequired *bool) []string {
+	problems := make([]string, 0)
+	for _, c := range []struct {
+		name string
+		n    *int
+	}{{"queued", queued}, {"retryable failed", retryable}, {"exhausted failed", exhausted}, {"failed", failed}, {"held", held}} {
+		if c.n != nil && *c.n > 0 {
+			problems = append(problems, fmt.Sprintf("%d %s sends", *c.n, c.name))
+		}
+	}
+	if actionRequired != nil && *actionRequired {
+		problems = append(problems, "action required")
+	}
+	return problems
+}
+
 func noJobSideEffects(counters ...*int) bool {
 	for _, n := range counters {
 		if n == nil || *n != 0 {
@@ -409,7 +432,7 @@ func verifyImportJob(ctx context.Context, c importGetter, jobID string) (*watchV
 				missing = append(missing, strings.TrimPrefix(isCompleteErr.Error(), "missing "))
 			} else {
 				verification.SideEffects.IsComplete = isComplete
-				verification.SideEffects.NoSideEffects = !isComplete && noJobSideEffects(verification.SideEffects.Total, verification.SideEffects.Queued, verification.SideEffects.Retryable, verification.SideEffects.Exhausted, verification.SideEffects.Failed, verification.SideEffects.Held)
+				verification.SideEffects.NoSideEffects = !isComplete && terminalImportStatus(verification.Status) && noJobSideEffects(verification.SideEffects.Total, verification.SideEffects.Queued, verification.SideEffects.Retryable, verification.SideEffects.Exhausted, verification.SideEffects.Failed, verification.SideEffects.Held)
 				if !isComplete && !verification.SideEffects.NoSideEffects {
 					missing = append(missing, "side effects are not complete")
 				}
@@ -418,6 +441,9 @@ func verifyImportJob(ctx context.Context, c importGetter, jobID string) (*watchV
 				verification.SideEffects.ActionRequired = &actionRequired
 				verification.ActionRequired = &actionRequired
 			}
+			// PATCH(novel1219-imports-watch) r2: isComplete counts pending, processing and failed only (held-only is
+			// isComplete:true with actionRequired:true), so every counter is checked on its own.
+			missing = append(missing, sideEffectProblems(verification.SideEffects.Queued, verification.SideEffects.Retryable, verification.SideEffects.Exhausted, verification.SideEffects.Failed, verification.SideEffects.Held, verification.SideEffects.ActionRequired)...)
 		}
 	}
 	verification.Verified = len(missing) == 0
@@ -661,20 +687,4 @@ func strAny(m map[string]any, keys ...string) string {
 		}
 	}
 	return ""
-}
-func anyStrings(v any) []string {
-	out := make([]string, 0)
-	switch x := v.(type) {
-	case []any:
-		for _, e := range x {
-			if s, ok := e.(string); ok {
-				out = append(out, s)
-			} else if m, ok := e.(map[string]any); ok {
-				out = append(out, strAny(m, "id", "name"))
-			}
-		}
-	case []string:
-		out = append(out, x...)
-	}
-	return out
 }

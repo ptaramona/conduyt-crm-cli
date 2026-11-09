@@ -386,7 +386,7 @@
     },
     {
       "id": "novel1219-send-check",
-      "summary": "send-check is the public entry's hardened version: exactly one of --list/--tag/--contact (no scope prints help; --limit must be positive); a synced, fresh contacts mirror is read with the scope filter applied before --limit, else the audience is read live: --list through GET /contacts?smartListId (the /smart-lists/{id}/contacts route is add/remove only), repeatable --tag merged and de-duplicated, both paged at per_page 200 with a progress guard and a meta.total cross-check; DNC verdicts come from GET /contacts/dnc-status in chunks of 500 (smsBlocked = dnc, voiceBlocked carried), and a truncated answer, an omitted contact, an unmappable phone identity, a capped --limit or a failed read make the verdict inconclusive (exit 5); an empty scope is a clean 0-checked answer. Kept from the reprint: the --dry-run object (PATCH(gocli1219-live-gate-defects)) and the gate contract, a no_go verdict exits 2.",
+      "summary": "send-check is the public entry's hardened version: exactly one of --list/--tag/--contact (no scope prints help; --limit must be positive); a synced, fresh contacts mirror is read with the scope filter applied before --limit, else the audience is read live: --list through GET /contacts?smartListId (the /smart-lists/{id}/contacts route is add/remove only), repeatable --tag merged and de-duplicated, both paged at per_page 200 with a progress guard and a meta.total cross-check; DNC verdicts come from GET /contacts/dnc-status in chunks of 500 (smsBlocked = dnc, voiceBlocked carried), and a truncated answer, an omitted contact, an unmappable phone identity, a capped --limit or a failed read make the verdict inconclusive (exit 5); an empty scope is a clean 0-checked answer. Kept from the reprint: the --dry-run object (PATCH(gocli1219-live-gate-defects)) and the gate contract, a no_go verdict exits 2. Round 2 (Codex novel1219-r1 P1): the audience source follows --data-source and an unresolvable local scope is never an empty audience: --list is always live (smart-list membership is not in synced contacts), a tag matches the tag objects the contacts route serializes (by name or id, or a plain string), the mirror answers only when synced, fresh and returning rows; under auto anything else is read live, under local it is inconclusive (exit 5).",
       "reason": "Greptile round 1 on PR #2450 (P1 x3): the reprint read the add/remove-only smart-list members route, read one page of a tag, and matched one page of /dnc on the last 7 digits.",
       "files": [
         "internal/cli/send_check.go",
@@ -396,11 +396,11 @@
       "markers": [
         "PATCH(novel1219-send-check)"
       ],
-      "validated_outcome": "The public entry's send_check_test.go (no_go cases re-pinned to exit 2) plus TestNovel1219SendCheckListReadsMembersThroughTheContactsRoute, TestNovel1219SendCheckTagPaginatesPastPageOne, TestNovel1219SendCheckLimitLeavingContactsUncheckedIsInconclusive, TestNovel1219SendCheckRefusesALastSevenDigitMatch and TestNovel1219SendCheckIncompleteDNCAnswerIsInconclusive pass."
+      "validated_outcome": "The public entry's send_check_test.go (no_go cases re-pinned to exit 2) plus TestNovel1219SendCheckListReadsMembersThroughTheContactsRoute, TestNovel1219SendCheckTagPaginatesPastPageOne, TestNovel1219SendCheckLimitLeavingContactsUncheckedIsInconclusive, TestNovel1219SendCheckRefusesALastSevenDigitMatch and TestNovel1219SendCheckIncompleteDNCAnswerIsInconclusive pass. Round 2: TestNovel1219SendCheckDataSourceLiveSkipsTheMirror, TestNovel1219SendCheckListIsAlwaysLive, TestNovel1219SendCheckLocalTagMatchesTagObjects, TestNovel1219SendCheckUnresolvedLocalTagIsNeverEmpty."
     },
     {
       "id": "novel1219-imports-blame",
-      "summary": "imports blame is the public entry's hardened version re-pinned to the real GET /imports/{id}/rows contract: the job's row counters (strict preferred/legacy aliases), every error row via tab=error at per_page min(100, --limit+1) with a progress guard and a meta.total cross-check, only outcome=error rows grouped by their full message (any other row is a failure, never an error), tabs.error above the itemized total noted as rows_unavailable, and the job-scoped side effects (queued, retryableFailed, exhaustedFailed, total, completed, failed, held, actionRequired, isComplete) read strictly; a capped, short, failed or malformed read is partial and exits 5 (or the typed class of the failed fetch). No account-wide /reports/sms-delivery read. Kept from the reprint: --latest, the [jobId] Use line, --rows as a hidden alias of --limit, the --dry-run object. Side effects whose every counter is zero are reported as no_side_effects, not as an unfinished job (the route answers isComplete=false for total 0).",
+      "summary": "imports blame is the public entry's hardened version re-pinned to the real GET /imports/{id}/rows contract: the job's row counters (strict preferred/legacy aliases), every error row via tab=error at per_page min(100, --limit+1) with a progress guard and a meta.total cross-check, only outcome=error rows grouped by their full message (any other row is a failure, never an error), tabs.error above the itemized total noted as rows_unavailable, and the job-scoped side effects (queued, retryableFailed, exhaustedFailed, total, completed, failed, held, actionRequired, isComplete) read strictly; a capped, short, failed or malformed read is partial and exits 5 (or the typed class of the failed fetch). No account-wide /reports/sms-delivery read. Kept from the reprint: --latest, the [jobId] Use line, --rows as a hidden alias of --limit, the --dry-run object. Side effects whose every counter is zero are reported as no_side_effects, not as an unfinished job (the route answers isComplete=false for total 0). Round 2 (Codex novel1219-r1): any queued, retryable, exhausted, failed or held send and actionRequired make the result partial regardless of isComplete (held-only is isComplete:true); the all-zero exception applies only to a terminal job; job-level error entries (row 0 with an identifier) are accepted; typed exits 0,2,3,4,5.",
       "reason": "Greptile round 1 on PR #2450 (P1): the reprint sent status=error (the route reads tab) and per_page=200 (the route allows 100), so ordinary rows were counted as errors with no reason.",
       "files": [
         "internal/cli/imports_blame.go",
@@ -410,11 +410,11 @@
       "markers": [
         "PATCH(novel1219-imports-blame)"
       ],
-      "validated_outcome": "imports_blame_test.go (the public entry's cases on the real rows shape) including TestImportsBlameUsesTheRoutesPageSizeAndErrorTab and TestImportsBlameGroupsOnlyErrorRows, TestNovel1219ImportsBlameReadsTheErrorTabWithASupportedPageSize and TestImportsLatestResolvesTheNewestJob pass. TestImportsBlameNoRecordedSideEffectsIsComplete pins the zero-counter case and keeps a held send failing."
+      "validated_outcome": "imports_blame_test.go (the public entry's cases on the real rows shape) including TestImportsBlameUsesTheRoutesPageSizeAndErrorTab and TestImportsBlameGroupsOnlyErrorRows, TestNovel1219ImportsBlameReadsTheErrorTabWithASupportedPageSize and TestImportsLatestResolvesTheNewestJob pass. TestImportsBlameNoRecordedSideEffectsIsComplete pins the zero-counter case and keeps a held send failing. Round 2: TestNovel1219HeldSideEffectsNeverVerify, TestNovel1219ImportsBlameZeroSideEffectsOnARunningJobIsPartial, TestNovel1219ImportsBlameAcceptsRowZeroErrors, TestNovel1219ImportsTypedExitCodesCoverNotFoundAndAuth."
     },
     {
       "id": "novel1219-imports-watch",
-      "summary": "imports watch is the public entry's hardened version: polls GET /imports/{id} (no cache) and its launch monitor until completed/failed/cancelled, requires every row counter on the terminal job, and with --verify re-reads the finished job and GET /imports/{id}/side-effects; a failed verification fetch, missing or invalid counters, or side effects that are not complete (queued, failed or held sends) make the result partial and exit 5, as do a failed/cancelled import and the --timeout. Kept from the reprint: --latest, the [jobId] Use line, the --dry-run object; --interval and --timeout take a duration or bare seconds. Two deliberate refinements over the public entry, both seen live on the demo workspace: the job's `errors` field is its issue log (an array), so it is no alias of errorRows; and side effects whose every counter is zero (the route answers isComplete=false for total 0) are reported as no_side_effects and verify, while any queued, retryable, exhausted, failed or held send still fails verification.",
+      "summary": "imports watch is the public entry's hardened version: polls GET /imports/{id} (no cache) and its launch monitor until completed/failed/cancelled, requires every row counter on the terminal job, and with --verify re-reads the finished job and GET /imports/{id}/side-effects; a failed verification fetch, missing or invalid counters, or side effects that are not complete (queued, failed or held sends) make the result partial and exit 5, as do a failed/cancelled import and the --timeout. Kept from the reprint: --latest, the [jobId] Use line, the --dry-run object; --interval and --timeout take a duration or bare seconds. Two deliberate refinements over the public entry, both seen live on the demo workspace: the job's `errors` field is its issue log (an array), so it is no alias of errorRows; and side effects whose every counter is zero (the route answers isComplete=false for total 0) are reported as no_side_effects and verify, while any queued, retryable, exhausted, failed or held send still fails verification. Round 2 (Codex novel1219-r1): --verify rejects every nonzero queued/retryable/exhausted/failed/held counter and actionRequired regardless of isComplete; the overall deadline is --timeout from the command context (the root request timeout stays per request); a job still running when the loop ends (the dogfood poll cap) is partial, exit 5; the all-zero exception needs a terminal status; typed exits 0,2,3,4,5.",
       "reason": "Greptile round 1 on PR #2450 (P1): the reprint's --verify recorded a failed delivery-report read and still exited 0, and dropped the job-scoped side-effects check.",
       "files": [
         "internal/cli/imports_watch.go",
@@ -424,11 +424,11 @@
       "markers": [
         "PATCH(novel1219-imports-watch)"
       ],
-      "validated_outcome": "The public entry's imports_watch_test.go plus TestNovel1219ImportsWatchVerifyFailsNonZero (fetch failure, queued, failed: exit 5; complete: exit 0) and TestNovel1219ImportsWatchIntervalTakesDurationsAndSeconds pass. TestImportsWatchVerifyIsCompleteExactOutput covers the no-side-effects row; TestNovel1219ImportsWatchIgnoresTheJobsIssueLog pins the issue-log case."
+      "validated_outcome": "The public entry's imports_watch_test.go plus TestNovel1219ImportsWatchVerifyFailsNonZero (fetch failure, queued, failed: exit 5; complete: exit 0) and TestNovel1219ImportsWatchIntervalTakesDurationsAndSeconds pass. TestImportsWatchVerifyIsCompleteExactOutput covers the no-side-effects row; TestNovel1219ImportsWatchIgnoresTheJobsIssueLog pins the issue-log case. Round 2: TestNovel1219HeldSideEffectsNeverVerify, TestNovel1219ImportsWatchTimeoutIsNotCappedByTheRequestTimeout, TestNovel1219ImportsWatchDogfoodCapOnARunningJobIsPartial, TestNovel1219ImportsTypedExitCodesCoverNotFoundAndAuth."
     },
     {
       "id": "novel1219-verify-line-type",
-      "summary": "contacts verify-line-type is the public entry's split: the bare command is a read-only estimate that uses the contacts mirror only when it is synced, its decoded row count matches the sync total and it is fresher than --max-age, otherwise counts live (GET /contacts, per_page 200, progress guard, 100-page cap, meta.total cross-check), and reports an incomplete count as a partial lower bound with exit 5; the paid loop is 'run --until-done', which validates done/verified/remaining/byLineType on every batch, refuses done with remaining, and stops when remaining fails to decrease. Kept from the reprint: --contact-ids (now on run, exclusive with --smart-list) and the --dry-run object.",
+      "summary": "contacts verify-line-type is the public entry's split: the bare command is a read-only estimate that uses the contacts mirror only when it is synced, its decoded row count matches the sync total and it is fresher than --max-age, otherwise counts live (GET /contacts, per_page 200, progress guard, 100-page cap, meta.total cross-check), and reports an incomplete count as a partial lower bound with exit 5; the paid loop is 'run --until-done', which validates done/verified/remaining/byLineType on every batch, refuses done with remaining, and stops when remaining fails to decrease. Kept from the reprint: --contact-ids (now on run, exclusive with --smart-list) and the --dry-run object. Round 2 (Codex novel1219-r1 P2): the estimate follows --data-source; a smart-list estimate is always live; under auto a stale, incomplete or unsynced mirror is replaced by a live count (not only flagged), under local it is a partial lower bound (exit 5); every batch must carry byLineType.",
       "reason": "Greptile round 1 on PR #2450 (P2 x2): the reprint's estimate counted whatever the store held without sync or freshness checks, and its paid loop neither validated batches nor stopped on no progress.",
       "files": [
         "internal/cli/contacts_verify_line_type.go",
@@ -439,7 +439,7 @@
       "markers": [
         "PATCH(novel1219-verify-line-type)"
       ],
-      "validated_outcome": "The public entry's contacts_verify_line_type_test.go plus TestNovel1219VerifyLineTypeEstimateNeverTrustsAnUnsyncedMirror, TestNovel1219VerifyLineTypeRunStopsOnAnInvalidOrStalledBatch, TestNovel1219VerifyLineTypeRunSendsContactIDs and TestVerifyLineTypeEstimateUnderDryRunCarriesTheMarker pass."
+      "validated_outcome": "The public entry's contacts_verify_line_type_test.go plus TestNovel1219VerifyLineTypeEstimateNeverTrustsAnUnsyncedMirror, TestNovel1219VerifyLineTypeRunStopsOnAnInvalidOrStalledBatch, TestNovel1219VerifyLineTypeRunSendsContactIDs and TestVerifyLineTypeEstimateUnderDryRunCarriesTheMarker pass. Round 2: TestNovel1219VerifyLineTypeEstimateSourceRules and TestNovel1219VerifyLineTypeRunRequiresByLineType; the public estimate tests that read a stale or mismatched mirror run under --data-source local."
     },
     {
       "id": "novel1219-drips-audit",
@@ -453,6 +453,22 @@
         "PATCH(novel1219-drips-audit)"
       ],
       "validated_outcome": "TestNovel1219DripsAuditGroupsByTheFullBody flags only the contact that received the same full body twice."
+    },
+    {
+      "id": "novel1219-docs",
+      "summary": "README.md, SKILL.md, research.json, root.go and which.go describe the ported commands: blame groups error rows and reads the job-scoped side effects, watch --verify checks those side effects (no SMS delivery report), and the paid line-type loop is 'contacts verify-line-type run --until-done'; the blame recipe selects row_outcomes,errors_by_reason and the send-check recipe drills into verdicts.contact_id,verdicts.verdict.",
+      "reason": "Codex novel1219-r1 P3: public guidance still described the reprint's removed behaviour.",
+      "files": [
+        "README.md",
+        "SKILL.md",
+        ".manuscripts/20261108-052151/research.json",
+        "internal/cli/which.go",
+        "internal/cli/root.go"
+      ],
+      "markers": [
+        "contacts verify-line-type run --until-done"
+      ],
+      "validated_outcome": "verify-skill passes; the recipes name flags and fields the commands have."
     }
   ]
 }

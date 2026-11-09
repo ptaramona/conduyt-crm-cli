@@ -62,7 +62,8 @@ func TestVerifyLineTypeEstimateStaleMirrorIsPartial(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", dbPath, "--max-age", "1m", "--json"}, nil)
+	// novel1219 r2: under auto a stale mirror is replaced by a live count; the local-only lower bound is --data-source local.
+	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", dbPath, "--max-age", "1m", "--data-source", "local", "--json"}, nil)
 	var view verifyEstimate
 	if decodeErr := json.Unmarshal([]byte(out), &view); decodeErr != nil {
 		t.Fatal(decodeErr)
@@ -125,7 +126,7 @@ func TestVerifyLineTypeUntilDoneHonorsMaxBatches(t *testing.T) {
 	var posts atomic.Int32
 	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--max-batches", "2", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 		posts.Add(1)
-		_, _ = w.Write([]byte(`{"data":{"verified":1,"remaining":9,"done":false}}`))
+		_, _ = w.Write([]byte(`{"data":{"verified":1,"remaining":9,"done":false,"byLineType":{"mobile":1}}}`))
 	})
 	var ce *cliError
 	if !errors.As(err, &ce) || ce.code != 5 || !strings.Contains(compactTestJSON(out), `"partial":true`) {
@@ -213,8 +214,8 @@ func TestVerifyLineTypeInvalidProgressStopsAfterOnePost(t *testing.T) {
 		{"fractional remaining", `{"data":{"verified":1,"remaining":1.5,"done":false}}`},
 		{"fractional line type", `{"data":{"verified":1,"remaining":2,"done":false,"byLineType":{"mobile":0.5}}}`},
 		{"overflowing verified", `{"data":{"verified":1e100,"remaining":2,"done":false}}`},
-		{"contradictory terminal state", `{"data":{"verified":0,"remaining":0,"done":false}}`},
-		{"done with contacts remaining", `{"data":{"verified":1,"remaining":10,"done":true}}`},
+		{"contradictory terminal state", `{"data":{"verified":0,"remaining":0,"done":false,"byLineType":{}}}`},
+		{"done with contacts remaining", `{"data":{"verified":1,"remaining":10,"done":true,"byLineType":{"mobile":1}}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			testenv.Isolate(t)
@@ -285,7 +286,14 @@ func TestVerifyLineTypeEstimateMath(t *testing.T) {
 		t.Fatal(err)
 	}
 	db.Close()
-	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--smart-list", "s1", "--db", dbPath, "--json"}, nil)
+	// novel1219 r2: smart-list membership is not in synced contacts, so the smart-list estimate is counted live.
+	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--smart-list", "s1", "--db", dbPath, "--json"}, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/contacts" || r.URL.Query().Get("smartListId") != "s1" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[{"id":"a","phone":"+15550000001"},{"id":"b","phone":"+15550000002","lineType":"mobile"},{"id":"c","phone":"+15550000003"}],"meta":{"total":3}}`))
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +324,7 @@ func TestVerifyLineTypeEstimateMalformedMirrorRowIsPartial(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", dbPath, "--json"}, nil)
+	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", dbPath, "--data-source", "local", "--json"}, nil) // novel1219 r2: local lower bound
 	if ExitCode(err) != 5 {
 		t.Fatalf("err=%v", err)
 	}
@@ -371,7 +379,7 @@ func TestVerifyLineTypeLocalSyncTotalMismatchIsPartial(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", dbPath, "--json"}, nil)
+	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", dbPath, "--data-source", "local", "--json"}, nil) // novel1219 r2: local lower bound
 	var view verifyEstimate
 	if decodeErr := json.Unmarshal([]byte(out), &view); decodeErr != nil {
 		t.Fatal(decodeErr)

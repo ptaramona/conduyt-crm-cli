@@ -37,147 +37,102 @@ func newNovelContactsVerifyLineTypeCmd(flags *rootFlags) *cobra.Command {
 		}
 		ctx, cancel := boundCtx(cmd.Context(), flags)
 		defer cancel()
-		{
-			var fetchErr error
-			if dbPath == "" {
-				dbPath = defaultDBPath("conduyt-crm-pp-cli")
-			}
-			view := verifyEstimate{UnitCostUSD: verifyLineTypeUnitCostUSD}
-			if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-				view.Hint = verifySyncHint(dbPath)
-			} else if err != nil {
-				return fmt.Errorf("checking local mirror: %w", err)
-			} else {
-				db, err := store.OpenWithContext(ctx, dbPath)
-				if err != nil {
-					return fmt.Errorf("opening local mirror: %w", err)
-				}
-				defer db.Close()
-				_, syncedAt, total, err := db.GetSyncState("contacts")
-				if err != nil {
-					return fmt.Errorf("checking contacts sync state: %w", err)
-				}
-				view.Synced = !syncedAt.IsZero()
-				if view.Synced {
-					view.Total = &total
-					if hintIfStale(cmd, db, "contacts", flags.maxAge) {
-						view.Partial = true
-						view.Failures = append(view.Failures, "local contacts mirror is older than --max-age")
-					}
-					flags.agentSource = "local"
-					qr, err := db.DB().QueryContext(ctx, `SELECT id,data FROM resources WHERE resource_type='contacts'`)
-					if err != nil {
-						fetchErr = err
-						return fmt.Errorf("reading contacts mirror: %w", err)
-					}
-					for qr.Next() {
-						var id string
-						var raw []byte
-						if err = qr.Scan(&id, &raw); err != nil {
-							_ = qr.Close()
-							return err
-						}
-						var m map[string]any
-						if decodeErr := json.Unmarshal(raw, &m); decodeErr != nil {
-							view.Partial = true
-							view.Failures = append(view.Failures, fmt.Sprintf("decoding mirrored contact %s: %v", id, decodeErr))
-							continue
-						}
-						view.Checked++
-						if !verifyScopeMatch(m, smartList) {
-							continue
-						}
-						phone := strings.TrimSpace(strAny(m, "phone"))
-						line := contactLineType(m)
-						if _, ok := normalizePhoneIdentity(phone); phone != "" && !ok {
-							view.Partial = true
-							view.Failures = append(view.Failures, fmt.Sprintf("contact %s has an unmappable phone identity", id))
-						} else if phone != "" && line == "" {
-							view.Unverified++
-						}
-					}
-					if err = qr.Close(); err != nil {
-						return err
-					}
-					if err = qr.Err(); err != nil {
-						return err
-					}
-					if view.Total != nil && view.Checked != *view.Total {
-						view.Partial = true
-						view.Failures = append(view.Failures, fmt.Sprintf("local contacts mirror contains %d decoded rows but sync state reports total %d", view.Checked, *view.Total))
-					}
-				} else {
-					view.Hint = verifySyncHint(dbPath)
-				}
-			}
-			if !view.Synced {
-				flags.agentSource = "live"
-				c, err := flags.newClient()
-				if err != nil {
-					return err
-				}
-				progress := newPaginationProgressGuard()
-				for page := 1; page <= verifyLineTypeEstimateMaxPages; page++ {
-					params := map[string]string{"per_page": "200", "page": fmt.Sprint(page)}
-					if smartList != "" {
-						params["smartListId"] = smartList
-					}
-					raw, err := c.Get(ctx, "/contacts", params)
-					if err != nil {
-						fetchErr = err
-						view.Partial = true
-						view.Failures = append(view.Failures, fmt.Sprintf("fetching contacts estimate page %d: %v", page, err))
-						break
-					}
-					items, decodeErr := objectItems(raw, false)
-					if decodeErr != nil {
-						view.Partial = true
-						view.Failures = append(view.Failures, fmt.Sprintf("decoding contacts estimate page %d: %v", page, decodeErr))
-						break
-					}
-					view.Checked += len(items)
-					if total, ok := responseTotal(raw); ok {
-						view.Total = &total
-					}
-					if guardErr := progress.observe(objectPaginationIDs(items), "", len(items) == 200); guardErr != nil {
-						view.Partial = true
-						view.Failures = append(view.Failures, guardErr.Error())
-						break
-					}
-					for i, m := range items {
-						phone := strings.TrimSpace(strAny(m, "phone"))
-						if _, ok := normalizePhoneIdentity(phone); phone != "" && !ok {
-							view.Partial = true
-							view.Failures = append(view.Failures, fmt.Sprintf("contact estimate page %d row %d has an unmappable phone identity", page, i+1))
-						} else if phone != "" && contactLineType(m) == "" {
-							view.Unverified++
-						}
-					}
-					if len(items) < 200 {
-						break
-					}
-					if page == verifyLineTypeEstimateMaxPages {
-						view.Partial = true
-						view.Failures = append(view.Failures, "100-page safety cap reached")
-					}
-				}
-				if view.Total != nil && view.Checked != *view.Total {
-					view.Partial = true
-					view.Failures = append(view.Failures, fmt.Sprintf("contacts estimate ended after %d rows but response metadata reports total %d", view.Checked, *view.Total))
-				}
-			}
-			view.EstimatedCostUSD = float64(view.Unverified) * verifyLineTypeUnitCostUSD
-			if err := printVerifyEstimate(cmd, flags, view); err != nil {
+		if dbPath == "" {
+			dbPath = defaultDBPath("conduyt-crm-pp-cli")
+		}
+		// PATCH(novel1219-verify-line-type) r2: the estimate follows --data-source. The mirror answers only when it is
+		// synced, fresh, complete (decoded rows equal the sync total) and the scope is tenant-wide: smart-list
+		// membership is not in synced contacts, so a smart-list estimate is always live. Under auto an unusable
+		// mirror falls back to a live count; under local it is a partial lower bound with exit 5.
+		var fetchErr error
+		view := verifyEstimate{UnitCostUSD: verifyLineTypeUnitCostUSD}
+		useLocal := false
+		if flags.dataSource != "live" {
+			local, reasons, err := verifyEstimateFromMirror(cmd, flags, dbPath, smartList)
+			if err != nil {
 				return err
 			}
-			if view.Partial {
-				if fetchErr != nil {
-					return classifyAPIErrorOnly(fetchErr)
-				}
-				return apiErr(fmt.Errorf("line-type estimate is incomplete: %s", strings.Join(view.Failures, "; ")))
+			switch {
+			case len(reasons) == 0:
+				view, useLocal = local, true
+				flags.agentSource = "local"
+			case flags.dataSource == "local":
+				view = local
+				view.Partial = true
+				view.Failures = append(view.Failures, reasons...)
+				useLocal = true
+				flags.agentSource = "local"
+			default:
+				view.Hint = verifySyncHint(dbPath) // the mirror could not answer (reason); counted live
 			}
-			return nil
 		}
+		if !useLocal {
+			flags.agentSource = "live"
+			c, err := flags.newClient()
+			if err != nil {
+				return err
+			}
+			progress := newPaginationProgressGuard()
+			for page := 1; page <= verifyLineTypeEstimateMaxPages; page++ {
+				params := map[string]string{"per_page": "200", "page": fmt.Sprint(page)}
+				if smartList != "" {
+					params["smartListId"] = smartList
+				}
+				raw, err := c.Get(ctx, "/contacts", params)
+				if err != nil {
+					fetchErr = err
+					view.Partial = true
+					view.Failures = append(view.Failures, fmt.Sprintf("fetching contacts estimate page %d: %v", page, err))
+					break
+				}
+				items, decodeErr := objectItems(raw, false)
+				if decodeErr != nil {
+					view.Partial = true
+					view.Failures = append(view.Failures, fmt.Sprintf("decoding contacts estimate page %d: %v", page, decodeErr))
+					break
+				}
+				view.Checked += len(items)
+				if total, ok := responseTotal(raw); ok {
+					view.Total = &total
+				}
+				if guardErr := progress.observe(objectPaginationIDs(items), "", len(items) == 200); guardErr != nil {
+					view.Partial = true
+					view.Failures = append(view.Failures, guardErr.Error())
+					break
+				}
+				for i, m := range items {
+					phone := strings.TrimSpace(strAny(m, "phone"))
+					if _, ok := normalizePhoneIdentity(phone); phone != "" && !ok {
+						view.Partial = true
+						view.Failures = append(view.Failures, fmt.Sprintf("contact estimate page %d row %d has an unmappable phone identity", page, i+1))
+					} else if phone != "" && contactLineType(m) == "" {
+						view.Unverified++
+					}
+				}
+				if len(items) < 200 {
+					break
+				}
+				if page == verifyLineTypeEstimateMaxPages {
+					view.Partial = true
+					view.Failures = append(view.Failures, "100-page safety cap reached")
+				}
+			}
+			if view.Total != nil && view.Checked != *view.Total {
+				view.Partial = true
+				view.Failures = append(view.Failures, fmt.Sprintf("contacts estimate ended after %d rows but response metadata reports total %d", view.Checked, *view.Total))
+			}
+		}
+		view.EstimatedCostUSD = float64(view.Unverified) * verifyLineTypeUnitCostUSD
+		if err := printVerifyEstimate(cmd, flags, view); err != nil {
+			return err
+		}
+		if view.Partial {
+			if fetchErr != nil {
+				return classifyAPIErrorOnly(fetchErr)
+			}
+			return apiErr(fmt.Errorf("line-type estimate is incomplete: %s", strings.Join(view.Failures, "; ")))
+		}
+		return nil
 	}}
 	cmd.Flags().BoolVar(&estimate, "estimate", false, "Count locally without spending money")
 	cmd.Flags().StringVar(&smartList, "smart-list", "", "Limit to one smart list")
@@ -369,7 +324,12 @@ func parseVerifyBatch(env map[string]any) (verifyBatch, error) {
 		return verifyBatch{}, fmt.Errorf("missing or invalid remaining number")
 	}
 	batch := verifyBatch{Verified: verified, Remaining: remaining, Done: done, ByLineType: map[string]int{}}
-	if raw, present := m["byLineType"]; present {
+	// PATCH(novel1219-verify-line-type) r2: byLineType is a required field of every batch (the route always sends it).
+	raw, present := m["byLineType"]
+	if !present {
+		return verifyBatch{}, fmt.Errorf("missing byLineType object")
+	}
+	{
 		by, ok := raw.(map[string]any)
 		if !ok {
 			return verifyBatch{}, fmt.Errorf("invalid byLineType: expected object of string to number")
@@ -385,20 +345,6 @@ func parseVerifyBatch(env map[string]any) (verifyBatch, error) {
 	return batch, nil
 }
 
-func verifyScopeMatch(m map[string]any, smart string) bool {
-	if smart == "" {
-		return true
-	}
-	if strAny(m, "smartListId", "smart_list_id") == smart {
-		return true
-	}
-	for _, v := range anyStrings(m["smartListIds"]) {
-		if v == smart {
-			return true
-		}
-	}
-	return false
-}
 func printVerifyEstimate(cmd *cobra.Command, flags *rootFlags, v verifyEstimate) error {
 	if !wantsHumanTable(cmd.OutOrStdout(), flags) {
 		return printJSONFiltered(cmd.OutOrStdout(), v, flags)
@@ -414,4 +360,75 @@ func printVerifyEstimate(cmd *cobra.Command, flags *rootFlags, v verifyEstimate)
 	}
 	fmt.Fprintf(tw, "%s\t%.3f\t%.2f\n", total, v.UnitCostUSD, v.EstimatedCostUSD)
 	return tw.Flush()
+}
+
+// verifyEstimateFromMirror counts unverified numbers in the local contacts mirror. reasons is empty only when the
+// mirror can answer the estimate: tenant-wide scope, synced, fresher than --max-age, every row decoded and the
+// decoded count equal to the sync total. Otherwise reasons say why and the returned view carries what was counted.
+func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smartList string) (verifyEstimate, []string, error) {
+	view := verifyEstimate{UnitCostUSD: verifyLineTypeUnitCostUSD}
+	if smartList != "" {
+		view.Hint = verifySyncHint(dbPath)
+		return view, []string{"smart-list membership is not stored in synced contacts"}, nil
+	}
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		view.Hint = verifySyncHint(dbPath)
+		return view, []string{"no local contacts mirror"}, nil
+	} else if err != nil {
+		return view, nil, fmt.Errorf("checking local mirror: %w", err)
+	}
+	db, err := store.OpenWithContext(cmd.Context(), dbPath)
+	if err != nil {
+		return view, nil, fmt.Errorf("opening local mirror: %w", err)
+	}
+	defer db.Close()
+	_, syncedAt, total, err := db.GetSyncState("contacts")
+	if err != nil {
+		return view, nil, fmt.Errorf("checking contacts sync state: %w", err)
+	}
+	view.Synced = !syncedAt.IsZero()
+	if !view.Synced {
+		view.Hint = verifySyncHint(dbPath)
+		return view, []string{"contacts were never synced"}, nil
+	}
+	view.Total = &total
+	reasons := make([]string, 0)
+	if hintIfStale(cmd, db, "contacts", flags.maxAge) {
+		reasons = append(reasons, "local contacts mirror is older than --max-age")
+	}
+	qr, err := db.DB().QueryContext(cmd.Context(), `SELECT id,data FROM resources WHERE resource_type='contacts'`)
+	if err != nil {
+		return view, nil, fmt.Errorf("reading contacts mirror: %w", err)
+	}
+	for qr.Next() {
+		var id string
+		var raw []byte
+		if err = qr.Scan(&id, &raw); err != nil {
+			_ = qr.Close()
+			return view, nil, err
+		}
+		var m map[string]any
+		if decodeErr := json.Unmarshal(raw, &m); decodeErr != nil {
+			reasons = append(reasons, fmt.Sprintf("decoding mirrored contact %s: %v", id, decodeErr))
+			continue
+		}
+		view.Checked++
+		phone := strings.TrimSpace(strAny(m, "phone"))
+		if _, ok := normalizePhoneIdentity(phone); phone != "" && !ok {
+			view.Partial = true
+			view.Failures = append(view.Failures, fmt.Sprintf("contact %s has an unmappable phone identity", id))
+		} else if phone != "" && contactLineType(m) == "" {
+			view.Unverified++
+		}
+	}
+	if err = qr.Close(); err != nil {
+		return view, nil, err
+	}
+	if err = qr.Err(); err != nil {
+		return view, nil, err
+	}
+	if view.Checked != total {
+		reasons = append(reasons, fmt.Sprintf("local contacts mirror contains %d decoded rows but sync state reports total %d", view.Checked, total))
+	}
+	return view, reasons, nil
 }

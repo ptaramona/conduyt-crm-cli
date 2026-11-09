@@ -89,10 +89,10 @@ func TestImportsBlameStrictActionRequiredAliases(t *testing.T) {
 	}{
 		{"invalid preferred with valid legacy", `,"actionRequired":"bad","action_required":true`, "invalid actionRequired", "", ""},
 		{"conflicting dual keys", `,"actionRequired":false,"action_required":true`, "conflicting actionRequired=false and action_required=true", "", ""},
-		{"legacy only true", `,"action_required":true`, "", `"action_required":true`, "true"},
+		{"legacy only true", `,"action_required":true`, "action required", "", ""}, // novel1219 r2: actionRequired is never complete
 		{"legacy only false", `,"action_required":false`, "", `"action_required":false`, "false"},
 		{"absent", ``, "", `"action_required":null`, "unknown"},
-		{"preferred true", `,"actionRequired":true`, "", `"action_required":true`, "true"},
+		{"preferred true", `,"actionRequired":true`, "action required", "", ""},
 		{"preferred false", `,"actionRequired":false`, "", `"action_required":false`, "false"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestImportsBlameRendersIsCompleteFalse(t *testing.T) {
 	testenv.Isolate(t)
 	out, _, err := runNovel(t, []string{"imports", "blame", "job", "--json"}, blameHandler(t, "", "", side))
 	compact := compactTestJSON(out)
-	if ExitCode(err) != 5 || !strings.Contains(compact, `"partial":true`) || !strings.Contains(compact, `"is_complete":false`) || !strings.Contains(compact, `"failures":["import side effects are not complete"]`) {
+	if ExitCode(err) != 5 || !strings.Contains(compact, `"partial":true`) || !strings.Contains(compact, `"is_complete":false`) || !strings.Contains(compact, `"failures":["import side effects are not complete","import side effects 1 queued sends"]`) {
 		t.Fatalf("err=%v out=%s", err, compact)
 	}
 	testenv.Isolate(t)
@@ -276,8 +276,8 @@ func TestImportsBlameReadsSideEffectsForDelivery(t *testing.T) {
 	side := `{"data":{"scope":"import_job","scopedControlsAvailable":true,"total":6,"pending":0,"processing":0,"completed":0,"skippedInactive":0,"failed":4,"retryableFailed":1,"exhaustedFailed":3,"queued":2,"held":0,"actionRequired":true,"progress":100,"isComplete":true,"byEvent":[]}}`
 	rows := blameErrorRows([]map[string]any{blameErrorRow(4, "landline"), blameErrorRow(5, "invalid_phone")}, 2, nil)
 	out, _, err := runNovel(t, []string{"imports", "blame", "job", "--json"}, blameHandler(t, "", rows, side))
-	if err != nil {
-		t.Fatal(err)
+	if ExitCode(err) != 5 { // novel1219 r2: queued, failed and exhausted sends make the report partial
+		t.Fatalf("err=%v code=%d", err, ExitCode(err))
 	}
 	out = compactTestJSON(out)
 	for _, want := range []string{`"job_id":"job"`, `"error_rows":2`, `"delivered":0`, `"delivery_correlation":"none"`, `"landline":1`, `"invalid_phone":1`, `"queued":2`, `"retryable":1`, `"exhausted":3`, `"action_required":true`} {
@@ -403,10 +403,10 @@ func TestImportsBlameEmptyRows(t *testing.T) {
 
 func TestImportsBlameRejectsRowsWithoutIdentity(t *testing.T) {
 	for name, row := range map[string]string{
-		"missing":     `{"outcome":"error","message":"x"}`,
-		"zero row":    `{"row":0,"outcome":"error","message":"x"}`,
-		"whitespace":  `{"contactId":"  ","phone":" \t ","outcome":"error","message":"x"}`,
-		"short phone": `{"phone":"5551212","outcome":"error","message":"x"}`,
+		"missing":      `{"outcome":"error","message":"x"}`,
+		"negative row": `{"row":-1,"outcome":"error","message":"x"}`,
+		"whitespace":   `{"contactId":"  ","phone":" \t ","outcome":"error","message":"x"}`,
+		"short phone":  `{"phone":"5551212","outcome":"error","message":"x"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			testenv.Isolate(t)

@@ -331,10 +331,10 @@ func newRootCmd(flags *rootFlags) *cobra.Command {
 		Long: `Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has.
 
 Highlights (not in the official API docs):
-  • send-check   Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for provider rejections).
-  • imports blame   For one import job: who got the SMS, who was skipped, and why — grouped by rejection or skip reason.
-  • imports watch   Polls an import job to completion, then renders the row-outcome recap (created/updated/skipped/errors) and, with --verify, the SMS delivery report.
-  • contacts verify-line-type   Counts unverified contacts and prints the tenant-paid Twilio cost before the loop (--estimate), then drives the batched verification to done. Requires the account's Phone Line-Type Verification setti…
+  • send-check   Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's delivery side effects).
+  • imports blame   For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).
+  • imports watch   Polls an import job to completion, then renders the row-outcome recap (created/updated/skipped/errors) and, with --verify, checks its job-scoped side effects.
+  • contacts verify-line-type   Counts unverified contacts and prints the tenant-paid Twilio cost without spending (--estimate); 'run --until-done' drives the batched verification to done. Requires the account's Phone Line-Typ…
   • drips audit   Flags duplicate sends in a window: any contact who received the same message body more than once, from the local store.
   • analytics   GROUP BY over synced entities — segment counts without paging the API (--type/--group-by/--limit).
   • tail   Interval polling over a resource that re-emits current results as JSON — watch messages or activities as a blast goes out.

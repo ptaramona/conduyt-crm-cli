@@ -149,30 +149,30 @@ echo "$TOKEN" | conduyt-crm-pp-cli auth set-token
 These capabilities aren't available in any other tool for this API.
 
 ### Kloudi-grade send safety
-- **`send-check`** — Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for provider rejections).
+- **`send-check`** — Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's delivery side effects).
 
   _Run it before acting on any 'text this list' instruction — it is the anti-Kloudi gate._
 
   ```bash
   conduyt-crm-pp-cli send-check --tag kloudi-july --agent
   ```
-- **`imports blame`** — For one import job: who got the SMS, who was skipped, and why — grouped by rejection or skip reason.
+- **`imports blame`** — For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).
 
   _Answers 'did the Tuesday import get its texts?' in one call after any bulk push._
 
   ```bash
   conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --json
   ```
-- **`imports watch`** — Polls an import job to completion, then renders the row-outcome recap (created/updated/skipped/errors) and, with --verify, the SMS delivery report.
+- **`imports watch`** — Polls an import job to completion, then renders the row-outcome recap (created/updated/skipped/errors) and, with --verify, checks its job-scoped side effects.
 
   _Drop it into n8n or cron and alert on bad imports instead of discovering them hours later._
 
   ```bash
   conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --verify
   ```
-- **`contacts verify-line-type`** — Counts unverified contacts and prints the tenant-paid Twilio cost before the loop (--estimate), then drives the batched verification to done. Requires the account's Phone Line-Type Verification setting (403 'not enabled' otherwise).
+- **`contacts verify-line-type`** — Counts unverified contacts and prints the tenant-paid Twilio cost without spending (--estimate); 'run --until-done' drives the batched verification to done. Requires the account's Phone Line-Type Verification setting (403 'not enabled' otherwise).
 
-  _Know the dollar exposure before spending it; then run the same command without --estimate to verify._
+  _Know the dollar exposure before spending it; then run 'contacts verify-line-type run --until-done' to verify._
 
   ```bash
   conduyt-crm-pp-cli contacts verify-line-type --smart-list 7c1d2e3f-0000-0000-0000-000000000000 --estimate

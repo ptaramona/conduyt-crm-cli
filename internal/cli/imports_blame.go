@@ -24,10 +24,10 @@ const importRowsMaxPerPage = 100
 func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 	var limit, rowsAlias int
 	var latest bool
-	cmd := &cobra.Command{Use: "blame [jobId]", Short: "For one import job: who got the SMS, who was skipped and why", Long: "Use this command after an import finished: it reads the job's row counters, every error row (GET /imports/{id}/rows?tab=error, paged to --limit) grouped by reason, and the job-scoped side effects (queued, retryable, exhausted, held, completed). A capped, short or failed read makes the result partial and the exit 5. Do NOT use it to wait for an import to finish; use 'imports watch' instead.", Example: strings.Trim(`
+	cmd := &cobra.Command{Use: "blame [jobId]", Short: "For one import job: who got the SMS, who was skipped and why", Long: "Use this command after an import finished: it reads the job's row counters, every error row (GET /imports/{id}/rows?tab=error, paged to --limit) grouped by reason, and the job-scoped side effects (queued, retryable, exhausted, held, completed). A capped, short or failed read, or any queued, failed or held send, makes the result partial and the exit 5 (3 when the job does not exist, 4 on an auth failure). Do NOT use it to wait for an import to finish; use 'imports watch' instead.", Example: strings.Trim(`
   conduyt-crm-pp-cli imports blame --latest --json
   conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000
-  conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --agent --select row_outcomes,errors_by_reason`, "\n"), Annotations: map[string]string{"mcp:read-only": "true", "pp:data-source": "live", "pp:typed-exit-codes": "0,2,3,5"}, RunE: func(cmd *cobra.Command, args []string) error {
+  conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --agent --select row_outcomes,errors_by_reason`, "\n"), Annotations: map[string]string{"mcp:read-only": "true", "pp:data-source": "live", "pp:typed-exit-codes": "0,2,3,4,5"}, RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 && !latest && !cmd.Flags().Changed("limit") && !cmd.Flags().Changed("rows") {
 			return cmd.Help()
 		}
@@ -266,10 +266,20 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 					failureReasons = append(failureReasons, "import side effects "+isCompleteErr.Error())
 				} else {
 					side.IsComplete = isComplete
-					side.NoSideEffects = !isComplete && len(missing) == 0 && side.Total == 0 && side.Queued == 0 && side.Retryable == 0 && side.Exhausted == 0 && side.Failed == 0 && side.Held == 0
+					// PATCH(novel1219-imports-blame) r2: the all-zero exception holds only after a terminal job read
+					// (a running job may not have enqueued its side effects yet).
+					side.NoSideEffects = !isComplete && len(missing) == 0 && terminalImportStatus(outcomes.Status) && side.Total == 0 && side.Queued == 0 && side.Retryable == 0 && side.Exhausted == 0 && side.Failed == 0 && side.Held == 0
 					if !isComplete && !side.NoSideEffects {
 						failures++
 						failureReasons = append(failureReasons, "import side effects are not complete")
+					}
+				}
+				if len(missing) == 0 {
+					// isComplete counts pending, processing and failed only; held-only is isComplete:true with
+					// actionRequired:true, so every unfinished or unsuccessful counter is checked on its own.
+					for _, problem := range sideEffectProblems(&side.Queued, &side.Retryable, &side.Exhausted, &side.Failed, &side.Held, side.ActionRequired) {
+						failures++
+						failureReasons = append(failureReasons, "import side effects "+problem)
 					}
 				}
 			} else {
@@ -343,10 +353,15 @@ func blameExit(view blameView, fetchErr error) error {
 	return apiErr(fmt.Errorf("imports blame is incomplete: %s", strings.Join(view.Failures, "; ")))
 }
 
-// importRowIdentity is the stable identity of one GET /imports/{id}/rows entry: its source row number, else a
-// contact identity. A row with neither cannot be paged or counted safely.
+// importRowIdentity is the stable identity of one GET /imports/{id}/rows entry: its source row number (0 for a
+// job-level entry), else a contact identity. A row with neither cannot be paged or counted safely.
 func importRowIdentity(row map[string]any, page, index int) (string, error) {
-	if n, ok := numericInt(row["row"]); ok && n > 0 {
+	if n, ok := numericInt(row["row"]); ok && n >= 0 {
+		if n == 0 {
+			// PATCH(novel1219-imports-blame) r2: row 0 is a job-level entry (the route emits several, each with an
+			// identifier such as "Updated contacts"), so its identity includes the identifier and message.
+			return "row:0|" + strAny(row, "identifier") + "|" + strAny(row, "message", "error"), nil
+		}
 		return "row:" + strconv.Itoa(n), nil
 	}
 	if id := strings.TrimSpace(strAny(row, "contactId", "contact_id", "id")); id != "" {
