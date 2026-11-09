@@ -61,6 +61,8 @@ func Load(configPath string) (*Config, error) {
 		return nil, err
 	}
 	cfg.Path = path
+	// PATCH(novel1219-auth-compat): saved legacy bearer_auth / api_key keys are rewritten to crm_bearer_auth once.
+	unmigratedLegacy := migrateLegacyAuthFiles(legacyAuthFileCandidates(path, explicitConfigFile))
 
 	if explicitConfigFile {
 		// Keep non-secret settings from a readable config even when its
@@ -82,6 +84,9 @@ func Load(configPath string) (*Config, error) {
 	cfg.Path = path
 	if err := cfg.applyStoredCredentials(explicitConfigFile, path); err != nil {
 		return nil, err
+	}
+	if cfg.ConduytCrmBearerAuth == "" && unmigratedLegacy != "" && !cfg.credentialRouteBlocked() {
+		cfg.ConduytCrmBearerAuth = unmigratedLegacy // PATCH(novel1219-auth-compat): honoured even when the rewrite failed
 	}
 	// Label credentials that arrived from the config or credentials file
 	// before env overrides, so an env value still replaces them.
@@ -114,6 +119,7 @@ func Load(configPath string) (*Config, error) {
 			cfg.AuthSource = "env:CONDUYT_CRM_BEARER_AUTH"
 			cfg.CredentialSource = "env:CONDUYT_CRM_BEARER_AUTH"
 		}
+		cfg.applyLegacyEnvBearer() // PATCH(novel1219-auth-compat): CONDUYT_BEARER_AUTH, then CONDUYT_API_KEY
 	}
 	// Label config-file-derived credentials so doctor can distinguish
 	// "credentials persisted on disk" from "no credentials at all" — without
@@ -447,6 +453,9 @@ func (c *Config) CredentialRouteBlocked() bool {
 
 func (c *Config) envHasCredential() bool {
 	if strings.TrimSpace(cliutil.EnvOverride("CONDUYT_CRM_BEARER_AUTH")) != "" {
+		return true
+	}
+	if name, _ := legacyEnvBearer(); name != "" { // PATCH(novel1219-auth-compat)
 		return true
 	}
 	return false

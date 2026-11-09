@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "id": "novel1219-auth-compat",
+  "applied_at": "2026-11-09",
+  "base_run_id": "20261108-052151",
+  "base_printing_press_version": "4.34.2",
+  "summary": "Auth compatibility with installs of the earlier library entry (Greptile PR #2450 round 2 P1): env fallbacks in precedence order CONDUYT_CRM_BEARER_AUTH, then CONDUYT_BEARER_AUTH, then CONDUYT_API_KEY, each legacy name with a one-line deprecation notice on stderr; saved legacy bearer_auth / api_key keys (bearer_auth first) in the resolved config file, the pre-paths legacy config and the credentials file are honoured and rewritten to crm_bearer_auth once (cliutil.AtomicWritePrivateFile, the original kept as <file>.legacy-auth.bak), with a one-line notice; a file that is not regular or fails cliutil.VerifyCredsPerms is never rewritten; a file that cannot be rewritten is honoured for the run with a notice; no secret value is printed. Hand-authored internal/config/legacy_auth.go, called from Load in the generated config.go.",
+  "reason": "The 4.34.2 reprint reads only CONDUYT_CRM_BEARER_AUTH and crm_bearer_auth; existing installs that use the earlier env names or saved keys would lose authentication on upgrade.",
+  "files": [
+    "internal/config/config.go",
+    "internal/config/legacy_auth.go",
+    "internal/config/legacy_auth_test.go"
+  ],
+  "markers": [
+    "PATCH(novel1219-auth-compat)"
+  ],
+  "validated_outcome": "TestLegacyAuthEnvPrecedence (6 rows), TestLegacyAuthConfigMigratesOnceAndIsIdempotent (bearer_auth, api_key, both, current already set; backup equals the original; a second load changes nothing and prints nothing), TestLegacyAuthCredentialsFileMigrates, TestLegacyAuthNeverRewritesAnUntrustedFile and TestLegacyAuthUnwritableFileIsHonouredForTheRun pass and assert no secret in any notice; the FULL live gate passes with CONDUYT_CRM_BEARER_AUTH and again with only CONDUYT_BEARER_AUTH."
+}
