@@ -12,7 +12,7 @@
     "type": "bearer_token",
     "api_key_available": true
   },
-  "source_fingerprint": "2c6a6e8bbc383eba38e5d9cce0d5c4e3d3685c6f8fe82950ba7586b3dd7ef1fd",
+  "source_fingerprint": "1f1e02c6d9b2f9c59cebd2d76e9d177df837fc9d6e88a86164e0875cddc01250",
   "source_files": {
     "cmd/conduyt-crm-pp-cli/main.go": "29be83c171af167f619beecc63a7e80862bb1c40cbdbeab07982e9a9d475b1c5",
     "cmd/conduyt-crm-pp-mcp/http_auth_test.go": "09c877f6db31e530ea1938af19a29b6fd7e93ae2b7fa948f114523c0e368880e",
@@ -855,7 +855,7 @@
     "internal/cli/notifications_replace-profiles.go": "7f6ccaa7ea621418db1b29f80825e062c707c03de91ed8d2d5dafa876ab765cc",
     "internal/cli/notifications_update-digest-settings.go": "cb1394628b834198d7d03d925ce161cca2fd183c92192cfb2a00b83c22fe4e9d",
     "internal/cli/novel1219_regressions_test.go": "277fda2851a3b7901017cfd7518a4589e13743aa9180d9b72a07dea577d96588",
-    "internal/cli/novel1219_restored_commands.go": "1e85b8283d4e79c311fc7a988c2ec7a0104f839d6120febc7af68fa16338aef7",
+    "internal/cli/novel1219_restored_commands.go": "34a7b92409a13a3964846da70bf1a16710e322830469b3dd0326399c88c6f591",
     "internal/cli/novel1219_restored_test.go": "2e1d159daacddd75efa8246ff1a6cd8f5dfd091eea7629dd2c5854bb06c2acf3",
     "internal/cli/novel_port_helpers.go": "edf3aa819ae47991d188cd89ab85938091487a99599a4133f92ecedf814e78f1",
     "internal/cli/phone_identity.go": "b265978556b046540ab58f68ff9de0219eb7d12229756eafc6e640f59fc347b7",
