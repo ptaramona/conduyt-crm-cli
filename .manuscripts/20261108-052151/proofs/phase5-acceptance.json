@@ -12,7 +12,7 @@
     "type": "bearer_token",
     "api_key_available": true
   },
-  "source_fingerprint": "383f4d2c3d281343affbfbf4c377e6aabad27e9d143d55e23b0df99ef935244f",
+  "source_fingerprint": "510bc4a3e8139150444627dd9a3978d87c65ad34e558d701b05ee9ba03fe5c11",
   "source_files": {
     "cmd/conduyt-crm-pp-cli/main.go": "29be83c171af167f619beecc63a7e80862bb1c40cbdbeab07982e9a9d475b1c5",
     "cmd/conduyt-crm-pp-mcp/http_auth_test.go": "2da10eef5bdac9ebe22f7b4b1aecf9619058df4809b4d1a3fbd97b6632adfb10",
@@ -858,7 +858,7 @@
     "internal/cli/novel1219_activities_list_page_walk_test.go": "d6f3c3771be94de4654aa4dadb8865fb7a448db5d5821c128d860bde183af4e6",
     "internal/cli/novel1219_activities_walk.go": "00f3075a69e6dca9a9f4963f8a29b830a4c63c53eac49a69bac12a4a6883182b",
     "internal/cli/novel1219_r19_activities_test.go": "aa28acacc443a18cdcd796ef2a6357bc223d8202c57699ef52ea1c2f39652a6f",
-    "internal/cli/novel1219_r20_page_continuation_test.go": "73e648240d2d7afc29ef931cf5e0752affcbf389bef54febd2034c43f80154b6",
+    "internal/cli/novel1219_r20_page_continuation_test.go": "7f3f333136b6291d32feb96926089ab7911ecc99af3dcc0f03575e89dcfefbfb",
     "internal/cli/novel1219_regressions_test.go": "277fda2851a3b7901017cfd7518a4589e13743aa9180d9b72a07dea577d96588",
     "internal/cli/novel1219_restored_commands.go": "34a7b92409a13a3964846da70bf1a16710e322830469b3dd0326399c88c6f591",
     "internal/cli/novel1219_restored_test.go": "2e1d159daacddd75efa8246ff1a6cd8f5dfd091eea7629dd2c5854bb06c2acf3",
@@ -1187,7 +1187,7 @@
     "internal/cli/support.go": "401d6ea76f37a0046efdbf80e4e41c6ed52263c42f3b1a1563ddc7d91823f007",
     "internal/cli/support_post-requests.go": "ef65aae0a000dc3cad0aee8023f8168012eeb1ef368a2c155a74d6e0ced00694",
     "internal/cli/support_post-upload-url.go": "3c5fec00d85966a09c3b8f3ea1436f4411a4cf2aa4fb65915817956fe17d0cea",
-    "internal/cli/sync.go": "d45703fec3b9146b2ad74ae9d0ebad920e02f54aaec691f7472f065d888f7d3e",
+    "internal/cli/sync.go": "d1104596aab8a51bf07030a0c391496b6ce14fc2a6e19210a948e86f0ba2e4d7",
     "internal/cli/sync_hint.go": "e2642c59f3b3303c04741771fa519fdee765e7c332116dba6662af42f783116a",
     "internal/cli/sync_hint_test.go": "a0ff4f21f8e03df1daea7d51eb60a91b1f5e7a68788873416ba8fdbfb86260bc",
     "internal/cli/sync_numeric_id_test.go": "cb946cdcad5a6d75dab9711cd5033440784c802c4884b416435cf22227008336",
