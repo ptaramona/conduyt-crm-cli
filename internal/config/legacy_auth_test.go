@@ -104,12 +104,15 @@ func TestLegacyAuthEnvPrecedence(t *testing.T) {
 		{"bearer auth beats api key", "", legacyTokenA, legacyTokenB, legacyTokenA, "env:CONDUYT_BEARER_AUTH", "CONDUYT_BEARER_AUTH is deprecated"},
 		{"api key fallback", "", "", legacyTokenB, legacyTokenB, "env:CONDUYT_API_KEY", "CONDUYT_API_KEY is deprecated"},
 		{"none", "", "", "", "", "", ""},
+		// Codex r8 P1 (env): a set-but-blank name is an explicit clear and never falls through to a later name.
+		{"blank current blocks legacy", blankEnv, legacyTokenA, legacyTokenB, "", "", ""},
+		{"blank bearer auth blocks api key", "", blankEnv, legacyTokenB, "", "", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			notices := isolateLegacyAuth(t)
-			t.Setenv("CONDUYT_CRM_BEARER_AUTH", tc.crm)
-			t.Setenv("CONDUYT_BEARER_AUTH", tc.bearer)
-			t.Setenv("CONDUYT_API_KEY", tc.apiKy)
+			setOrUnset(t, "CONDUYT_CRM_BEARER_AUTH", tc.crm)
+			setOrUnset(t, "CONDUYT_BEARER_AUTH", tc.bearer)
+			setOrUnset(t, "CONDUYT_API_KEY", tc.apiKy)
 			cfg, err := Load(filepath.Join(t.TempDir(), "config.toml"))
 			if err != nil {
 				t.Fatal(err)
@@ -368,5 +371,157 @@ func TestLegacyAuthSavesNeverWriteLegacyKeys(t *testing.T) {
 	}
 	if strings.Contains(string(persisted), "bearer_auth =") && !strings.Contains(string(persisted), "crm_bearer_auth") || strings.Contains(strings.ReplaceAll(string(persisted), "crm_bearer_auth", ""), "bearer_auth") || strings.Contains(string(persisted), "api_key") || strings.Contains(string(persisted), legacyTokenA) || strings.Contains(string(persisted), "LegacyKey") {
 		t.Fatalf("internal provenance fields were persisted:\n%s", persisted)
+	}
+}
+
+// blankEnv marks an env var that is set to the empty string (as opposed to "", unset).
+const blankEnv = "<blank>"
+
+func setOrUnset(t *testing.T, name, value string) {
+	t.Helper()
+	t.Setenv(name, "")
+	switch value {
+	case "":
+		if err := os.Unsetenv(name); err != nil {
+			t.Fatal(err)
+		}
+	case blankEnv:
+		// stays set to ""
+	default:
+		t.Setenv(name, value)
+	}
+}
+
+// ---- Codex novel1219-r8 regressions (r9) ----
+
+// Codex r8 P1 #1: a document that has crm_bearer_auth at all, even empty (an explicitly cleared token), ignores the
+// earlier keys: config document, profile credentials file and global credentials file alike.
+func TestLegacyAuthEmptyCurrentKeyNeverResurrectsALegacyKey(t *testing.T) {
+	cleared := "base_url = \"" + defaultBase + "\"\ncrm_bearer_auth = \"\"\nbearer_auth = \"" + legacyTokenA + "\"\napi_key = \"" + legacyTokenB + "\"\n"
+	t.Run("config document", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		path := filepath.Join(t.TempDir(), "config.toml")
+		writeOwnerOnly(t, path, cleared)
+		cfg, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.ConduytCrmBearerAuth != "" || cfg.AuthHeader() != "" {
+			t.Fatal("an empty crm_bearer_auth in the config document resurrected an earlier key")
+		}
+	})
+	t.Run("profile credentials file", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		configPath, credsPath := profilePaths(t)
+		writeOwnerOnly(t, credsPath, cleared)
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.ConduytCrmBearerAuth != "" || cfg.AuthHeader() != "" {
+			t.Fatal("an empty crm_bearer_auth in the profile credentials file resurrected an earlier key")
+		}
+	})
+	t.Run("global credentials file", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		writeOwnerOnly(t, globalCredsPath(t), cleared)
+		cfg, err := Load(filepath.Join(t.TempDir(), "config.toml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.ConduytCrmBearerAuth != "" || cfg.AuthHeader() != "" {
+			t.Fatal("an empty crm_bearer_auth in the global credentials file resurrected an earlier key")
+		}
+	})
+}
+
+// Codex r8 P1 #2 (re-save): the advertised re-save replaces the earlier key: the new token is sent, the earlier one
+// is never persisted as crm_bearer_auth, and the earlier keys are gone from the profile and global files.
+func TestLegacyAuthReSaveReplacesTheEarlierKey(t *testing.T) {
+	const rotated = "ROTATED-SET-TOKEN-SECRET-5555"
+	isolateLegacyAuth(t)
+	configPath, credsPath := profilePaths(t)
+	writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\nbearer_auth = \""+legacyTokenA+"\"\n")
+	writeOwnerOnly(t, globalCredsPath(t), "base_url = \""+defaultBase+"\"\napi_key = \""+legacyTokenB+"\"\n")
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ConduytCrmBearerAuth != legacyTokenA {
+		t.Fatal("setup: profile legacy key not loaded")
+	}
+	cfg.AuthHeaderVal = ""
+	if err := cfg.SaveTokens("", "", rotated, "", cfg.TokenExpiry); err != nil { // what auth set-token does
+		t.Fatal(err)
+	}
+	after, err := Load(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.AuthHeader() != "Bearer "+rotated {
+		t.Fatal("after the re-save the earlier key is still sent")
+	}
+	for _, p := range []string{credsPath, globalCredsPath(t)} {
+		raw, err := os.ReadFile(p)
+		if err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		doc := string(raw)
+		if strings.Contains(strings.ReplaceAll(doc, "crm_bearer_auth", ""), "bearer_auth") || strings.Contains(doc, "api_key") || strings.Contains(doc, legacyTokenA) || strings.Contains(doc, legacyTokenB) {
+			t.Fatalf("%s still carries an earlier key or value after the re-save", filepath.Base(filepath.Dir(p))+"/"+filepath.Base(p))
+		}
+	}
+}
+
+// Codex r8 P1 #2 (logout): logout clears the explicit profile's credentials file as well as the global one, so the
+// next load finds no credential, legacy or current.
+func TestLegacyAuthLogoutClearsTheProfileAndGlobalFiles(t *testing.T) {
+	isolateLegacyAuth(t)
+	configPath, credsPath := profilePaths(t)
+	writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\nbearer_auth = \""+legacyTokenA+"\"\n")
+	writeOwnerOnly(t, globalCredsPath(t), "base_url = \""+defaultBase+"\"\ncrm_bearer_auth = \""+currentToken+"\"\n")
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.ClearTokens(); err != nil {
+		t.Fatal(err)
+	}
+	after, err := Load(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.AuthHeader() != "" || after.ConduytCrmBearerAuth != "" {
+		t.Fatal("a credential survived logout")
+	}
+	for _, p := range []string{credsPath, globalCredsPath(t)} {
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			t.Fatalf("%s survived logout", p)
+		}
+	}
+}
+
+// Logout never follows a symlinked profile data directory (the loader refuses it too).
+func TestLegacyAuthLogoutDoesNotFollowASymlinkedProfileDataDir(t *testing.T) {
+	isolateLegacyAuth(t)
+	configPath, credsPath := profilePaths(t)
+	elsewhere := filepath.Join(t.TempDir(), "data")
+	target := filepath.Join(elsewhere, filepath.Base(credsPath))
+	writeOwnerOnly(t, target, "base_url = \""+defaultBase+"\"\ncrm_bearer_auth = \""+currentToken+"\"\n")
+	if err := os.MkdirAll(filepath.Dir(filepath.Dir(credsPath)), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(elsewhere, filepath.Dir(credsPath)); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.ClearTokens(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(target); err != nil {
+		t.Fatal("logout removed a file through a symlinked profile data directory")
 	}
 }

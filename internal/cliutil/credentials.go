@@ -48,7 +48,8 @@ type Credentials struct {
 }
 
 // ApplyLegacyKeys fills ConduytCrmBearerAuth from an earlier key when the document has no current key: bearer_auth
-// first, then api_key. A document that carries crm_bearer_auth uses it only. PATCH(novel1219-auth-compat)
+// first, then api_key. A document that carries crm_bearer_auth (even empty) uses it only: decodeCredentialsDocument
+// clears the earlier keys first. PATCH(novel1219-auth-compat)
 func (c *Credentials) ApplyLegacyKeys() {
 	if c == nil || c.ConduytCrmBearerAuth != "" {
 		return
@@ -258,15 +259,14 @@ func loadCredentialsWithStatus(path string, explicit bool) (*Credentials, Creden
 		}
 		return nil, status, nil
 	}
-	var creds Credentials
-	if err := toml.Unmarshal(data, &creds); err != nil {
+	creds, err := decodeCredentialsDocument(data) // PATCH(novel1219-auth-compat): same trusted bytes, same document
+	if err != nil {
 		warnCredentialsIssue(path, "parse", err)
 		if explicit {
 			return nil, status, fmt.Errorf("parsing credentials %s: %w", path, err)
 		}
 		return nil, status, nil
 	}
-	creds.ApplyLegacyKeys() // PATCH(novel1219-auth-compat): same trusted bytes, same document
 	if creds.LegacyKey != "" {
 		creds.LegacyPath = path
 	}
@@ -311,11 +311,100 @@ func credentialsBytesHaveValues(data []byte) bool {
 	if strings.TrimSpace(string(data)) == "" {
 		return false
 	}
-	var creds Credentials
-	if err := toml.Unmarshal(data, &creds); err != nil {
+	creds, err := decodeCredentialsDocument(data) // PATCH(novel1219-auth-compat): presence follows the same rule
+	if err != nil {
 		return true
 	}
 	return creds.HasValues()
+}
+
+// decodeCredentialsDocument parses one credentials document. When the document has the crm_bearer_auth key at all,
+// even empty (an explicitly cleared token), the earlier entry's bearer_auth / api_key are ignored entirely; otherwise
+// the first of them fills the bearer. PATCH(novel1219-auth-compat)
+func decodeCredentialsDocument(data []byte) (Credentials, error) {
+	var creds Credentials
+	if err := toml.Unmarshal(data, &creds); err != nil {
+		return creds, err
+	}
+	var keys map[string]any
+	if toml.Unmarshal(data, &keys) == nil {
+		if _, present := keys["crm_bearer_auth"]; present {
+			creds.LegacyBearerAuth, creds.LegacyAPIKey = "", ""
+		}
+	}
+	creds.ApplyLegacyKeys()
+	return creds, nil
+}
+
+// RemoveProfileCredentials removes an explicit profile's credentials file, as RemoveCredentials does for the global
+// one, so a logout leaves no credential the profile would load next time. PATCH(novel1219-auth-compat)
+func RemoveProfileCredentials(configPath string) error {
+	path, err := CredentialsFilePathForConfig(configPath)
+	if err != nil {
+		return err
+	}
+	// The loader refuses a profile whose data directory is a symlink; logout does not follow it either.
+	if info, err := os.Lstat(filepath.Dir(path)); err != nil || !info.IsDir() {
+		return nil
+	}
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("removing profile credentials: %w", err)
+	}
+	return nil
+}
+
+// ScrubLegacyCredentialKeys rewrites a credentials file without the earlier entry's bearer_auth / api_key, keeping
+// every other field. It reads through the same checked descriptor as the loader (an untrusted or aliased file is left
+// alone: the loader refuses it anyway), writes with the same private writer SaveCredentials uses, and verifies the
+// landed file. A file without those keys is not touched. PATCH(novel1219-auth-compat)
+func ScrubLegacyCredentialKeys(path string, explicit bool) error {
+	if _, err := os.Lstat(path); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return WithFileLock(path, func() error {
+		var (
+			data []byte
+			err  error
+		)
+		if explicit {
+			data, err = readExplicitCredentialBytes(path)
+		} else {
+			data, err = readGlobalCredentialBytes(path)
+		}
+		if err != nil {
+			var trust *credentialTrustError
+			if errors.Is(err, os.ErrNotExist) || errors.As(err, &trust) {
+				return nil
+			}
+			return err
+		}
+		doc := map[string]any{}
+		if err := toml.Unmarshal(data, &doc); err != nil {
+			return nil
+		}
+		_, hasBearer := doc["bearer_auth"]
+		_, hasAPIKey := doc["api_key"]
+		if !hasBearer && !hasAPIKey {
+			return nil
+		}
+		delete(doc, "bearer_auth")
+		delete(doc, "api_key")
+		out, err := toml.Marshal(doc)
+		if err != nil {
+			return fmt.Errorf("encoding credentials: %w", err)
+		}
+		if err := AtomicWritePrivateFile(path, out, 0o600, 0o700); err != nil {
+			return err
+		}
+		real, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return &CredentialsPermissionError{Path: path, Err: fmt.Errorf("resolving saved file: %w", err)}
+		}
+		if err := VerifyCredsPerms(real); err != nil {
+			return &CredentialsPermissionError{Path: path, Err: err}
+		}
+		return nil
+	})
 }
 
 // NormalizeCredentialOrigin returns a scheme/host/port/path key for raw.

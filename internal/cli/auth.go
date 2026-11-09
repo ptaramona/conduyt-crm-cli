@@ -241,6 +241,10 @@ func newAuthLogoutCmd(flags *rootFlags) *cobra.Command {
 			if envStillSet == "" && os.Getenv("CONDUYT_CRM_BEARER_AUTH") != "" {
 				envStillSet = "CONDUYT_CRM_BEARER_AUTH"
 			}
+			if envStillSet == "" {
+				// PATCH(novel1219-auth-compat): the legacy env names supply a token too, and logout cannot clear them.
+				envStillSet = config.LegacyAuthEnvInEffect()
+			}
 
 			// JSON envelope: {cleared: true, note?: "<env_var> env var is still set"}.
 			if flags.asJSON {

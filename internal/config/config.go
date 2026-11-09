@@ -50,6 +50,9 @@ type Config struct {
 	ConduytCrmBearerAuth string          `toml:"crm_bearer_auth"`
 	// legacyKey is the earlier entry's saved key that supplied the token, if any. PATCH(novel1219-auth-compat)
 	legacyKey *legacyKeySource
+	// explicitConfig records an explicit --config / CONDUYT_CRM_CONFIG load, whose profile credentials file the
+	// loader reads before the global one. PATCH(novel1219-auth-compat)
+	explicitConfig bool
 }
 
 func Load(configPath string) (*Config, error) {
@@ -63,6 +66,7 @@ func Load(configPath string) (*Config, error) {
 		return nil, err
 	}
 	cfg.Path = path
+	cfg.explicitConfig = explicitConfigFile // PATCH(novel1219-auth-compat)
 
 	if explicitConfigFile {
 		// Keep non-secret settings from a readable config even when its
@@ -895,6 +899,7 @@ func (c *Config) MarkCredentialsExplicit(clientID, clientSecret bool) {
 }
 
 func (c *Config) SaveTokens(clientID, clientSecret, accessToken, refreshToken string, expiry time.Time) error {
+	c.dropLegacyBearer() // PATCH(novel1219-auth-compat): a re-save is never shadowed by, nor persists, an earlier key
 	c.ClientID = clientID
 	c.ClientSecret = clientSecret
 	c.AccessToken = accessToken
@@ -908,7 +913,10 @@ func (c *Config) SaveTokens(clientID, clientSecret, accessToken, refreshToken st
 	c.updateFileConfigField("AccessToken")
 	c.updateFileConfigField("RefreshToken")
 	c.updateFileConfigField("TokenExpiry")
-	return c.saveCredentialsThenConfig()
+	if err := c.saveCredentialsThenConfig(); err != nil {
+		return err
+	}
+	return c.scrubLegacyCredentialFiles() // PATCH(novel1219-auth-compat)
 }
 
 func (c *Config) ClearTokens() error {
@@ -949,6 +957,14 @@ func (c *Config) ClearTokens() error {
 	if err := cliutil.RemoveCredentials(); err != nil {
 		return err
 	}
+	// PATCH(novel1219-auth-compat): an explicit profile's own credentials file is loaded before the global one, so
+	// logout removes it too; otherwise the next invocation authenticates again from it.
+	if c.explicitConfig {
+		if err := cliutil.RemoveProfileCredentials(c.Path); err != nil {
+			return err
+		}
+	}
+	c.legacyKey = nil
 	return c.save()
 }
 
