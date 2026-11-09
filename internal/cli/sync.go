@@ -730,6 +730,15 @@ func syncResource(ctx context.Context, c interface {
 			}
 		}
 
+		// PATCH(novel1219-activities-list-page-number): a page-numbered request parameter takes only a page number. A
+		// body cursor found by name (GET /activities returns an opaque meta.next_cursor) is not one; sending it as
+		// page= gets a 500, so it is dropped and the page-int fallback below advances by number.
+		if pageSize.cursorType == "page" && nextCursor != "" {
+			if n, err := strconv.Atoi(nextCursor); err != nil || n < 1 {
+				nextCursor = ""
+			}
+		}
+
 		// Page-int paginator fallback: when the API paginates by integer
 		// ?page=N and emits no body cursor, treat a full page as a signal
 		// to advance numerically. Without this the loop breaks after page

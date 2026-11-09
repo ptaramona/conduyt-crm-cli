@@ -15,7 +15,8 @@ import (
 
 // PATCH(novel1219-activities-list-page-number): Greptile PR #2450 thread 4514458610. The MCP activities.list endpoint
 // must advertise and accept the page number as its cursor param, because GET /activities returns no next cursor. An
-// agent that follows cursor_param from conduyt-crm_get must walk a two-page fixture completely.
+// agent that follows cursor_param from conduyt-crm_get must walk a two-page fixture completely. The fixture is the live
+// response shape: a data envelope around data + meta, whose meta.next_cursor is an opaque string, not a page number.
 func TestNovel1219MCPActivitiesListWalksEveryNumberedPage(t *testing.T) {
 	ep := findCodeOrchEndpoint("activities.list")
 	if ep == nil {
@@ -27,11 +28,11 @@ func TestNovel1219MCPActivitiesListWalksEveryNumberedPage(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Query().Get("page") {
 		case "", "1":
-			_, _ = io.WriteString(w, `{"data":[{"id":"act-p1-a"},{"id":"act-p1-b"}],"meta":{"page":1,"per_page":2,"total":3,"has_more":true}}`)
+			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p1-a"},{"id":"act-p1-b"}],"meta":{"page":1,"per_page":2,"total":3,"total_capped":false,"next_cursor":"WyIyMDI2LTExLTA5VDE3OjQwOjQ5LjI1NVoiLCJhY3QtcDEtYiJd"}}}`)
 		case "2":
-			_, _ = io.WriteString(w, `{"data":[{"id":"act-p2-c"}],"meta":{"page":2,"per_page":2,"total":3,"has_more":false}}`)
+			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p2-c"}],"meta":{"page":2,"per_page":2,"total":3,"total_capped":false,"next_cursor":null}}}`)
 		default:
-			_, _ = io.WriteString(w, `{"data":[],"meta":{"page":3,"per_page":2,"total":3,"has_more":false}}`)
+			_, _ = io.WriteString(w, `{"data":{"data":[],"meta":{"page":3,"per_page":2,"total":3,"total_capped":false,"next_cursor":null}}}`)
 		}
 	}))
 	defer srv.Close()
@@ -54,25 +55,30 @@ func TestNovel1219MCPActivitiesListWalksEveryNumberedPage(t *testing.T) {
 				text += tc.Text
 			}
 		}
+		// GET /activities answers {"data":{"data":[...],"meta":{page,per_page,total,total_capped,next_cursor}}}.
 		var page struct {
-			Data []struct {
-				ID string `json:"id"`
+			Data struct {
+				Data []struct {
+					ID string `json:"id"`
+				} `json:"data"`
+				Meta struct {
+					Page    int `json:"page"`
+					PerPage int `json:"per_page"`
+					Total   int `json:"total"`
+				} `json:"meta"`
 			} `json:"data"`
-			Meta struct {
-				Page    int  `json:"page"`
-				HasMore bool `json:"has_more"`
-			} `json:"meta"`
 		}
 		if err := json.Unmarshal([]byte(text), &page); err != nil {
 			t.Fatalf("call %d: decode %q: %v", call, text, err)
 		}
-		for _, row := range page.Data {
+		for _, row := range page.Data.Data {
 			seen[row.ID] = true
 		}
-		if !page.Meta.HasMore {
+		m := page.Data.Meta
+		if m.Page*m.PerPage >= m.Total {
 			break
 		}
-		params = map[string]any{"per_page": float64(2), cursorParam: float64(page.Meta.Page + 1)}
+		params = map[string]any{"per_page": float64(2), cursorParam: float64(m.Page + 1)}
 	}
 	for _, id := range []string{"act-p1-a", "act-p1-b", "act-p2-c"} {
 		if !seen[id] {
