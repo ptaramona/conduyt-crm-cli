@@ -76,6 +76,42 @@
       "group": "Kloudi-grade send safety"
     },
     {
+      "name": "Report scorecard",
+      "command": "reports scorecard",
+      "description": "Target versus actual per user and metric with attainment percent and pace to the end of the period.",
+      "rationale": "Joins /reports/targets to /reports/agent-performance for one aligned period; no single route returns attainment and pace.",
+      "example": "conduyt-crm-pp-cli reports scorecard --period month --agent",
+      "why_it_matters": "Pick it when asked who is on pace, off pace, or how far from target a rep is.",
+      "group": "Reports as commands"
+    },
+    {
+      "name": "Report compare",
+      "command": "reports compare",
+      "description": "Any core report called for a window and the equal prior window, with prior, current, delta and delta percent on every numeric value.",
+      "rationale": "Calls the same report twice for equal windows and diffs every comparable numeric value; the app shows one window at a time.",
+      "example": "conduyt-crm-pp-cli reports compare speed-to-lead --range 7d --json",
+      "why_it_matters": "Use it to explain why a number moved week over week without pulling both reports by hand.",
+      "group": "Reports as commands"
+    },
+    {
+      "name": "Automation hours audit",
+      "command": "automations hours-audit",
+      "description": "Every Send SMS, Send Email and Assign step across synced automations, listed with or without an operating-hours window.",
+      "rationale": "Walks every automation graph's action nodes for a run window; the API returns one automation at a time.",
+      "example": "conduyt-crm-pp-cli automations hours-audit --published-only --json",
+      "why_it_matters": "Use it to confirm quiet-hours coverage after a publish or when compliance asks which steps can fire after hours.",
+      "group": "Reports as commands"
+    },
+    {
+      "name": "Dialer coverage",
+      "command": "dialer coverage",
+      "description": "Priorities in dial order with queue depth per priority and the count of available agents; empty priorities are listed under empty_priorities with a warning (exit 0).",
+      "rationale": "Joins the dial order, one queue read per priority and agent status into one account-wide picture.",
+      "example": "conduyt-crm-pp-cli dialer coverage --limit 25 --agent",
+      "why_it_matters": "Run it before the floor starts to see what Smart Dialing will hand out next and where a priority has run dry.",
+      "group": "Dialer operations"
+    },
+    {
       "name": "Local analytics",
       "command": "analytics",
       "description": "GROUP BY over synced entities — segment counts without paging the API (--type/--group-by/--limit).",
@@ -141,6 +177,42 @@
       "group": "Kloudi-grade send safety"
     },
     {
+      "name": "Report scorecard",
+      "command": "reports scorecard",
+      "description": "Target versus actual per user and metric with attainment percent and pace to the end of the period.",
+      "rationale": "Joins /reports/targets to /reports/agent-performance for one aligned period; no single route returns attainment and pace.",
+      "example": "conduyt-crm-pp-cli reports scorecard --period month --agent",
+      "why_it_matters": "Pick it when asked who is on pace, off pace, or how far from target a rep is.",
+      "group": "Reports as commands"
+    },
+    {
+      "name": "Report compare",
+      "command": "reports compare",
+      "description": "Any core report called for a window and the equal prior window, with prior, current, delta and delta percent on every numeric value.",
+      "rationale": "Calls the same report twice for equal windows and diffs every comparable numeric value; the app shows one window at a time.",
+      "example": "conduyt-crm-pp-cli reports compare speed-to-lead --range 7d --json",
+      "why_it_matters": "Use it to explain why a number moved week over week without pulling both reports by hand.",
+      "group": "Reports as commands"
+    },
+    {
+      "name": "Automation hours audit",
+      "command": "automations hours-audit",
+      "description": "Every Send SMS, Send Email and Assign step across synced automations, listed with or without an operating-hours window.",
+      "rationale": "Walks every automation graph's action nodes for a run window; the API returns one automation at a time.",
+      "example": "conduyt-crm-pp-cli automations hours-audit --published-only --json",
+      "why_it_matters": "Use it to confirm quiet-hours coverage after a publish or when compliance asks which steps can fire after hours.",
+      "group": "Reports as commands"
+    },
+    {
+      "name": "Dialer coverage",
+      "command": "dialer coverage",
+      "description": "Priorities in dial order with queue depth per priority and the count of available agents; empty priorities are listed under empty_priorities with a warning (exit 0).",
+      "rationale": "Joins the dial order, one queue read per priority and agent status into one account-wide picture.",
+      "example": "conduyt-crm-pp-cli dialer coverage --limit 25 --agent",
+      "why_it_matters": "Run it before the floor starts to see what Smart Dialing will hand out next and where a priority has run dry.",
+      "group": "Dialer operations"
+    },
+    {
       "name": "Local analytics",
       "command": "analytics",
       "description": "GROUP BY over synced entities — segment counts without paging the API (--type/--group-by/--limit).",
@@ -162,7 +234,7 @@
   "narrative": {
     "display_name": "Conduyt CRM",
     "headline": "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has.",
-    "value_prop": "Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, and imports watch — the commands that answer 'is this list safe to text?' and 'what did that import actually do?' in one call.",
+    "value_prop": "Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, imports watch, reports scorecard, reports compare, automations hours-audit and dialer coverage — the commands that answer 'is this list safe to text?', 'what did that import actually do?', 'who is on pace?' and 'what will the dialer hand out next?' in one call.",
     "quickstart": [
       {
         "command": "conduyt-crm-pp-cli doctor",
@@ -184,11 +256,11 @@
     "troubleshoots": [
       {
         "symptom": "403 'scope not permitted' on a command",
-        "fix": "Your cdy_ key lacks that domain scope — an admin grants it in Settings \u003e API Keys (dnc and dialer require explicit scopes)."
+        "fix": "Your cdy_ key lacks that domain scope — an admin grants it in Settings > API Keys (dnc and dialer require explicit scopes)."
       },
       {
         "symptom": "verify-line-type returns 403 'not enabled'",
-        "fix": "Enable Phone Line-Type Verification in Settings \u003e Twilio first (tenant-paid feature, default off)."
+        "fix": "Enable Phone Line-Type Verification in Settings > Twilio first (tenant-paid feature, default off)."
       },
       {
         "symptom": "429 rate limit on bulk reads",
@@ -211,6 +283,21 @@
         "title": "Segment safety audit",
         "command": "conduyt-crm-pp-cli send-check --tag q3-cohort --agent --select summary",
         "explanation": "Bounded agent-shaped go/no-go summary; drill in with --select verdicts.contact_id,verdicts.verdict."
+      },
+      {
+        "title": "Why did speed to lead move?",
+        "command": "conduyt-crm-pp-cli reports compare speed-to-lead --range 7d --agent --select rows.metric,rows.prior,rows.current,rows.delta_pct",
+        "explanation": "The equal prior window is computed for you and every numeric value carries its delta."
+      },
+      {
+        "title": "Who is on pace this month?",
+        "command": "conduyt-crm-pp-cli reports scorecard --period month --agent --select rows.user_id,rows.metric,rows.target,rows.actual,rows.attainment_pct",
+        "explanation": "Targets joined to agent performance, narrowed to the columns an agent needs."
+      },
+      {
+        "title": "What will the dialer hand out next?",
+        "command": "conduyt-crm-pp-cli dialer coverage --agent",
+        "explanation": "Priorities in dial order with queue depth and available agents."
       }
     ],
     "trigger_phrases": [

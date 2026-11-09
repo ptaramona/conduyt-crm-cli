@@ -149,10 +149,16 @@ type contactsSyncState struct {
 }
 
 func readContactsSyncState(ctx context.Context, r mirrorReader) (contactsSyncState, error) {
+	return readResourceSyncState(ctx, r, "contacts")
+}
+
+// readResourceSyncState reads one resource's sync_state row through the mirror reader (r14: automations hours-audit
+// uses it too, so its mirror counts only after a finished attempt, as the contacts readers do).
+func readResourceSyncState(ctx context.Context, r mirrorReader, resource string) (contactsSyncState, error) {
 	var st contactsSyncState
-	rows, err := r.Query(ctx, `SELECT last_synced_at, total_count, last_attempt_complete FROM sync_state WHERE resource_type = 'contacts'`)
+	rows, err := r.Query(ctx, `SELECT last_synced_at, total_count, last_attempt_complete FROM sync_state WHERE resource_type = ?`, resource)
 	if err != nil {
-		return st, fmt.Errorf("querying contacts sync state: %w", err)
+		return st, fmt.Errorf("querying %s sync state: %w", resource, err)
 	}
 	found := false
 	for rows.Next() {
@@ -160,17 +166,17 @@ func readContactsSyncState(ctx context.Context, r mirrorReader) (contactsSyncSta
 		var total, complete sql.NullInt64
 		if err := rows.Scan(&syncedAt, &total, &complete); err != nil {
 			_ = rows.Close()
-			return st, fmt.Errorf("scanning contacts sync state: %w", err)
+			return st, fmt.Errorf("scanning %s sync state: %w", resource, err)
 		}
 		found = true
 		st = contactsSyncState{SyncedAt: syncedAt.Time, Total: int(total.Int64), AttemptComplete: complete.Valid && complete.Int64 == 1}
 	}
 	if err := rows.Err(); err != nil {
 		_ = rows.Close()
-		return contactsSyncState{}, fmt.Errorf("iterating contacts sync state: %w", err)
+		return contactsSyncState{}, fmt.Errorf("iterating %s sync state: %w", resource, err)
 	}
 	if err := rows.Close(); err != nil {
-		return contactsSyncState{}, fmt.Errorf("closing contacts sync state: %w", err)
+		return contactsSyncState{}, fmt.Errorf("closing %s sync state: %w", resource, err)
 	}
 	if !found {
 		return contactsSyncState{}, nil
@@ -181,6 +187,10 @@ func readContactsSyncState(ctx context.Context, r mirrorReader) (contactsSyncSta
 // mirrorOlderThan decides freshness from the sync state already read (no second sync_state query that could fail
 // silently) and prints the same hint as the framework's stale check.
 func mirrorOlderThan(cmd *cobra.Command, syncedAt time.Time, maxAge time.Duration) bool {
+	return resourceMirrorOlderThan(cmd, "contacts", syncedAt, maxAge)
+}
+
+func resourceMirrorOlderThan(cmd *cobra.Command, resource string, syncedAt time.Time, maxAge time.Duration) bool {
 	if maxAge <= 0 || syncedAt.IsZero() {
 		return false
 	}
@@ -189,7 +199,7 @@ func mirrorOlderThan(cmd *cobra.Command, syncedAt time.Time, maxAge time.Duratio
 		return false
 	}
 	if cmd != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "hint: local contacts mirror is %s old, older than --max-age=%s. Run 'conduyt-crm-pp-cli sync --resources contacts' to refresh.\n", age.Round(time.Second), maxAge)
+		fmt.Fprintf(cmd.ErrOrStderr(), "hint: local %s mirror is %s old, older than --max-age=%s. Run 'conduyt-crm-pp-cli sync --resources %s' to refresh.\n", resource, age.Round(time.Second), maxAge, resource)
 	}
 	return true
 }

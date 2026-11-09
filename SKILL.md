@@ -29,7 +29,7 @@ If the `npx` install fails before this CLI has a public-library category, instal
 
 If `--version` reports "command not found" after install, the runtime cannot see the binary directory on `$PATH`. Do not proceed with skill commands until verification succeeds.
 
-Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, and imports watch — the commands that answer 'is this list safe to text?' and 'what did that import actually do?' in one call.
+Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, imports watch, reports scorecard, reports compare, automations hours-audit and dialer coverage — the commands that answer 'is this list safe to text?', 'what did that import actually do?', 'who is on pace?' and 'what will the dialer hand out next?' in one call.
 
 ## When to Use This CLI
 
@@ -74,6 +74,38 @@ These capabilities aren't available in any other tool for this API.
 
   ```bash
   conduyt-crm-pp-cli drips audit 9b8c7d6e-0000-0000-0000-000000000000 --json
+  ```
+
+### Reports as commands
+- **`reports scorecard`** — Target versus actual per user and metric with attainment percent and pace to the end of the period.
+
+  _Pick it when asked who is on pace, off pace, or how far from target a rep is._
+
+  ```bash
+  conduyt-crm-pp-cli reports scorecard --period month --agent
+  ```
+- **`reports compare`** — Any core report called for a window and the equal prior window, with prior, current, delta and delta percent on every numeric value. `--assigned-to` applies to speed-to-lead, appointments and call-performance; `--pipeline` to funnel.
+
+  _Use it to explain why a number moved week over week without pulling both reports by hand._
+
+  ```bash
+  conduyt-crm-pp-cli reports compare speed-to-lead --range 7d --json
+  ```
+- **`automations hours-audit`** — Every Send SMS, Send Email and Assign step across synced automations, listed with or without an operating-hours window. With `--published-only`, `summary.unpublished` counts automations with no published audited actions.
+
+  _Use it to confirm quiet-hours coverage after a publish or when compliance asks which steps can fire after hours._
+
+  ```bash
+  conduyt-crm-pp-cli automations hours-audit --published-only --json
+  ```
+
+### Dialer operations
+- **`dialer coverage`** — Priorities in dial order with queue depth per priority and the count of available agents; empty priorities are listed under empty_priorities with a warning (exit 0).
+
+  _Run it before the floor starts to see what Smart Dialing will hand out next and where a priority has run dry._
+
+  ```bash
+  conduyt-crm-pp-cli dialer coverage --limit 25 --agent
   ```
 
 ### Local state that compounds
@@ -1283,6 +1315,30 @@ conduyt-crm-pp-cli send-check --tag q3-cohort --agent --select summary
 ```
 
 Bounded agent-shaped go/no-go summary; drill in with --select verdicts.contact_id,verdicts.verdict.
+
+### Why did speed to lead move?
+
+```bash
+conduyt-crm-pp-cli reports compare speed-to-lead --range 7d --agent --select rows.metric,rows.prior,rows.current,rows.delta_pct
+```
+
+The equal prior window is computed for you and every numeric value carries its delta.
+
+### Who is on pace this month?
+
+```bash
+conduyt-crm-pp-cli reports scorecard --period month --agent --select rows.user_id,rows.metric,rows.target,rows.actual,rows.attainment_pct
+```
+
+Targets joined to agent performance, narrowed to the columns an agent needs.
+
+### What will the dialer hand out next?
+
+```bash
+conduyt-crm-pp-cli dialer coverage --agent
+```
+
+Priorities in dial order with queue depth and available agents.
 
 ## Auth Setup
 

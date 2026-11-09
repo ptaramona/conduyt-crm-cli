@@ -336,6 +336,10 @@ Highlights (not in the official API docs):
   • imports watch   Polls an import job to completion, then renders the row-outcome recap (created/updated/skipped/errors) and, with --verify, checks its job-scoped side effects.
   • contacts verify-line-type   Counts unverified contacts and prints the tenant-paid Twilio cost without spending (--estimate); 'run --until-done' with one scope (--smart-list or --contact-ids) drives the batched verification to done. Requires the account's Phone Line-Typ…
   • drips audit   Flags duplicate sends in a window: any contact who received the same message body more than once, from the local store.
+  • reports scorecard   Target versus actual per user and metric with attainment percent and pace to the end of the period.
+  • reports compare   Any core report called for a window and the equal prior window, with prior, current, delta and delta percent on every numeric value.
+  • automations hours-audit   Every Send SMS, Send Email and Assign step across synced automations, listed with or without an operating-hours window.
+  • dialer coverage   Priorities in dial order with queue depth per priority and the count of available agents.
   • analytics   GROUP BY over synced entities — segment counts without paging the API (--type/--group-by/--limit).
   • tail   Interval polling over a resource that re-emits current results as JSON — watch messages or activities as a blast goes out.
 
