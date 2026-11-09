@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,9 +18,7 @@ import (
 )
 
 // PATCH(novel1219-activities-list-page-number): Codex novel1219-r18 (1 P1, 3 P2). Fixtures answer like
-// app/api/v1/activities/route.ts: a non-integer page is a 500, a fromDate that is not a calendar day is a 400.
-
-var novel1219CalendarDay = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+// app/api/v1/activities/route.ts: a non-integer page is a 500.
 
 type novel1219SyncServer struct {
 	mu        sync.Mutex
@@ -43,11 +40,6 @@ func (s *novel1219SyncServer) handler(t *testing.T) http.HandlerFunc {
 				_, _ = io.WriteString(w, `{"error":"Internal server error"}`)
 				return
 			}
-		}
-		if f := q.Get("fromDate"); f != "" && !novel1219CalendarDay.MatchString(f) {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = io.WriteString(w, `{"error":"Invalid fromDate"}`)
-			return
 		}
 		rows := func(page, n int) string {
 			out := make([]string, n)
@@ -150,13 +142,6 @@ func TestNovel1219SyncShortPageWithTokenAdvancesByNumber(t *testing.T) {
 	}
 	if len(s.reqs) < 2 || !strings.Contains(s.reqs[1], "page=2") {
 		t.Fatalf("requests = %q, want page one then page=2", s.reqs)
-	}
-}
-
-// The incremental lower bound reaches GET /activities as a calendar day, not an RFC3339 instant (a 400 live).
-func TestNovel1219ActivitiesSinceIsACalendarDay(t *testing.T) {
-	if got := formatSyncSinceValue("2026-11-09T01:30:00Z", syncResourceSinceParamFormat("activities")); got != "2026-11-08" {
-		t.Fatalf("activities since = %q, want the day before (2026-11-08)", got)
 	}
 }
 

@@ -2567,11 +2567,6 @@ func syncResourceSinceParamFormat(resource string) string {
 	switch resource {
 	case "activity":
 		return "date"
-	case "activities":
-		// PATCH(novel1219-activities-list-page-number): GET /activities reads fromDate as a calendar day in the
-		// account's timezone and answers an RFC3339 value 400 "Invalid fromDate", so an incremental activities
-		// sync sends the day before last_synced_at (one day of slack covers any account offset; re-read rows upsert).
-		return "date-1d"
 	}
 	return ""
 }
@@ -2593,11 +2588,6 @@ func formatSyncSinceValue(value string, paramFormat string) string {
 	if strings.EqualFold(paramFormat, "date") {
 		if formatted, ok := formatSyncSinceDate(value); ok {
 			return formatted
-		}
-	}
-	if strings.EqualFold(paramFormat, "date-1d") {
-		if ts, err := time.Parse(time.RFC3339, value); err == nil {
-			return ts.UTC().AddDate(0, 0, -1).Format("2006-01-02")
 		}
 	}
 	return value
