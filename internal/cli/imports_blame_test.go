@@ -124,7 +124,7 @@ func TestImportsBlameRendersIsCompleteTrue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"job_id":"job","row_outcomes":{"status":"completed","total":3,"created":2,"updated":0,"skipped":0,"duplicates":0,"errors":1},"error_rows":1,"partial":false,"checked":1,"total":1,"delivered":1,"delivery_correlation":"none","delivery_correlation_reason":"GET /reports/sms-delivery returns aggregate totals only (no per-message import, message or contact keys), so delivery is read from the job-scoped side-effect counters","errors_by_reason":{"invalid phone":1},"side_effects":{"queued":0,"retryable":0,"exhausted":0,"total":1,"completed":1,"failed":0,"held":0,"action_required":false,"is_complete":true},"row_tabs":{"all":1,"error":1,"success":0,"warning":0},"rows_unavailable":false,"fetch_failures":0}`
+	want := `{"job_id":"job","row_outcomes":{"status":"completed","total":3,"created":2,"updated":0,"skipped":0,"duplicates":0,"errors":1},"error_rows":1,"partial":false,"checked":1,"total":1,"delivered":1,"delivery_correlation":"none","delivery_correlation_reason":"GET /reports/sms-delivery returns aggregate totals only (no per-message import, message or contact keys), so delivery is read from the job-scoped side-effect counters","errors_by_reason":{"invalid phone":1},"side_effects":{"queued":0,"retryable":0,"exhausted":0,"total":1,"completed":1,"failed":0,"held":0,"action_required":false,"is_complete":true,"skipped_inactive":0,"pending":0,"processing":0},"row_tabs":{"all":1,"error":1,"success":0,"warning":0},"rows_unavailable":false,"fetch_failures":0}`
 	if got := compactTestJSON(out); got != want {
 		t.Fatalf("output mismatch\nwant: %s\n got: %s", want, got)
 	}
@@ -135,7 +135,7 @@ func TestImportsBlameRendersIsCompleteFalse(t *testing.T) {
 	testenv.Isolate(t)
 	out, _, err := runNovel(t, []string{"imports", "blame", "job", "--json"}, blameHandler(t, "", "", side))
 	compact := compactTestJSON(out)
-	if ExitCode(err) != 5 || !strings.Contains(compact, `"partial":true`) || !strings.Contains(compact, `"is_complete":false`) || !strings.Contains(compact, `"failures":["import side effects are not complete","import side effects 1 queued sends"]`) {
+	if ExitCode(err) != 5 || !strings.Contains(compact, `"partial":true`) || !strings.Contains(compact, `"is_complete":false`) || !strings.Contains(compact, `"failures":["import side effects are not complete","import side effects 1 queued sends","import side effects 0 of 1 side effects completed"]`) {
 		t.Fatalf("err=%v out=%s", err, compact)
 	}
 	testenv.Isolate(t)

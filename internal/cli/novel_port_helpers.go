@@ -3,6 +3,8 @@ package cli
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -133,4 +135,21 @@ func hoistPaginatedEnvelope(raw json.RawMessage) (json.RawMessage, bool) {
 		return raw, false
 	}
 	return hoisted, true
+}
+
+// contactsMirrorAttemptComplete reports whether the last contacts sync attempt finished. An interrupted or
+// in-progress sync keeps the previous last_synced_at but clears last_attempt_complete, so a timestamp alone never
+// proves a complete mirror. PATCH(novel1219-helpers) r3.
+func contactsMirrorAttemptComplete(ctx context.Context, db interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}) (bool, error) {
+	var complete sql.NullInt64
+	err := db.QueryRowContext(ctx, `SELECT last_attempt_complete FROM sync_state WHERE resource_type = 'contacts'`).Scan(&complete)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("reading contacts sync attempt state: %w", err)
+	}
+	return complete.Valid && complete.Int64 == 1, nil
 }

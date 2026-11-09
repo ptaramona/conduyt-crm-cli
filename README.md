@@ -2,7 +2,7 @@
 
 **Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has.**
 
-Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, and imports watch — the commands that answer 'is this list safe to text?' and 'who actually got the SMS?' in one call.
+Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, and imports watch — the commands that answer 'is this list safe to text?' and 'what did that import actually do?' in one call.
 
 Learn more at [Conduyt CRM](https://conduyt.app).
 
@@ -158,7 +158,7 @@ These capabilities aren't available in any other tool for this API.
   ```
 - **`imports blame`** — For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).
 
-  _Answers 'did the Tuesday import get its texts?' in one call after any bulk push._
+  _Answers 'which rows of the Tuesday import failed, and are its side effects still queued or held?' in one call after any bulk push._
 
   ```bash
   conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --json

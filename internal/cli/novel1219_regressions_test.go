@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -688,6 +689,177 @@ func TestNovel1219ImportsTypedExitCodesCoverNotFoundAndAuth(t *testing.T) {
 		}
 		if got := cmd.Annotations["pp:typed-exit-codes"]; got != "0,2,3,4,5" {
 			t.Fatalf("%s typed exits = %q, want 0,2,3,4,5", path, got)
+		}
+	}
+}
+
+// ---- Codex novel1219-r2 regressions (r3) ----
+
+// interruptedContactsMirror is a mirror whose last sync completed and whose next (incremental) attempt was
+// interrupted: last_synced_at stays recent but last_attempt_complete is 0.
+func interruptedContactsMirror(t *testing.T, rows map[string]string) string {
+	t.Helper()
+	dbPath := syncedContactsMirror(t, rows)
+	db, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SaveSyncProgress("contacts", "cursor-2", len(rows)); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return dbPath
+}
+
+// Codex r2 P1: an interrupted sync attempt is not a mirror: send-check reads the audience live under auto and is
+// inconclusive (exit 5) under local; the estimate counts live under auto and is a lower bound (exit 5) under local.
+func TestNovel1219InterruptedSyncIsNotAMirror(t *testing.T) {
+	rows := map[string]string{"local-1": `{"id":"local-1","phone":"+12125550102","lineType":"mobile","tags":[{"id":"t1","name":"leads"}]}`}
+	testenv.Isolate(t)
+	db := interruptedContactsMirror(t, rows)
+	var reads atomic.Int32
+	out, _, err := runNovel(t, []string{"send-check", "--tag", "leads", "--db", db, "--json"}, sendCheckLiveHandler(t, &reads))
+	if err != nil || reads.Load() == 0 || !strings.Contains(out, "live-1") {
+		t.Fatalf("send-check auto: err=%v reads=%d out=%s", err, reads.Load(), out)
+	}
+	testenv.Isolate(t)
+	reads.Store(0)
+	out, _, err = runNovel(t, []string{"send-check", "--tag", "leads", "--db", db, "--data-source", "local", "--json"}, sendCheckLiveHandler(t, &reads))
+	if ExitCode(err) != 5 || reads.Load() != 0 || !strings.Contains(out, "did not finish") {
+		t.Fatalf("send-check local: err=%v reads=%d out=%s", err, reads.Load(), out)
+	}
+	testenv.Isolate(t)
+	reads.Store(0)
+	out, _, err = runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", db, "--json"}, func(w http.ResponseWriter, r *http.Request) {
+		reads.Add(1)
+		_, _ = w.Write([]byte(`{"data":[{"id":"x1","phone":"+12125550111"},{"id":"x2","phone":"+12125550112"}],"meta":{"total":2}}`))
+	})
+	if err != nil || reads.Load() == 0 || !strings.Contains(compactTestJSON(out), `"unverified":2`) {
+		t.Fatalf("estimate auto: err=%v reads=%d out=%s", err, reads.Load(), out)
+	}
+	testenv.Isolate(t)
+	out, _, err = runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", db, "--data-source", "local", "--json"}, nil)
+	if ExitCode(err) != 5 || !strings.Contains(out, "did not finish") {
+		t.Fatalf("estimate local: err=%v out=%s", err, out)
+	}
+}
+
+// Codex r2 P1 (counts reconcile): a mirror whose row count differs from its last sync total is not a mirror either.
+func TestNovel1219SendCheckUnreconciledMirrorFallsBackLive(t *testing.T) {
+	testenv.Isolate(t)
+	db := syncedContactsMirror(t, map[string]string{"local-1": `{"id":"local-1","phone":"+12125550102","lineType":"mobile","tags":[{"id":"t1","name":"leads"}]}`})
+	s, err := store.Open(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveSyncState("contacts", "", 5); err != nil {
+		t.Fatal(err)
+	}
+	_ = s.Close()
+	var reads atomic.Int32
+	out, _, err := runNovel(t, []string{"send-check", "--tag", "leads", "--db", db, "--json"}, sendCheckLiveHandler(t, &reads))
+	if err != nil || reads.Load() == 0 || !strings.Contains(out, "live-1") {
+		t.Fatalf("err=%v reads=%d out=%s", err, reads.Load(), out)
+	}
+}
+
+// Codex r2 P1: skippedInactive side effects (terminal, nothing fired; outside the route's isComplete terms) never
+// verify; neither does pending, processing, or a completed count below total.
+func TestNovel1219OnlyCompletedSideEffectsVerify(t *testing.T) {
+	for _, tc := range []struct{ name, side, want string }{
+		{"skipped inactive", `{"data":{"total":1,"pending":0,"processing":0,"completed":0,"skippedInactive":1,"failed":0,"retryableFailed":0,"exhaustedFailed":0,"queued":0,"held":0,"actionRequired":false,"isComplete":true}}`, "1 skipped inactive sends"},
+		{"unclassified status", `{"data":{"total":2,"completed":1,"failed":0,"retryableFailed":0,"exhaustedFailed":0,"queued":0,"held":0,"actionRequired":false,"isComplete":true}}`, "1 of 2 side effects completed"},
+		{"processing", `{"data":{"total":1,"pending":0,"processing":1,"completed":0,"skippedInactive":0,"failed":0,"retryableFailed":0,"exhaustedFailed":0,"queued":1,"held":0,"actionRequired":false,"isComplete":false}}`, "1 processing sends"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testenv.Isolate(t)
+			out, _, err := runNovel(t, []string{"imports", "watch", "job", "--verify", "--interval", "1", "--json"}, watchTestHandler(t, func(w http.ResponseWriter) { _, _ = w.Write([]byte(tc.side)) }))
+			if ExitCode(err) != 5 || !strings.Contains(out, tc.want) || strings.Contains(compactTestJSON(out), `"verified":true`) {
+				t.Fatalf("watch: err=%v out=%s", err, out)
+			}
+			testenv.Isolate(t)
+			out, _, err = runNovel(t, []string{"imports", "blame", "job", "--json"}, blameHandler(t, "", "", tc.side))
+			if ExitCode(err) != 5 || !strings.Contains(out, tc.want) {
+				t.Fatalf("blame: err=%v out=%s", err, out)
+			}
+		})
+	}
+	testenv.Isolate(t)
+	out, _, err := runNovel(t, []string{"imports", "watch", "job", "--verify", "--interval", "1", "--json"}, watchTestHandler(t, func(w http.ResponseWriter) {
+		_, _ = w.Write([]byte(`{"data":{"total":2,"pending":0,"processing":0,"completed":2,"skippedInactive":0,"failed":0,"retryableFailed":0,"exhaustedFailed":0,"queued":0,"held":0,"actionRequired":false,"isComplete":true}}`))
+	}))
+	if c := compactTestJSON(out); err != nil || !strings.Contains(c, `"verified":true`) || !strings.Contains(c, `"skipped_inactive":0`) {
+		t.Fatalf("all completed: err=%v out=%s", err, c)
+	}
+}
+
+// Codex r2 P2: a local read with a decode failure is not an answer: auto reads the audience live.
+func TestNovel1219SendCheckPartialLocalReadFallsBackLive(t *testing.T) {
+	testenv.Isolate(t)
+	db := syncedContactsMirror(t, map[string]string{"local-1": `{"id":"local-1","phone":"+12125550102","lineType":"mobile","tags":[{"id":"t1","name":"leads"}]}`})
+	s, err := store.Open(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB().Exec(`INSERT INTO resources(id,resource_type,data,synced_at,updated_at) VALUES('broken','contacts','{"id":"broken","tags":[{"name":"leads"}],',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`); err != nil {
+		t.Skipf("cannot plant a malformed row through the store's JSON checks: %v", err)
+	}
+	if err := s.SaveSyncState("contacts", "", 2); err != nil {
+		t.Fatal(err)
+	}
+	_ = s.Close()
+	var reads atomic.Int32
+	out, _, err := runNovel(t, []string{"send-check", "--tag", "leads", "--db", db, "--json"}, sendCheckLiveHandler(t, &reads))
+	if err != nil || reads.Load() == 0 || !strings.Contains(out, "live-1") || strings.Contains(out, "inconclusive") {
+		t.Fatalf("err=%v reads=%d out=%s", err, reads.Load(), out)
+	}
+}
+
+// Codex r2 P3: a smart-list estimate never suggests a sync (it cannot make membership local): auto counts live with no
+// sync hint, local tells the user to use live or auto.
+func TestNovel1219SmartListEstimateHintNamesARealAction(t *testing.T) {
+	testenv.Isolate(t)
+	db := syncedContactsMirror(t, map[string]string{"c1": `{"id":"c1","phone":"+12125550101"}`})
+	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--smart-list", "s1", "--db", db, "--json"}, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[{"id":"x1","phone":"+12125550111"}],"meta":{"total":1}}`))
+	})
+	if err != nil || strings.Contains(out, "sync --resources") {
+		t.Fatalf("auto: err=%v out=%s", err, out)
+	}
+	testenv.Isolate(t)
+	out, _, err = runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--smart-list", "s1", "--db", db, "--data-source", "local", "--json"}, nil)
+	if ExitCode(err) != 5 || strings.Contains(out, "sync --resources") || !strings.Contains(out, "--data-source live or auto") {
+		t.Fatalf("local: err=%v out=%s", err, out)
+	}
+}
+
+// Codex r2 P3: no surface still claims the import commands report SMS delivery.
+func TestNovel1219NoSMSDeliveryClaimsForImportCommands(t *testing.T) {
+	root := newRootCmd(&rootFlags{})
+	for _, path := range []string{"imports blame", "imports watch"} {
+		cmd := findCommandPath(root, path)
+		if cmd == nil {
+			t.Fatalf("%s not found", path)
+		}
+		for _, text := range []string{cmd.Short, cmd.Long} {
+			for _, claim := range []string{"who got the SMS", "got its texts", "delivery report"} {
+				if strings.Contains(text, claim) {
+					t.Fatalf("%s help claims %q: %s", path, claim, text)
+				}
+			}
+		}
+	}
+	for _, f := range []string{"../../README.md", "../../SKILL.md"} {
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, claim := range []string{"who actually got the SMS", "get its texts", "who got the SMS"} {
+			if strings.Contains(string(raw), claim) {
+				t.Fatalf("%s still claims %q", f, claim)
+			}
 		}
 	}
 }

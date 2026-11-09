@@ -299,25 +299,42 @@ type watchSideEffects struct {
 	ActionRequired *bool `json:"action_required"`
 	IsComplete     bool  `json:"is_complete"`
 	NoSideEffects  bool  `json:"no_side_effects,omitempty"`
+	// Emitted by the route; read strictly when present (a negative or non-integer value is invalid).
+	SkippedInactive *int `json:"skipped_inactive,omitempty"`
+	Pending         *int `json:"pending,omitempty"`
+	Processing      *int `json:"processing,omitempty"`
 }
 
 // noJobSideEffects reports a job that recorded no side effects at all: every counter present and zero. The route
 // answers isComplete=false for total 0 (its "complete" means "all recorded work drained"), so a job with nothing
 // to deliver is not an unfinished one; any queued, retryable, exhausted, failed or held send still is.
-// sideEffectProblems names every job-scoped side effect that keeps an import from being delivered: queued,
-// retryable, exhausted, failed or held sends, and actionRequired. A counter that is absent was reported already.
-func sideEffectProblems(queued, retryable, exhausted, failed, held *int, actionRequired *bool) []string {
+// sideEffectCounts is the job-scoped side-effect summary GET /imports/{id}/side-effects emits. The route counts
+// queue rows by status into total = pending + processing + completed + skippedInactive + failed (held rows are
+// counted apart and excluded from total), queued = pending + processing, failed = retryableFailed + exhaustedFailed.
+type sideEffectCounts struct {
+	Total, Completed, SkippedInactive, Pending, Processing, Queued, Retryable, Exhausted, Failed, Held *int
+	ActionRequired                                                                                     *bool
+}
+
+// sideEffectProblems names everything that keeps an import's side effects from being confirmed successful sends.
+// Only `completed` is a confirmed success: every other nonzero counter (skippedInactive, pending, processing,
+// queued, retryableFailed, exhaustedFailed, failed, held) and actionRequired=true is a problem, and a completed
+// count below total (a status the route adds later) is one too. A counter that is absent was reported already.
+func sideEffectProblems(c sideEffectCounts) []string {
 	problems := make([]string, 0)
-	for _, c := range []struct {
+	for _, n := range []struct {
 		name string
 		n    *int
-	}{{"queued", queued}, {"retryable failed", retryable}, {"exhausted failed", exhausted}, {"failed", failed}, {"held", held}} {
-		if c.n != nil && *c.n > 0 {
-			problems = append(problems, fmt.Sprintf("%d %s sends", *c.n, c.name))
+	}{{"skipped inactive", c.SkippedInactive}, {"pending", c.Pending}, {"processing", c.Processing}, {"queued", c.Queued}, {"retryable failed", c.Retryable}, {"exhausted failed", c.Exhausted}, {"failed", c.Failed}, {"held", c.Held}} {
+		if n.n != nil && *n.n > 0 {
+			problems = append(problems, fmt.Sprintf("%d %s sends", *n.n, n.name))
 		}
 	}
-	if actionRequired != nil && *actionRequired {
+	if c.ActionRequired != nil && *c.ActionRequired {
 		problems = append(problems, "action required")
+	}
+	if c.Total != nil && c.Completed != nil && *c.Completed != *c.Total {
+		problems = append(problems, fmt.Sprintf("%d of %d side effects completed", *c.Completed, *c.Total))
 	}
 	return problems
 }
@@ -443,7 +460,21 @@ func verifyImportJob(ctx context.Context, c importGetter, jobID string) (*watchV
 			}
 			// PATCH(novel1219-imports-watch) r2: isComplete counts pending, processing and failed only (held-only is
 			// isComplete:true with actionRequired:true), so every counter is checked on its own.
-			missing = append(missing, sideEffectProblems(verification.SideEffects.Queued, verification.SideEffects.Retryable, verification.SideEffects.Exhausted, verification.SideEffects.Failed, verification.SideEffects.Held, verification.SideEffects.ActionRequired)...)
+			// PATCH(novel1219-imports-watch) r3: skippedInactive, pending and processing are read too, and only
+			// completed counts as a successful send.
+			for _, opt := range []struct {
+				key    string
+				target **int
+			}{{"skippedInactive", &verification.SideEffects.SkippedInactive}, {"pending", &verification.SideEffects.Pending}, {"processing", &verification.SideEffects.Processing}} {
+				value, counterErr := nonNegativeCounter(side, opt.key)
+				if counterErr != nil {
+					missing = append(missing, counterErr.Error())
+					continue
+				}
+				*opt.target = value
+			}
+			se := verification.SideEffects
+			missing = append(missing, sideEffectProblems(sideEffectCounts{Total: se.Total, Completed: se.Completed, SkippedInactive: se.SkippedInactive, Pending: se.Pending, Processing: se.Processing, Queued: se.Queued, Retryable: se.Retryable, Exhausted: se.Exhausted, Failed: se.Failed, Held: se.Held, ActionRequired: se.ActionRequired})...)
 		}
 	}
 	verification.Verified = len(missing) == 0

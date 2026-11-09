@@ -552,13 +552,24 @@ func sendCheckLocalAudience(cmd *cobra.Command, flags *rootFlags, dbPath, list, 
 		return out, fmt.Errorf("opening local mirror: %w", err)
 	}
 	defer db.Close()
-	_, syncedAt, _, stateErr := db.GetSyncState("contacts")
+	_, syncedAt, syncTotal, stateErr := db.GetSyncState("contacts")
 	count, countErr := db.Count("contacts")
-	if stateErr != nil || countErr != nil {
-		return out, fmt.Errorf("checking contacts mirror state: %w", errors.Join(stateErr, countErr))
+	attemptComplete, attemptErr := contactsMirrorAttemptComplete(ctx, db.DB())
+	if stateErr != nil || countErr != nil || attemptErr != nil {
+		return out, fmt.Errorf("checking contacts mirror state: %w", errors.Join(stateErr, countErr, attemptErr))
 	}
 	if syncedAt.IsZero() || count == 0 {
 		out.reason = "contacts were never synced"
+		return out, nil
+	}
+	// PATCH(novel1219-send-check) r3: a mirror counts only when its last sync attempt finished and its row count
+	// reconciles with the synced total; an interrupted, aborted or in-progress attempt is not a mirror.
+	if !attemptComplete {
+		out.reason = "the last contacts sync attempt did not finish"
+		return out, nil
+	}
+	if count != syncTotal {
+		out.reason = fmt.Sprintf("the contacts mirror holds %d rows but its last sync reported %d", count, syncTotal)
 		return out, nil
 	}
 	if hintIfStale(cmd, db, "contacts", flags.maxAge) {
@@ -567,7 +578,9 @@ func sendCheckLocalAudience(cmd *cobra.Command, flags *rootFlags, dbPath, list, 
 	}
 	qr, err := db.DB().QueryContext(ctx, query, queryArgs...)
 	if err != nil {
-		return out, fmt.Errorf("reading contacts mirror: %w", err)
+		// A mirror that cannot be read (for example a malformed row the scope filter trips on) is not an answer.
+		out.reason = "the mirror read failed: " + err.Error()
+		return out, nil
 	}
 	for qr.Next() {
 		var id string
@@ -591,7 +604,13 @@ func sendCheckLocalAudience(cmd *cobra.Command, flags *rootFlags, dbPath, list, 
 	if err = qr.Close(); err != nil {
 		return out, err
 	}
-	if len(out.rows) == 0 && !out.partial {
+	if out.partial {
+		// PATCH(novel1219-send-check) r3: a local read with decode or iteration failures is not an answer; auto
+		// reads the audience live instead of reporting from the partial set, local reports it as inconclusive.
+		out.reason = "the mirror read was incomplete: " + strings.Join(out.failures, "; ")
+		return out, nil
+	}
+	if len(out.rows) == 0 {
 		// Zero local matches cannot prove an empty audience (a tag added after the sync, an unsynced contact).
 		out.reason = "the mirror holds no contact in this scope"
 		return out, nil

@@ -62,8 +62,13 @@ func newNovelContactsVerifyLineTypeCmd(flags *rootFlags) *cobra.Command {
 				view.Failures = append(view.Failures, reasons...)
 				useLocal = true
 				flags.agentSource = "local"
-			default:
-				view.Hint = verifySyncHint(dbPath) // the mirror could not answer (reason); counted live
+				if smartList != "" {
+					// PATCH(novel1219-verify-line-type) r3: no sync makes smart-list membership local.
+					view.Hint = "smart-list membership is read from the API: re-run with --data-source live or auto"
+				}
+			case smartList == "":
+				// The mirror could not answer a tenant-wide estimate; counted live. A sync can fix that next time.
+				view.Hint = verifySyncHint(dbPath)
 			}
 		}
 		if !useLocal {
@@ -368,7 +373,6 @@ func printVerifyEstimate(cmd *cobra.Command, flags *rootFlags, v verifyEstimate)
 func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smartList string) (verifyEstimate, []string, error) {
 	view := verifyEstimate{UnitCostUSD: verifyLineTypeUnitCostUSD}
 	if smartList != "" {
-		view.Hint = verifySyncHint(dbPath)
 		return view, []string{"smart-list membership is not stored in synced contacts"}, nil
 	}
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
@@ -393,6 +397,14 @@ func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smar
 	}
 	view.Total = &total
 	reasons := make([]string, 0)
+	// PATCH(novel1219-verify-line-type) r3: an interrupted, aborted or in-progress sync attempt is not a mirror.
+	attemptComplete, err := contactsMirrorAttemptComplete(cmd.Context(), db.DB())
+	if err != nil {
+		return view, nil, err
+	}
+	if !attemptComplete {
+		reasons = append(reasons, "the last contacts sync attempt did not finish")
+	}
 	if hintIfStale(cmd, db, "contacts", flags.maxAge) {
 		reasons = append(reasons, "local contacts mirror is older than --max-age")
 	}

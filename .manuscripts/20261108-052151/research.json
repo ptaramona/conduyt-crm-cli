@@ -43,16 +43,16 @@
       "name": "Import delivery blame",
       "command": "imports blame",
       "description": "For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).",
-      "rationale": "Joins import rows, contacts, and SMS delivery outcomes in local SQLite; the app shows each piece on a different screen.",
+      "rationale": "Reads an import's error rows and its job-scoped side-effect counters from the API; the app shows each piece on a different screen.",
       "example": "conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --json",
-      "why_it_matters": "Answers 'did the Tuesday import get its texts?' in one call after any bulk push.",
+      "why_it_matters": "Answers 'which rows of the Tuesday import failed, and are its side effects still queued or held?' in one call after any bulk push.",
       "group": "Kloudi-grade send safety"
     },
     {
       "name": "Import watcher",
       "command": "imports watch",
       "description": "Polls an import job to completion, then renders the row-outcome recap (created/updated/skipped/errors) and, with --verify, checks its job-scoped side effects.",
-      "rationale": "Chains job polling, preflight warnings, and the delivery report into one cron-safe command.",
+      "rationale": "Chains job polling, the launch monitor, and the job-scoped side-effects check into one cron-safe command.",
       "example": "conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --verify",
       "why_it_matters": "Drop it into n8n or cron and alert on bad imports instead of discovering them hours later.",
       "group": "Kloudi-grade send safety"
@@ -108,16 +108,16 @@
       "name": "Import delivery blame",
       "command": "imports blame",
       "description": "For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).",
-      "rationale": "Joins import rows, contacts, and SMS delivery outcomes in local SQLite; the app shows each piece on a different screen.",
+      "rationale": "Reads an import's error rows and its job-scoped side-effect counters from the API; the app shows each piece on a different screen.",
       "example": "conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --json",
-      "why_it_matters": "Answers 'did the Tuesday import get its texts?' in one call after any bulk push.",
+      "why_it_matters": "Answers 'which rows of the Tuesday import failed, and are its side effects still queued or held?' in one call after any bulk push.",
       "group": "Kloudi-grade send safety"
     },
     {
       "name": "Import watcher",
       "command": "imports watch",
       "description": "Polls an import job to completion, then renders the row-outcome recap (created/updated/skipped/errors) and, with --verify, checks its job-scoped side effects.",
-      "rationale": "Chains job polling, preflight warnings, and the delivery report into one cron-safe command.",
+      "rationale": "Chains job polling, the launch monitor, and the job-scoped side-effects check into one cron-safe command.",
       "example": "conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --verify",
       "why_it_matters": "Drop it into n8n or cron and alert on bad imports instead of discovering them hours later.",
       "group": "Kloudi-grade send safety"
@@ -162,7 +162,7 @@
   "narrative": {
     "display_name": "Conduyt CRM",
     "headline": "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has.",
-    "value_prop": "Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, and imports watch — the commands that answer 'is this list safe to text?' and 'who actually got the SMS?' in one call.",
+    "value_prop": "Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, and imports watch — the commands that answer 'is this list safe to text?' and 'what did that import actually do?' in one call.",
     "quickstart": [
       {
         "command": "conduyt-crm-pp-cli doctor",
@@ -195,7 +195,7 @@
         "fix": "Run 'sync' once and query the local store (search/sql/analytics) instead of paging the API."
       }
     ],
-    "when_to_use": "Reach for this CLI whenever an agent or operator works Conduyt CRM data: contact and deal CRUD, import safety (preflight, watch, blame), SMS delivery forensics, and line-type verification. Prefer the local-store commands (search, sql, analytics, send-check) for read-heavy questions — they avoid rate limits entirely.",
+    "when_to_use": "Reach for this CLI whenever an agent or operator works Conduyt CRM data: contact and deal CRUD, import safety (preflight, watch, blame), the account-wide SMS delivery report (reports get-sms-delivery), and line-type verification. Prefer the local-store commands (search, sql, analytics, send-check) for read-heavy questions — they avoid rate limits entirely.",
     "recipes": [
       {
         "title": "Kloudi-safe bulk import",
@@ -215,7 +215,7 @@
     ],
     "trigger_phrases": [
       "is this list safe to text",
-      "who got the SMS from that import",
+      "why did that import fail",
       "verify phone line types",
       "check the sms delivery report",
       "preflight this import",

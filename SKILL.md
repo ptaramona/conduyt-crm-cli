@@ -1,6 +1,6 @@
 ---
 name: pp-conduyt-crm
-description: "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has. Trigger phrases: `is this list safe to text`, `who got the SMS from that import`, `verify phone line types`, `check the sms delivery report`, `preflight this import`, `use conduyt-crm`, `run conduyt-crm`."
+description: "Full-coverage Conduyt CLI: every endpoint, plus Kloudi-grade send-safety forensics no other surface has. Trigger phrases: `is this list safe to text`, `why did that import fail`, `verify phone line types`, `check the sms delivery report`, `preflight this import`, `use conduyt-crm`, `run conduyt-crm`."
 author: "Paul Taramona"
 license: "Apache-2.0"
 argument-hint: "<command> [args] | install cli|mcp"
@@ -29,11 +29,11 @@ If the `npx` install fails before this CLI has a public-library category, instal
 
 If `--version` reports "command not found" after install, the runtime cannot see the binary directory on `$PATH`. Do not proceed with skill commands until verification succeeds.
 
-Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, and imports watch — the commands that answer 'is this list safe to text?' and 'who actually got the SMS?' in one call.
+Full coverage of the Conduyt CRM API with a local SQLite store, offline search, and agent-native output. On top of the mirror: send-check, imports blame, and imports watch — the commands that answer 'is this list safe to text?' and 'what did that import actually do?' in one call.
 
 ## When to Use This CLI
 
-Reach for this CLI whenever an agent or operator works Conduyt CRM data: contact and deal CRUD, import safety (preflight, watch, blame), SMS delivery forensics, and line-type verification. Prefer the local-store commands (search, sql, analytics, send-check) for read-heavy questions — they avoid rate limits entirely.
+Reach for this CLI whenever an agent or operator works Conduyt CRM data: contact and deal CRUD, import safety (preflight, watch, blame), the account-wide SMS delivery report (reports get-sms-delivery), and line-type verification. Prefer the local-store commands (search, sql, analytics, send-check) for read-heavy questions — they avoid rate limits entirely.
 
 ## Unique Capabilities
 
@@ -49,7 +49,7 @@ These capabilities aren't available in any other tool for this API.
   ```
 - **`imports blame`** — For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).
 
-  _Answers 'did the Tuesday import get its texts?' in one call after any bulk push._
+  _Answers 'which rows of the Tuesday import failed, and are its side effects still queued or held?' in one call after any bulk push._
 
   ```bash
   conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --json

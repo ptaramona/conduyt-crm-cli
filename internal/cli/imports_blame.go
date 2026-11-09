@@ -24,7 +24,7 @@ const importRowsMaxPerPage = 100
 func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 	var limit, rowsAlias int
 	var latest bool
-	cmd := &cobra.Command{Use: "blame [jobId]", Short: "For one import job: who got the SMS, who was skipped and why", Long: "Use this command after an import finished: it reads the job's row counters, every error row (GET /imports/{id}/rows?tab=error, paged to --limit) grouped by reason, and the job-scoped side effects (queued, retryable, exhausted, held, completed). A capped, short or failed read, or any queued, failed or held send, makes the result partial and the exit 5 (3 when the job does not exist, 4 on an auth failure). Do NOT use it to wait for an import to finish; use 'imports watch' instead.", Example: strings.Trim(`
+	cmd := &cobra.Command{Use: "blame [jobId]", Short: "For one import job: error rows by reason and the job-scoped side-effect counters", Long: "Use this command after an import finished: it reads the job's row counters, every error row (GET /imports/{id}/rows?tab=error, paged to --limit) grouped by reason, and the job-scoped side effects (queued, retryable, exhausted, held, completed). A capped, short or failed read, or any queued, failed or held send, makes the result partial and the exit 5 (3 when the job does not exist, 4 on an auth failure). Do NOT use it to wait for an import to finish; use 'imports watch' instead.", Example: strings.Trim(`
   conduyt-crm-pp-cli imports blame --latest --json
   conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000
   conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --agent --select row_outcomes,errors_by_reason`, "\n"), Annotations: map[string]string{"mcp:read-only": "true", "pp:data-source": "live", "pp:typed-exit-codes": "0,2,3,4,5"}, RunE: func(cmd *cobra.Command, args []string) error {
@@ -277,7 +277,21 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 				if len(missing) == 0 {
 					// isComplete counts pending, processing and failed only; held-only is isComplete:true with
 					// actionRequired:true, so every unfinished or unsuccessful counter is checked on its own.
-					for _, problem := range sideEffectProblems(&side.Queued, &side.Retryable, &side.Exhausted, &side.Failed, &side.Held, side.ActionRequired) {
+					// PATCH(novel1219-imports-blame) r3: skippedInactive, pending and processing are read too, and only
+					// completed counts as a successful send.
+					for _, opt := range []struct {
+						key    string
+						target **int
+					}{{"skippedInactive", &side.SkippedInactive}, {"pending", &side.Pending}, {"processing", &side.Processing}} {
+						value, counterErr := nonNegativeCounter(m, opt.key)
+						if counterErr != nil {
+							failures++
+							failureReasons = append(failureReasons, "import side effects "+counterErr.Error())
+							continue
+						}
+						*opt.target = value
+					}
+					for _, problem := range sideEffectProblems(sideEffectCounts{Total: &side.Total, Completed: &side.Completed, SkippedInactive: side.SkippedInactive, Pending: side.Pending, Processing: side.Processing, Queued: &side.Queued, Retryable: &side.Retryable, Exhausted: &side.Exhausted, Failed: &side.Failed, Held: &side.Held, ActionRequired: side.ActionRequired}) {
 						failures++
 						failureReasons = append(failureReasons, "import side effects "+problem)
 					}
@@ -395,6 +409,10 @@ type blameSideEffects struct {
 	IsComplete     bool  `json:"is_complete"`
 	// NoSideEffects: the job recorded none (every counter zero); the route reports isComplete=false for that.
 	NoSideEffects bool `json:"no_side_effects,omitempty"`
+	// Emitted by the route; read strictly when present.
+	SkippedInactive *int `json:"skipped_inactive,omitempty"`
+	Pending         *int `json:"pending,omitempty"`
+	Processing      *int `json:"processing,omitempty"`
 }
 type blameView struct {
 	JobID                     string           `json:"job_id"`
