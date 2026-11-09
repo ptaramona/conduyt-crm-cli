@@ -50,9 +50,10 @@ func newActivitiesListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// PATCH(novel1219-activities-list-page-number): --all on a live read follows meta.next_cursor through
-			// `cursor` and falls back to numeric pages only when no next_cursor key is returned (walkActivitiesAll);
-			// a single page and --data-source local keep the generated read.
+			// PATCH(novel1219-activities-list-page-number): --all on a live or auto read follows meta.next_cursor through
+			// `cursor` and falls back to numeric pages only when no next_cursor key is returned (walkActivitiesAll); auto
+			// keeps its write-through cache and network-error local fallback (resolveActivitiesAll). A single page and
+			// --data-source local keep the generated read.
 			params := retainCLIQueryParams(cmd, map[string]string{
 				"contact_id": formatCLIParamValue(flagContactId),
 				"count_mode": formatCLIParamValue(flagCountMode),
@@ -68,8 +69,7 @@ func newActivitiesListCmd(flags *rootFlags) *cobra.Command {
 			var data json.RawMessage
 			var prov DataProvenance
 			if flagAll && flags.dataSource != "local" && !flags.dryRun {
-				data, err = walkActivitiesAll(cmd.Context(), c, path, params)
-				prov = attachFreshness(DataProvenance{Source: "live"}, flags)
+				data, prov, err = resolveActivitiesAll(cmd.Context(), c, flags, path, params, cmd.ErrOrStderr())
 			} else {
 				data, prov, err = resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "activities", path, params, nil, flagAll, "cursor", "cursor", "per_page", 50, "data.meta.next_cursor", "", "", cmd.ErrOrStderr())
 			}

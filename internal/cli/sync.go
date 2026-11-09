@@ -560,6 +560,12 @@ func syncResource(ctx context.Context, c interface {
 
 	cursor := existingCursor
 	pageSize := determinePaginationDefaults(resource)
+	// PATCH(novel1219-activities-list-page-number): a checkpoint written by an earlier build (r16 cursor paging, or
+	// the r17 page paging that stored meta.next_cursor) can hold an opaque cursor for a resource that now pages by
+	// number. Resuming it would send page=<cursor> (a 500 on GET /activities), so the walk restarts at page one.
+	if pageSize.cursorType == "page" && cursor != "" && !isSyncPageNumber(cursor) {
+		cursor = ""
+	}
 	sortParam := syncResourceSortParam(resource)
 	sortValue := syncResourceSortValue(resource)
 	sortField := syncResourceSortField(resource)
@@ -732,11 +738,13 @@ func syncResource(ctx context.Context, c interface {
 
 		// PATCH(novel1219-activities-list-page-number): a page-numbered request parameter takes only a page number. A
 		// body cursor found by name (GET /activities returns an opaque meta.next_cursor) is not one; sending it as
-		// page= gets a 500, so it is dropped and the page-int fallback below advances by number.
-		if pageSize.cursorType == "page" && nextCursor != "" {
-			if n, err := strconv.Atoi(nextCursor); err != nil || n < 1 {
-				nextCursor = ""
-			}
+		// page= gets a 500. The token still proves there is a next page, so the walk advances by number whatever the
+		// page's length; a short page with a continuation token is not the end.
+		pageTokenProvedMore := false
+		if pageSize.cursorType == "page" && nextCursor != "" && !isSyncPageNumber(nextCursor) {
+			nextCursor = nextSyncPageNumber(cursor)
+			hasMore = true
+			pageTokenProvedMore = true
 		}
 
 		// Page-int paginator fallback: when the API paginates by integer
@@ -916,7 +924,7 @@ func syncResource(ctx context.Context, c interface {
 		// sync_error output in the same stream.
 		if maxPages > 0 && pagesFetched >= maxPages {
 			truncatedByCap := resourceSupportsPagination(resource) && hasMore
-			truncatedByCap = truncatedByCap && !shortPageEndsPagination(pageSize.cursorType, fetchedThisPage, pageSize.limit)
+			truncatedByCap = truncatedByCap && (pageTokenProvedMore || !shortPageEndsPagination(pageSize.cursorType, fetchedThisPage, pageSize.limit))
 			capResumed := false
 			if truncatedByCap {
 				capExitCursor = nextCursor
@@ -954,7 +962,7 @@ func syncResource(ctx context.Context, c interface {
 			} else if paginationEndUnprovable(resourceSupportsPagination(resource), nextCursor, fetchedThisPage, capPageLimit, data, responsePathForResource(resource, path)...) {
 				outcome.reason = "cursor_unavailable"
 			} else if !hasMore ||
-				shortPageEndsPagination(pageSize.cursorType, fetchedThisPage, capPageLimit) {
+				(!pageTokenProvedMore && shortPageEndsPagination(pageSize.cursorType, fetchedThisPage, capPageLimit)) {
 				outcome.complete = true
 			} else {
 				outcome.reason = "max_pages_cap"
@@ -990,7 +998,7 @@ func syncResource(ctx context.Context, c interface {
 			outcome.reason = "cursor_unavailable"
 			break
 		}
-		if !hasMore || shortPageEndsPagination(pageSize.cursorType, fetchedThisPage, pageSize.limit) {
+		if !hasMore || (!pageTokenProvedMore && shortPageEndsPagination(pageSize.cursorType, fetchedThisPage, pageSize.limit)) {
 			outcome.complete = true
 			break
 		}
@@ -1990,6 +1998,13 @@ func seedSyncPageCursor(params map[string]string, pageSize paginationDefaults, c
 // nextSyncPageNumber advances a page-number cursor by one. An empty cursor
 // means page one was implicit, so the next request is page 2. Numeric 0
 // advances to 1 so a zero-based first page is not skipped.
+// isSyncPageNumber reports whether a page-numbered cursor is a usable page number (a non-negative integer; 0 is a
+// zero-based first page). PATCH(novel1219-activities-list-page-number)
+func isSyncPageNumber(cursor string) bool {
+	n, err := strconv.Atoi(cursor)
+	return err == nil && n >= 0
+}
+
 func nextSyncPageNumber(cursor string) string {
 	currentPage, err := strconv.Atoi(cursor)
 	if err != nil {
@@ -2552,6 +2567,11 @@ func syncResourceSinceParamFormat(resource string) string {
 	switch resource {
 	case "activity":
 		return "date"
+	case "activities":
+		// PATCH(novel1219-activities-list-page-number): GET /activities reads fromDate as a calendar day in the
+		// account's timezone and answers an RFC3339 value 400 "Invalid fromDate", so an incremental activities
+		// sync sends the day before last_synced_at (one day of slack covers any account offset; re-read rows upsert).
+		return "date-1d"
 	}
 	return ""
 }
@@ -2573,6 +2593,11 @@ func formatSyncSinceValue(value string, paramFormat string) string {
 	if strings.EqualFold(paramFormat, "date") {
 		if formatted, ok := formatSyncSinceDate(value); ok {
 			return formatted
+		}
+	}
+	if strings.EqualFold(paramFormat, "date-1d") {
+		if ts, err := time.Parse(time.RFC3339, value); err == nil {
+			return ts.UTC().AddDate(0, 0, -1).Format("2006-01-02")
 		}
 	}
 	return value
