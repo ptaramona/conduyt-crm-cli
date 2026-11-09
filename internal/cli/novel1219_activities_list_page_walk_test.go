@@ -3,53 +3,73 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 )
 
-// PATCH(novel1219-activities-list-page-number): Greptile PR #2450 thread 4514458610. GET /activities pages by number
-// (meta.page/per_page/total/has_more, no next cursor), so `activities list --all` must walk page=1, page=2, ... and
-// not stop after page one. The fixture is the live response shape: a data envelope around data + meta (the spec's
-// ActivitiesListResponse), whose meta.next_cursor is an opaque string that must never be sent as page=.
-func TestNovel1219ActivitiesListAllWalksEveryNumberedPage(t *testing.T) {
-	var mu sync.Mutex
-	var pages []string
+// PATCH(novel1219-activities-list-page-number): Greptile PR #2450 thread 4514458610. GET /activities answers
+// {"data":{"data":[...],"meta":{page,per_page,total,total_capped,next_cursor}}} and takes a keyset `cursor` and a
+// numeric `page`. `activities list --all` follows meta.next_cursor through `cursor`, falls back to numeric pages only
+// when no next_cursor key is returned, and never sends a cursor as `page` (the route answers that with a 500).
+
+const novel1219Cursor1 = "WyIyMDI2LTExLTA5VDE3OjQwOjQ5LjI1NVoiLCJhY3QtcDEtYiJd"
+
+type novel1219ActivitiesServer struct {
+	mu   sync.Mutex
+	reqs []url.Values
+}
+
+func (s *novel1219ActivitiesServer) start(t *testing.T, withCursor bool) {
+	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/activities" {
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
 		q := r.URL.Query()
-		mu.Lock()
-		pages = append(pages, q.Get("page"))
-		mu.Unlock()
-		if q.Get("cursor") != "" {
-			t.Errorf("activities list sent cursor=%q; the endpoint pages by number", q.Get("cursor"))
-		}
-		if p := q.Get("page"); p != "" && p != "1" && p != "2" && p != "3" {
-			t.Errorf("activities list sent page=%q, not a page number", p)
+		s.mu.Lock()
+		s.reqs = append(s.reqs, q)
+		s.mu.Unlock()
+		if p := q.Get("page"); p != "" {
+			if _, err := strconv.Atoi(p); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = io.WriteString(w, `{"error":"Internal server error"}`)
+				return
+			}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		switch q.Get("page") {
-		case "", "1":
-			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p1-a"},{"id":"act-p1-b"}],"meta":{"page":1,"per_page":2,"total":3,"total_capped":false,"next_cursor":"WyIyMDI2LTExLTA5VDE3OjQwOjQ5LjI1NVoiLCJhY3QtcDEtYiJd"}}}`)
-		case "2":
-			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p2-c"}],"meta":{"page":2,"per_page":2,"total":3,"total_capped":false,"next_cursor":null}}}`)
+		page2 := q.Get("cursor") == novel1219Cursor1 || (!withCursor && q.Get("page") == "2")
+		switch {
+		case q.Get("cursor") != "" && q.Get("cursor") != novel1219Cursor1:
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = io.WriteString(w, `{"error":"invalid cursor"}`)
+		case page2 && withCursor:
+			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p2-c"}],"meta":{"page":1,"per_page":2,"total":3,"total_capped":false,"next_cursor":null}}}`)
+		case page2:
+			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p2-c"}],"meta":{"page":2,"per_page":2,"total":3,"total_capped":false}}}`)
+		case withCursor:
+			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p1-a"},{"id":"act-p1-b"}],"meta":{"page":1,"per_page":2,"total":3,"total_capped":false,"next_cursor":"`+novel1219Cursor1+`"}}}`)
 		default:
-			_, _ = io.WriteString(w, `{"data":{"data":[],"meta":{"page":3,"per_page":2,"total":3,"total_capped":false,"next_cursor":null}}}`)
+			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p1-a"},{"id":"act-p1-b"}],"meta":{"page":1,"per_page":2,"total":3,"total_capped":false}}}`)
 		}
 	}))
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
 	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
 	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
 	t.Setenv("CONDUYT_CRM_NO_LEARN", "true")
 	t.Setenv("HOME", t.TempDir())
+}
 
+func novel1219RunActivitiesAll(t *testing.T) string {
+	t.Helper()
 	root := newRootCmd(&rootFlags{})
 	var out bytes.Buffer
 	root.SetArgs([]string{"activities", "list", "--all", "--per-page", "2", "--data-source", "live", "--no-cache", "--json"})
@@ -58,15 +78,50 @@ func TestNovel1219ActivitiesListAllWalksEveryNumberedPage(t *testing.T) {
 	if err := root.Execute(); err != nil {
 		t.Fatalf("activities list --all: %v", err)
 	}
-	for _, id := range []string{"act-p1-a", "act-p1-b", "act-p2-c"} {
-		if !strings.Contains(out.String(), id) {
-			t.Errorf("activities list --all output is missing %s (pages requested %q); output: %s", id, pages, out.String())
-		}
+	return out.String()
+}
+
+func novel1219AssertRows(t *testing.T, out string) {
+	t.Helper()
+	var env struct {
+		Results []struct {
+			ID string `json:"id"`
+		} `json:"results"`
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	if len(pages) != 2 || pages[1] != "2" {
-		t.Fatalf("pages requested = %q, want page one then page=2", pages)
+	if err := json.Unmarshal([]byte(out), &env); err != nil {
+		t.Fatalf("decode output: %v: %s", err, out)
+	}
+	var ids []string
+	for _, r := range env.Results {
+		ids = append(ids, r.ID)
+	}
+	if strings.Join(ids, ",") != "act-p1-a,act-p1-b,act-p2-c" {
+		t.Fatalf("rows = %q, want both pages in order (act-p1-a, act-p1-b, act-p2-c)", ids)
+	}
+}
+
+func TestNovel1219ActivitiesListAllFollowsNextCursor(t *testing.T) {
+	s := &novel1219ActivitiesServer{}
+	s.start(t, true)
+	novel1219AssertRows(t, novel1219RunActivitiesAll(t))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.reqs) != 2 {
+		t.Fatalf("requests = %v, want two", s.reqs)
+	}
+	if s.reqs[0].Get("cursor") != "" || s.reqs[1].Get("cursor") != novel1219Cursor1 || s.reqs[1].Get("page") != "" {
+		t.Fatalf("requests = %v, want page one, then cursor=<meta.next_cursor> with no page", s.reqs)
+	}
+}
+
+func TestNovel1219ActivitiesListAllFallsBackToPageNumbersWithoutNextCursor(t *testing.T) {
+	s := &novel1219ActivitiesServer{}
+	s.start(t, false)
+	novel1219AssertRows(t, novel1219RunActivitiesAll(t))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.reqs) != 2 || s.reqs[1].Get("page") != "2" || s.reqs[1].Get("cursor") != "" {
+		t.Fatalf("requests = %v, want page one then page=2", s.reqs)
 	}
 }
 

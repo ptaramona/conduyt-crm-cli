@@ -50,10 +50,10 @@ func newActivitiesListCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// PATCH(novel1219-activities-list-page-number): GET /activities pages by number and answers
-			// {"data":{"data":[...],"meta":{...}}} (the spec's ActivitiesListResponse), so --all walks page=1,2,... like the
-			// sync path and collects the rows at data.data instead of finding no top-level array.
-			data, prov, err := resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "activities", path, retainCLIQueryParams(cmd, map[string]string{
+			// PATCH(novel1219-activities-list-page-number): --all on a live read follows meta.next_cursor through
+			// `cursor` and falls back to numeric pages only when no next_cursor key is returned (walkActivitiesAll);
+			// a single page and --data-source local keep the generated read.
+			params := retainCLIQueryParams(cmd, map[string]string{
 				"contact_id": formatCLIParamValue(flagContactId),
 				"count_mode": formatCLIParamValue(flagCountMode),
 				"cursor":     formatCLIParamValue(flagCursor),
@@ -64,7 +64,15 @@ func newActivitiesListCmd(flags *rootFlags) *cobra.Command {
 				"search":     formatCLIParamValue(flagSearch),
 				"toDate":     formatCLIParamValue(flagToDate),
 				"type":       formatCLIParamValue(flagType),
-			}, map[string][]string{"contact_id": {"contact-id"}, "count_mode": {"count-mode"}, "cursor": {"cursor"}, "deal_id": {"deal-id"}, "fromDate": {"from-date"}, "page": {"page"}, "per_page": {"per-page"}, "search": {"search"}, "toDate": {"to-date"}, "type": {"type"}}, "page", "page"), nil, flagAll, "page", "page", "per_page", 50, "", "", activitiesListAllResponsePath(flagAll), cmd.ErrOrStderr())
+			}, map[string][]string{"contact_id": {"contact-id"}, "count_mode": {"count-mode"}, "cursor": {"cursor"}, "deal_id": {"deal-id"}, "fromDate": {"from-date"}, "page": {"page"}, "per_page": {"per-page"}, "search": {"search"}, "toDate": {"to-date"}, "type": {"type"}}, "cursor", "cursor")
+			var data json.RawMessage
+			var prov DataProvenance
+			if flagAll && flags.dataSource != "local" && !flags.dryRun {
+				data, err = walkActivitiesAll(cmd.Context(), c, path, params)
+				prov = attachFreshness(DataProvenance{Source: "live"}, flags)
+			} else {
+				data, prov, err = resolvePaginatedReadWithStrategy(cmd.Context(), c, flags, "auto", "activities", path, params, nil, flagAll, "cursor", "cursor", "per_page", 50, "data.meta.next_cursor", "", "", cmd.ErrOrStderr())
+			}
 			if err != nil {
 				return classifyAPIError(cmd.OutOrStdout(), err, flags)
 			}
@@ -139,13 +147,4 @@ func newActivitiesListCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&flagAll, "all", false, "Fetch all pages")
 
 	return cmd
-}
-
-// activitiesListAllResponsePath is the row array of GET /activities for --all; a single page keeps the API's own
-// envelope (data.data plus data.meta) unchanged. PATCH(novel1219-activities-list-page-number)
-func activitiesListAllResponsePath(all bool) string {
-	if all {
-		return "data.data"
-	}
-	return ""
 }

@@ -13,27 +13,31 @@ import (
 	mcplib "github.com/mark3labs/mcp-go/mcp"
 )
 
-// PATCH(novel1219-activities-list-page-number): Greptile PR #2450 thread 4514458610. The MCP activities.list endpoint
-// must advertise and accept the page number as its cursor param, because GET /activities returns no next cursor. An
-// agent that follows cursor_param from conduyt-crm_get must walk a two-page fixture completely. The fixture is the live
-// response shape: a data envelope around data + meta, whose meta.next_cursor is an opaque string, not a page number.
-func TestNovel1219MCPActivitiesListWalksEveryNumberedPage(t *testing.T) {
+// PATCH(novel1219-activities-list-page-number): Greptile PR #2450 thread 4514458610. GET /activities answers
+// {"data":{"data":[...],"meta":{...,next_cursor}}} and takes the keyset cursor back through `cursor`. An agent that
+// follows cursor_param from conduyt-crm_get with data.meta.next_cursor must walk a two-page fixture completely, and
+// the keyset cursor must never reach `page` (the route parses page as an integer; a string there is a 500).
+func TestNovel1219MCPActivitiesListFollowsNextCursor(t *testing.T) {
 	ep := findCodeOrchEndpoint("activities.list")
 	if ep == nil {
 		t.Fatal("activities.list is not registered")
 	}
 	cursorParam, _ := codeOrchEndpointMetadata(ep)["cursor_param"].(string)
 
+	const cursor1 = "WyIyMDI2LTExLTA5VDE3OjQwOjQ5LjI1NVoiLCJhY3QtcDEtYiJd"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch r.URL.Query().Get("page") {
-		case "", "1":
-			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p1-a"},{"id":"act-p1-b"}],"meta":{"page":1,"per_page":2,"total":3,"total_capped":false,"next_cursor":"WyIyMDI2LTExLTA5VDE3OjQwOjQ5LjI1NVoiLCJhY3QtcDEtYiJd"}}}`)
-		case "2":
-			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p2-c"}],"meta":{"page":2,"per_page":2,"total":3,"total_capped":false,"next_cursor":null}}}`)
-		default:
-			_, _ = io.WriteString(w, `{"data":{"data":[],"meta":{"page":3,"per_page":2,"total":3,"total_capped":false,"next_cursor":null}}}`)
+		q := r.URL.Query()
+		if p := q.Get("page"); p != "" && p != "1" {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = io.WriteString(w, `{"error":"Internal server error"}`)
+			return
 		}
+		w.Header().Set("Content-Type", "application/json")
+		if q.Get("cursor") == cursor1 {
+			_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p2-c"}],"meta":{"page":1,"per_page":2,"total":3,"total_capped":false,"next_cursor":null}}}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"data":{"data":[{"id":"act-p1-a"},{"id":"act-p1-b"}],"meta":{"page":1,"per_page":2,"total":3,"total_capped":false,"next_cursor":"`+cursor1+`"}}}`)
 	}))
 	defer srv.Close()
 	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
@@ -55,16 +59,13 @@ func TestNovel1219MCPActivitiesListWalksEveryNumberedPage(t *testing.T) {
 				text += tc.Text
 			}
 		}
-		// GET /activities answers {"data":{"data":[...],"meta":{page,per_page,total,total_capped,next_cursor}}}.
 		var page struct {
 			Data struct {
 				Data []struct {
 					ID string `json:"id"`
 				} `json:"data"`
 				Meta struct {
-					Page    int `json:"page"`
-					PerPage int `json:"per_page"`
-					Total   int `json:"total"`
+					NextCursor *string `json:"next_cursor"`
 				} `json:"meta"`
 			} `json:"data"`
 		}
@@ -74,18 +75,17 @@ func TestNovel1219MCPActivitiesListWalksEveryNumberedPage(t *testing.T) {
 		for _, row := range page.Data.Data {
 			seen[row.ID] = true
 		}
-		m := page.Data.Meta
-		if m.Page*m.PerPage >= m.Total {
+		if page.Data.Meta.NextCursor == nil {
 			break
 		}
-		params = map[string]any{"per_page": float64(2), cursorParam: float64(m.Page + 1)}
+		params = map[string]any{"per_page": float64(2), cursorParam: *page.Data.Meta.NextCursor}
 	}
 	for _, id := range []string{"act-p1-a", "act-p1-b", "act-p2-c"} {
 		if !seen[id] {
 			t.Errorf("MCP walk following cursor_param %q missed %s (saw %v)", cursorParam, id, seen)
 		}
 	}
-	if ep.Page.CursorParam != "page" || ep.Page.NextCursorPath != "" {
-		t.Errorf("activities.list page config = %+v, want page numbering with no next-cursor path", ep.Page)
+	if ep.Page.CursorParam != "cursor" || ep.Page.NextCursorPath != "data.meta.next_cursor" {
+		t.Errorf("activities.list page config = %+v, want cursor via data.meta.next_cursor", ep.Page)
 	}
 }
