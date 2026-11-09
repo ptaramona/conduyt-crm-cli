@@ -292,7 +292,7 @@ var codeOrchEndpoints = []codeOrchEndpoint{
 		TemplateParams: []codeOrchParamBinding{},
 		QueryParams:    []codeOrchParamBinding{{PublicName: "contact_id", WireName: "contact_id"}, {PublicName: "count_mode", WireName: "count_mode"}, {PublicName: "deal_id", WireName: "deal_id"}, {PublicName: "fromDate", WireName: "fromDate"}, {PublicName: "page", WireName: "page"}, {PublicName: "per_page", WireName: "per_page"}, {PublicName: "search", WireName: "search"}, {PublicName: "toDate", WireName: "toDate"}, {PublicName: "type", WireName: "type"}},
 		HeaderParams:   []codeOrchParamBinding{},
-		Page:           mcpPageConfig{CursorParam: "cursor", NextCursorPath: "cursor"},
+		Page:           mcpPageConfig{CursorParam: "page", NextCursorPath: ""}, // PATCH(novel1219-activities-list-page-number): GET /activities pages by number, no next cursor
 		NeedsConfirm:   false,
 		Mutating:       false,
 		keywords:       codeOrchKeywords("activities", "list", "List activities", "/activities"),
