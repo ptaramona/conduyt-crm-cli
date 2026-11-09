@@ -226,7 +226,7 @@ var resourceWritePaths = map[string]string{ // #nosec G101 -- endpoint paths, no
 
 var resourceReadConfigs = map[string]resourceReadConfig{
 	"account-exports":       {responsePath: "", paginationType: "cursor", cursorParam: "cursor", limitParam: "", nextCursorPath: "", hasMoreField: "", pageSize: 100},
-	"activities":            {responsePath: "", paginationType: "cursor", cursorParam: "cursor", limitParam: "per_page", nextCursorPath: "", hasMoreField: "", pageSize: 50},
+	"activities":            {responsePath: "", paginationType: "page", cursorParam: "page", limitParam: "per_page", nextCursorPath: "", hasMoreField: "", pageSize: 50}, // PATCH(novel1219-sync-activities-deals)
 	"activity":              {responsePath: "", paginationType: "cursor", cursorParam: "cursor", limitParam: "", nextCursorPath: "", hasMoreField: "", pageSize: 100},
 	"admin":                 {responsePath: "data", paginationType: "page", cursorParam: "page", limitParam: "limit", nextCursorPath: "", hasMoreField: "", pageSize: 50},
 	"ai":                    {responsePath: "", paginationType: "cursor", cursorParam: "cursor", limitParam: "limit", nextCursorPath: "", hasMoreField: "", pageSize: 30},

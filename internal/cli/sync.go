@@ -1230,10 +1230,12 @@ func determinePaginationDefaults(resource string) paginationDefaults {
 			limit:          100,
 		}
 	case "activities":
+		// PATCH(novel1219-sync-activities-deals): GET /activities pages by number (meta.page/per_page/total/has_more,
+		// no next cursor); a cursor setting stopped sync after page one with cursor_unavailable.
 		return paginationDefaults{
-			cursorParam:    "cursor",
-			cursorType:     "cursor",
-			initialCursor:  "",
+			cursorParam:    "page",
+			cursorType:     "page",
+			initialCursor:  "1",
 			nextCursorPath: "",
 			limitParam:     "per_page",
 			limit:          50,
@@ -2165,8 +2167,8 @@ func syncResourceSinceParam(resource string) string {
 		return "fromDate"
 	case "ai":
 		return "since"
-	case "deals":
-		return "created_after"
+	// PATCH(novel1219-sync-activities-deals): deals have no last-changed filter; created_after would never re-read a
+	// deal that changed stage or value after the first sync, so deals sync pages in full every run.
 	case "dialer":
 		return "date_from"
 	case "dialer-history":
