@@ -334,7 +334,7 @@ Highlights (not in the official API docs):
   • send-check   Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's side effects).
   • imports blame   For one import job: every error row grouped by reason, plus the job-scoped side effects (queued, retryable, exhausted, held).
   • imports watch   Polls an import job to completion, then renders the row-outcome recap (created/updated/skipped/errors) and, with --verify, checks its job-scoped side effects.
-  • contacts verify-line-type   Counts unverified contacts and prints the tenant-paid Twilio cost without spending (--estimate); 'run --until-done' drives the batched verification to done. Requires the account's Phone Line-Typ…
+  • contacts verify-line-type   Counts unverified contacts and prints the tenant-paid Twilio cost without spending (--estimate); 'run --until-done' with one scope (--smart-list or --contact-ids) drives the batched verification to done. Requires the account's Phone Line-Typ…
   • drips audit   Flags duplicate sends in a window: any contact who received the same message body more than once, from the local store.
   • analytics   GROUP BY over synced entities — segment counts without paging the API (--type/--group-by/--limit).
   • tail   Interval polling over a resource that re-emits current results as JSON — watch messages or activities as a blast goes out.

@@ -558,17 +558,16 @@ func sendCheckLocalAudience(cmd *cobra.Command, flags *rootFlags, dbPath, list, 
 	}
 	defer db.Close()
 	reader := newMirrorReader(db.DB())
-	_, syncedAt, syncTotal, err := db.GetSyncState("contacts")
+	// PATCH(novel1219-send-check) r5: the sync state (timestamp, total, attempt completeness) is read once through
+	// the mirror reader, and freshness is decided from it; no check re-reads sync_state outside the unusable path.
+	state, err := readContactsSyncState(ctx, reader)
 	if err != nil {
 		return unusable("reading sync state", err)
 	}
+	syncedAt, syncTotal, attemptComplete := state.SyncedAt, state.Total, state.AttemptComplete
 	count, err := reader.Count(ctx, `SELECT COUNT(*) FROM resources WHERE resource_type = 'contacts'`)
 	if err != nil {
 		return unusable("counting contacts", err)
-	}
-	attemptComplete, err := contactsMirrorAttemptComplete(ctx, reader)
-	if err != nil {
-		return unusable("reading sync attempt state", err)
 	}
 	if syncedAt.IsZero() || count == 0 {
 		out.reason = "contacts were never synced"
@@ -584,7 +583,7 @@ func sendCheckLocalAudience(cmd *cobra.Command, flags *rootFlags, dbPath, list, 
 		out.reason = fmt.Sprintf("the contacts mirror holds %d rows but its last sync reported %d", count, syncTotal)
 		return out, nil
 	}
-	if hintIfStale(cmd, db, "contacts", flags.maxAge) {
+	if mirrorOlderThan(cmd, syncedAt, flags.maxAge) {
 		out.reason = "the contacts mirror is older than --max-age"
 		return out, nil
 	}

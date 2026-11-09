@@ -8,6 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/spf13/cobra"
 )
 
 // PATCH(novel1219-helpers): response-shape and pagination helpers the hand-written novel commands share
@@ -137,15 +140,58 @@ func hoistPaginatedEnvelope(raw json.RawMessage) (json.RawMessage, bool) {
 	return hoisted, true
 }
 
-// contactsMirrorAttemptComplete reports whether the last contacts sync attempt finished. An interrupted or
-// in-progress sync keeps the previous last_synced_at but clears last_attempt_complete, so a timestamp alone never
-// proves a complete mirror. PATCH(novel1219-helpers) r3.
-func contactsMirrorAttemptComplete(ctx context.Context, r mirrorReader) (bool, error) {
-	n, err := r.Count(ctx, `SELECT COALESCE(MAX(last_attempt_complete), 0) FROM sync_state WHERE resource_type = 'contacts'`)
+// contactsSyncState is the contacts row of sync_state, read through the mirror reader so its failures take the same
+// "mirror unusable" path as every other local read. PATCH(novel1219-helpers) r5.
+type contactsSyncState struct {
+	SyncedAt        time.Time // zero when contacts were never synced
+	Total           int       // rows stored when the last attempt ended (sync writes db.Count)
+	AttemptComplete bool      // false for an interrupted, aborted or in-progress attempt
+}
+
+func readContactsSyncState(ctx context.Context, r mirrorReader) (contactsSyncState, error) {
+	var st contactsSyncState
+	rows, err := r.Query(ctx, `SELECT last_synced_at, total_count, last_attempt_complete FROM sync_state WHERE resource_type = 'contacts'`)
 	if err != nil {
-		return false, fmt.Errorf("reading contacts sync attempt state: %w", err)
+		return st, fmt.Errorf("querying contacts sync state: %w", err)
 	}
-	return n == 1, nil
+	found := false
+	for rows.Next() {
+		var syncedAt sql.NullTime
+		var total, complete sql.NullInt64
+		if err := rows.Scan(&syncedAt, &total, &complete); err != nil {
+			_ = rows.Close()
+			return st, fmt.Errorf("scanning contacts sync state: %w", err)
+		}
+		found = true
+		st = contactsSyncState{SyncedAt: syncedAt.Time, Total: int(total.Int64), AttemptComplete: complete.Valid && complete.Int64 == 1}
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return contactsSyncState{}, fmt.Errorf("iterating contacts sync state: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return contactsSyncState{}, fmt.Errorf("closing contacts sync state: %w", err)
+	}
+	if !found {
+		return contactsSyncState{}, nil
+	}
+	return st, nil
+}
+
+// mirrorOlderThan decides freshness from the sync state already read (no second sync_state query that could fail
+// silently) and prints the same hint as the framework's stale check.
+func mirrorOlderThan(cmd *cobra.Command, syncedAt time.Time, maxAge time.Duration) bool {
+	if maxAge <= 0 || syncedAt.IsZero() {
+		return false
+	}
+	age := time.Since(syncedAt)
+	if age <= maxAge {
+		return false
+	}
+	if cmd != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "hint: local contacts mirror is %s old, older than --max-age=%s. Run 'conduyt-crm-pp-cli sync --resources contacts' to refresh.\n", age.Round(time.Second), maxAge)
+	}
+	return true
 }
 
 // ---- PATCH(novel1219-helpers) r4: one local-read path for the mirror-reading novel commands ----

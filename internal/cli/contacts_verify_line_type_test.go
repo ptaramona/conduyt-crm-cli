@@ -124,7 +124,7 @@ func TestVerifyLineTypeEstimateNeverPosts(t *testing.T) {
 func TestVerifyLineTypeUntilDoneHonorsMaxBatches(t *testing.T) {
 	testenv.Isolate(t)
 	var posts atomic.Int32
-	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--max-batches", "2", "--json"}, func(w http.ResponseWriter, r *http.Request) {
+	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000", "--max-batches", "2", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 		posts.Add(1)
 		_, _ = w.Write([]byte(`{"data":{"verified":1,"remaining":9,"done":false,"byLineType":{"mobile":1}}}`))
 	})
@@ -150,7 +150,7 @@ func TestVerifyLineTypeUnexpectedResponseStopsAfterOnePost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testenv.Isolate(t)
 			var posts atomic.Int32
-			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--json"}, func(w http.ResponseWriter, r *http.Request) {
+			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 				posts.Add(1)
 				_, _ = w.Write([]byte(tc.body))
 			})
@@ -172,7 +172,7 @@ func TestVerifyLineTypePostFailuresAreTyped(t *testing.T) {
 	for _, tc := range []struct{ status, code int }{{401, 4}, {403, 4}, {404, 3}, {500, 5}} {
 		t.Run(http.StatusText(tc.status), func(t *testing.T) {
 			testenv.Isolate(t)
-			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--json"}, func(w http.ResponseWriter, r *http.Request) {
+			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.status)
 				_, _ = w.Write([]byte(`{"message":"failure"}`))
 			})
@@ -220,7 +220,7 @@ func TestVerifyLineTypeInvalidProgressStopsAfterOnePost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testenv.Isolate(t)
 			var posts atomic.Int32
-			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--json"}, func(w http.ResponseWriter, r *http.Request) {
+			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 				posts.Add(1)
 				_, _ = w.Write([]byte(tc.body))
 			})
@@ -249,7 +249,7 @@ func TestVerifyLineTypeNonDecreasingRemainingStopsBeforeAggregation(t *testing.T
 		t.Run(tc.name, func(t *testing.T) {
 			testenv.Isolate(t)
 			var posts atomic.Int32
-			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--json"}, func(w http.ResponseWriter, r *http.Request) {
+			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 				if posts.Add(1) == 1 {
 					_, _ = w.Write([]byte(`{"data":{"verified":2,"remaining":10,"done":false,"byLineType":{"mobile":2}}}`))
 					return
@@ -565,7 +565,7 @@ func TestVerifyLineTypeRunsUntilDone(t *testing.T) {
 			t.Fatalf("%s %s", r.Method, r.URL.Path)
 		}
 		body, _ := io.ReadAll(r.Body)
-		if !strings.Contains(string(body), `"smartListId":"s1"`) {
+		if !strings.Contains(string(body), `"smartListId":"7c1d2e3f-0000-4000-8000-000000000000"`) {
 			t.Fatalf("body=%s", body)
 		}
 		if calls.Add(1) == 1 {
@@ -574,7 +574,7 @@ func TestVerifyLineTypeRunsUntilDone(t *testing.T) {
 			_, _ = w.Write([]byte(`{"data":{"verified":1,"remaining":0,"done":true,"byLineType":{"landline":1}}}`))
 		}
 	}
-	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--smart-list", "s1", "--until-done", "--json"}, h)
+	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000", "--until-done", "--json"}, h)
 	if err != nil {
 		t.Fatal(err)
 	}

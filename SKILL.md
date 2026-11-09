@@ -61,9 +61,9 @@ These capabilities aren't available in any other tool for this API.
   ```bash
   conduyt-crm-pp-cli imports watch 3f2a9c1e-0000-0000-0000-000000000000 --verify
   ```
-- **`contacts verify-line-type`** — Counts unverified contacts and prints the tenant-paid Twilio cost without spending (--estimate); 'run --until-done' drives the batched verification to done. Requires the account's Phone Line-Type Verification setting (403 'not enabled' otherwise).
+- **`contacts verify-line-type`** — Counts unverified contacts and prints the tenant-paid Twilio cost without spending (--estimate); 'run --until-done' with one scope (--smart-list or --contact-ids) drives the batched verification to done. Requires the account's Phone Line-Type Verification setting (403 'not enabled' otherwise).
 
-  _Know the dollar exposure before spending it; then run 'contacts verify-line-type run --until-done' to verify._
+  _Know the dollar exposure before spending it; then run 'contacts verify-line-type run --until-done --smart-list <uuid>' (or --contact-ids <uuid,...>) to verify._
 
   ```bash
   conduyt-crm-pp-cli contacts verify-line-type --smart-list 7c1d2e3f-0000-0000-0000-000000000000 --estimate

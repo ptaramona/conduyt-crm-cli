@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil/testenv"
 	"github.com/ptaramona/conduyt-crm-cli/internal/store"
+	"gopkg.in/yaml.v3"
 )
 
 // Greptile P1 "Smart-list checks fail": members are read through GET /contacts?smartListId, never the add/remove-only
@@ -346,7 +348,7 @@ func TestNovel1219VerifyLineTypeRunStopsOnAnInvalidOrStalledBatch(t *testing.T) 
 		t.Run(tc.name, func(t *testing.T) {
 			testenv.Isolate(t)
 			var posts atomic.Int32
-			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--json"}, func(w http.ResponseWriter, r *http.Request) {
+			out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPost || r.URL.Path != "/contacts/verify-line-type" {
 					http.NotFound(w, r)
 					return
@@ -369,15 +371,15 @@ func TestNovel1219VerifyLineTypeRunStopsOnAnInvalidOrStalledBatch(t *testing.T) 
 func TestNovel1219VerifyLineTypeRunSendsContactIDs(t *testing.T) {
 	testenv.Isolate(t)
 	var body map[string]any
-	_, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--contact-ids", "a,b", "--json"}, func(w http.ResponseWriter, r *http.Request) {
+	_, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--contact-ids", "9e778307-e575-420b-b02c-dc9cc564febd,3f8a0c4e-1111-4222-8333-444455556666", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		_, _ = w.Write([]byte(`{"data":{"done":true,"verified":2,"remaining":0,"byLineType":{"mobile":2}}}`))
 	})
-	if err != nil || fmt.Sprint(body["contactIds"]) != "[a b]" {
+	if err != nil || fmt.Sprint(body["contactIds"]) != "[9e778307-e575-420b-b02c-dc9cc564febd 3f8a0c4e-1111-4222-8333-444455556666]" {
 		t.Fatalf("err=%v body=%v", err, body)
 	}
 	testenv.Isolate(t)
-	if _, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--contact-ids", "a", "--smart-list", "x"}, nil); ExitCode(err) != 2 {
+	if _, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--contact-ids", "9e778307-e575-420b-b02c-dc9cc564febd", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000"}, nil); ExitCode(err) != 2 {
 		t.Fatalf("--contact-ids with --smart-list: err=%v, want a usage error", err)
 	}
 }
@@ -599,7 +601,7 @@ func TestNovel1219VerifyLineTypeEstimateSourceRules(t *testing.T) {
 func TestNovel1219VerifyLineTypeRunRequiresByLineType(t *testing.T) {
 	testenv.Isolate(t)
 	var posts atomic.Int32
-	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--json"}, func(w http.ResponseWriter, r *http.Request) {
+	out, _, err := runNovel(t, []string{"contacts", "verify-line-type", "run", "--until-done", "--smart-list", "7c1d2e3f-0000-4000-8000-000000000000", "--json"}, func(w http.ResponseWriter, r *http.Request) {
 		posts.Add(1)
 		_, _ = w.Write([]byte(`{"data":{"done":true,"verified":1,"remaining":0}}`))
 	})
@@ -904,6 +906,9 @@ func (f faultyMirror) Query(ctx context.Context, q string, args ...any) (mirrorR
 	if f.stage == "query" && strings.Contains(q, "FROM resources") {
 		return nil, fmt.Errorf("injected query failure")
 	}
+	if f.stage == "sync-state" && strings.Contains(q, "FROM sync_state") {
+		return nil, fmt.Errorf("injected sync-state failure")
+	}
 	rows, err := f.inner.Query(ctx, q, args...)
 	if err != nil {
 		return nil, err
@@ -935,7 +940,7 @@ func TestNovel1219EveryLocalReadStageFailureFallsBackLive(t *testing.T) {
 		"local-1": `{"id":"local-1","phone":"+12125550102","lineType":"mobile","tags":[{"id":"t1","name":"leads"}]}`,
 		"local-2": `{"id":"local-2","phone":"+12125550103","lineType":"mobile","tags":[{"id":"t1","name":"leads"}]}`,
 	}
-	for _, stage := range []string{"query", "scan", "iterate", "close", "count-capped"} {
+	for _, stage := range []string{"sync-state", "query", "scan", "iterate", "close", "count-capped"} {
 		t.Run(stage, func(t *testing.T) {
 			testenv.Isolate(t)
 			db := syncedContactsMirror(t, mirrorRows)
@@ -1018,5 +1023,136 @@ func TestNovel1219NovelCommandHelpNeverClaimsDelivery(t *testing.T) {
 		if strings.Contains(text, "deliver") {
 			t.Fatalf("%s help mentions delivery:\n%s", path, text)
 		}
+	}
+}
+
+// ---- Codex novel1219-r4 regressions (r5) ----
+
+// Codex r4 P2 #1: the freshness decision uses the one sync-state read: an old mirror is never trusted when the
+// sync_state read succeeds, and a failing sync_state read is "mirror unusable" (covered by the sync-state stage of
+// TestNovel1219EveryLocalReadStageFailureFallsBackLive), never "not stale".
+func TestNovel1219FreshnessComesFromTheOneSyncStateRead(t *testing.T) {
+	testenv.Isolate(t)
+	db := syncedContactsMirror(t, map[string]string{"local-1": `{"id":"local-1","phone":"+12125550102","lineType":"mobile","tags":[{"id":"t1","name":"leads"}]}`})
+	s, err := store.Open(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB().Exec(`UPDATE sync_state SET last_synced_at = ? WHERE resource_type = 'contacts'`, time.Now().Add(-3*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	_ = s.Close()
+	var reads atomic.Int32
+	out, stderr, err := runNovel(t, []string{"send-check", "--tag", "leads", "--db", db, "--max-age", "1h", "--json"}, sendCheckLiveHandler(t, &reads))
+	if err != nil || reads.Load() == 0 || !strings.Contains(out, "live-1") || !strings.Contains(stderr, "older than --max-age") {
+		t.Fatalf("err=%v reads=%d out=%s stderr=%s", err, reads.Load(), out, stderr)
+	}
+	st, err := readContactsSyncState(context.Background(), faultyMirror{inner: sqlMirrorReader{}, stage: "sync-state"})
+	if err == nil || !st.SyncedAt.IsZero() {
+		t.Fatalf("a failing sync_state read must be an error, got %+v, %v", st, err)
+	}
+}
+
+// specOperationBodyProperties reads the requestBody property names of one operation from the repo's spec.yaml.
+func specOperationBodyProperties(t *testing.T, path, method string) map[string]bool {
+	t.Helper()
+	raw, err := os.ReadFile("../../spec.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Paths map[string]map[string]struct {
+			RequestBody struct {
+				Required bool `yaml:"required"`
+				Content  map[string]struct {
+					Schema struct {
+						Properties map[string]any `yaml:"properties"`
+					} `yaml:"schema"`
+				} `yaml:"content"`
+			} `yaml:"requestBody"`
+		} `yaml:"paths"`
+	}
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	op, ok := doc.Paths[path][method]
+	if !ok {
+		t.Fatalf("spec has no %s %s", method, path)
+	}
+	props := map[string]bool{}
+	for name := range op.RequestBody.Content["application/json"].Schema.Properties {
+		props[name] = true
+	}
+	return props
+}
+
+// Codex r4 P2 #2: the paid loop follows the route contract (POST /contacts/verify-line-type, operation
+// postContactsVerifyLineType in spec.yaml): exactly one stateless scope, smartListId a UUID or contactIds 1 to
+// 50,000 UUIDs, validated before any request; the body carries only that scope, a property the spec declares.
+func TestNovel1219VerifyLineTypeRunFollowsTheRouteContract(t *testing.T) {
+	props := specOperationBodyProperties(t, "/contacts/verify-line-type", "post")
+	for _, want := range []string{"smartListId", "contactIds"} {
+		if !props[want] {
+			t.Fatalf("spec postContactsVerifyLineType does not declare %s (props %v)", want, props)
+		}
+	}
+	const list = "7c1d2e3f-0000-4000-8000-000000000000"
+	tooMany := make([]string, verifyRunMaxContactIDs+1)
+	for i := range tooMany {
+		tooMany[i] = fmt.Sprintf("00000000-0000-4000-8000-%012d", i)
+	}
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"no scope", nil, "pass exactly one scope"},
+		{"both scopes", []string{"--smart-list", list, "--contact-ids", "9e778307-e575-420b-b02c-dc9cc564febd"}, "not both"},
+		{"invalid smart list", []string{"--smart-list", "s1"}, "--smart-list must be a UUID"},
+		{"mixed contact ids", []string{"--contact-ids", "9e778307-e575-420b-b02c-dc9cc564febd,not-a-uuid"}, "--contact-ids[1] must be a UUID"},
+		{"too many contact ids", []string{"--contact-ids", strings.Join(tooMany, ",")}, "at most 50000"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testenv.Isolate(t)
+			var posts atomic.Int32
+			_, _, err := runNovel(t, append([]string{"contacts", "verify-line-type", "run", "--until-done", "--json"}, tc.args...), func(w http.ResponseWriter, r *http.Request) {
+				posts.Add(1)
+				_, _ = w.Write([]byte(`{"data":{"done":true,"verified":0,"remaining":0,"byLineType":{}}}`))
+			})
+			if ExitCode(err) != 2 || posts.Load() != 0 || err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err=%v posts=%d", err, posts.Load())
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"smart list", []string{"--smart-list", list}, `{"smartListId":"` + list + `"}`},
+		{"contact ids", []string{"--contact-ids", "9e778307-e575-420b-b02c-dc9cc564febd, 3f8a0c4e-1111-4222-8333-444455556666"}, `{"contactIds":["9e778307-e575-420b-b02c-dc9cc564febd","3f8a0c4e-1111-4222-8333-444455556666"]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testenv.Isolate(t)
+			var body []byte
+			_, _, err := runNovel(t, append([]string{"contacts", "verify-line-type", "run", "--until-done", "--json"}, tc.args...), func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost || r.URL.Path != "/contacts/verify-line-type" {
+					http.NotFound(w, r)
+					return
+				}
+				body, _ = io.ReadAll(r.Body)
+				_, _ = w.Write([]byte(`{"data":{"done":true,"verified":1,"remaining":0,"byLineType":{"mobile":1}}}`))
+			})
+			if err != nil || compactTestJSON(string(body)) != tc.want {
+				t.Fatalf("err=%v body=%s want=%s", err, body, tc.want)
+			}
+			var sent map[string]any
+			_ = json.Unmarshal(body, &sent)
+			for key := range sent {
+				if !props[key] {
+					t.Fatalf("body key %q is not a spec property of postContactsVerifyLineType", key)
+				}
+			}
+		})
 	}
 }

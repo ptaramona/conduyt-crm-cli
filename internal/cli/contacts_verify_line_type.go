@@ -4,6 +4,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ptaramona/conduyt-crm-cli/internal/cliutil"
 	"github.com/ptaramona/conduyt-crm-cli/internal/store"
 	"github.com/spf13/cobra"
 	"os"
@@ -154,7 +155,7 @@ func newNovelContactsVerifyLineTypeRunCmd(flags *rootFlags) *cobra.Command {
 	var contactIDs []string
 	var maxBatches int
 	cmd := &cobra.Command{Use: "run", Short: "Run tenant-paid Twilio line-type verification", Long: "Drives the tenant-paid verification loop (~$0.008 per number, 50 lookups per batch) until done. Requires the account's Phone Line-Type Verification setting. Pass --until-done to acknowledge the paid operation. Every batch must carry done, verified and remaining; the loop stops at the first invalid batch or when remaining fails to decrease, and an unfinished run exits 5.", Example: strings.Trim(`
-  conduyt-crm-pp-cli contacts verify-line-type run --until-done
+  conduyt-crm-pp-cli contacts verify-line-type run --until-done --smart-list 7c1d2e3f-0000-4000-8000-000000000000
   conduyt-crm-pp-cli contacts verify-line-type run --until-done --contact-ids 9e778307-e575-420b-b02c-dc9cc564febd --json`, "\n"), Annotations: map[string]string{"mcp:read-only": "false", "pp:data-source": "live", "pp:happy-args": "--until-done"}, RunE: func(cmd *cobra.Command, args []string) error {
 		if !untilDone {
 			_ = cmd.Usage()
@@ -164,9 +165,13 @@ func newNovelContactsVerifyLineTypeRunCmd(flags *rootFlags) *cobra.Command {
 			_ = cmd.Usage()
 			return usageErr(fmt.Errorf("--max-batches must be positive"))
 		}
-		if smartList != "" && len(contactIDs) > 0 {
+		// PATCH(novel1219-verify-line-type) r5: the route (POST /contacts/verify-line-type, stateless scopes)
+		// requires exactly one of smartListId (a UUID) or contactIds (1 to 50,000 UUIDs; it drops invalid ids
+		// silently), so the scope is validated here before any request: never a scope-less {} body, never a
+		// mixed list that would verify only a subset.
+		if err := validateVerifyRunScope(smartList, contactIDs); err != nil {
 			_ = cmd.Usage()
-			return usageErr(fmt.Errorf("pass --smart-list or --contact-ids, not both"))
+			return usageErr(err)
 		}
 		if dryRunOK(flags) {
 			return writeDryRun(cmd.OutOrStdout(), flags, "contacts verify-line-type run")
@@ -182,7 +187,11 @@ func newNovelContactsVerifyLineTypeRunCmd(flags *rootFlags) *cobra.Command {
 			body["smartListId"] = smartList
 		}
 		if len(contactIDs) > 0 {
-			body["contactIds"] = contactIDs
+			trimmed := make([]string, len(contactIDs))
+			for i, id := range contactIDs {
+				trimmed[i] = strings.TrimSpace(id)
+			}
+			body["contactIds"] = trimmed
 		}
 		view := verifyRunView{ByLineType: map[string]int{}, Failures: []string{}}
 		var runErr error
@@ -264,8 +273,8 @@ func newNovelContactsVerifyLineTypeRunCmd(flags *rootFlags) *cobra.Command {
 	}}
 	cmd.Flags().BoolVar(&untilDone, "until-done", false, "Continue batches until verification is done")
 	cmd.Flags().IntVar(&maxBatches, "max-batches", 400, "Safety cap on verification batches")
-	cmd.Flags().StringVar(&smartList, "smart-list", "", "Limit to one smart list")
-	cmd.Flags().StringSliceVar(&contactIDs, "contact-ids", nil, "Explicit contact UUIDs to verify (max 50,000)")
+	cmd.Flags().StringVar(&smartList, "smart-list", "", "Smart list UUID whose members to verify (exclusive with --contact-ids)")
+	cmd.Flags().StringSliceVar(&contactIDs, "contact-ids", nil, "Explicit contact UUIDs to verify (1 to 50,000; exclusive with --smart-list)")
 	return cmd
 }
 
@@ -394,10 +403,13 @@ func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smar
 	}
 	defer db.Close()
 	reader := newMirrorReader(db.DB())
-	_, syncedAt, total, err := db.GetSyncState("contacts")
+	// PATCH(novel1219-verify-line-type) r5: sync state, attempt completeness and freshness come from one read
+	// through the mirror reader.
+	state, err := readContactsSyncState(cmd.Context(), reader)
 	if err != nil {
 		return unusable("reading sync state", err)
 	}
+	syncedAt, total := state.SyncedAt, state.Total
 	view.Synced = !syncedAt.IsZero()
 	if !view.Synced {
 		view.Hint = verifySyncHint(dbPath)
@@ -406,14 +418,10 @@ func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smar
 	view.Total = &total
 	reasons := make([]string, 0)
 	// PATCH(novel1219-verify-line-type) r3: an interrupted, aborted or in-progress sync attempt is not a mirror.
-	attemptComplete, err := contactsMirrorAttemptComplete(cmd.Context(), reader)
-	if err != nil {
-		return unusable("reading sync attempt state", err)
-	}
-	if !attemptComplete {
+	if !state.AttemptComplete {
 		reasons = append(reasons, "the last contacts sync attempt did not finish")
 	}
-	if hintIfStale(cmd, db, "contacts", flags.maxAge) {
+	if mirrorOlderThan(cmd, syncedAt, flags.maxAge) {
 		reasons = append(reasons, "local contacts mirror is older than --max-age")
 	}
 	rows, err := readMirrorRows(cmd.Context(), reader, `SELECT id,data FROM resources WHERE resource_type='contacts'`)
@@ -439,4 +447,29 @@ func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smar
 		reasons = append(reasons, fmt.Sprintf("local contacts mirror contains %d decoded rows but sync state reports total %d", view.Checked, total))
 	}
 	return view, reasons, nil
+}
+
+// verifyRunMaxContactIDs is the route's contactIds ceiling (MAX_IMPORT_ROWS).
+const verifyRunMaxContactIDs = 50000
+
+// validateVerifyRunScope enforces the route's scope contract before any request: exactly one of a smart-list UUID or
+// 1 to 50,000 contact UUIDs, every one valid.
+func validateVerifyRunScope(smartList string, contactIDs []string) error {
+	switch {
+	case smartList == "" && len(contactIDs) == 0:
+		return fmt.Errorf("pass exactly one scope: --smart-list <uuid> or --contact-ids <uuid,...>")
+	case smartList != "" && len(contactIDs) > 0:
+		return fmt.Errorf("pass --smart-list or --contact-ids, not both")
+	case smartList != "":
+		return cliutil.CheckUUID("--smart-list", smartList)
+	}
+	if len(contactIDs) > verifyRunMaxContactIDs {
+		return fmt.Errorf("--contact-ids takes at most %d ids (got %d)", verifyRunMaxContactIDs, len(contactIDs))
+	}
+	for i, id := range contactIDs {
+		if err := cliutil.CheckUUID(fmt.Sprintf("--contact-ids[%d]", i), strings.TrimSpace(id)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
