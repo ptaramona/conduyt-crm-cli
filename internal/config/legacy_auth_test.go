@@ -435,51 +435,59 @@ func TestLegacyAuthEmptyCurrentKeyNeverResurrectsALegacyKey(t *testing.T) {
 	})
 }
 
-// Codex r8 P1 #2 (re-save): the advertised re-save replaces the earlier key: the new token is sent, the earlier one
-// is never persisted as crm_bearer_auth, and the earlier keys are gone from the profile and global files.
-func TestLegacyAuthReSaveReplacesTheEarlierKey(t *testing.T) {
+// Codex r9 P1 #1 / r8 P1 #2 (re-save): auth set-token saves crm_bearer_auth, the top bearer key, into the global file
+// and into the explicit profile's existing credentials file; the old profile key stays in the file but is unreachable,
+// and the new token is sent, also with an env overlay at save time and with a mixed profile document.
+func TestLegacyAuthReSaveSendsTheNewToken(t *testing.T) {
 	const rotated = "ROTATED-SET-TOKEN-SECRET-5555"
-	isolateLegacyAuth(t)
-	configPath, credsPath := profilePaths(t)
-	writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\nbearer_auth = \""+legacyTokenA+"\"\n")
-	writeOwnerOnly(t, globalCredsPath(t), "base_url = \""+defaultBase+"\"\napi_key = \""+legacyTokenB+"\"\n")
-	cfg, err := Load(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.ConduytCrmBearerAuth != legacyTokenA {
-		t.Fatal("setup: profile legacy key not loaded")
-	}
-	cfg.AuthHeaderVal = ""
-	if err := cfg.SaveTokens("", "", rotated, "", cfg.TokenExpiry); err != nil { // what auth set-token does
-		t.Fatal(err)
-	}
-	after, err := Load(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if after.AuthHeader() != "Bearer "+rotated {
-		t.Fatal("after the re-save the earlier key is still sent")
-	}
-	for _, p := range []string{credsPath, globalCredsPath(t)} {
-		raw, err := os.ReadFile(p)
-		if err != nil && !os.IsNotExist(err) {
-			t.Fatal(err)
-		}
-		doc := string(raw)
-		if strings.Contains(strings.ReplaceAll(doc, "crm_bearer_auth", ""), "bearer_auth") || strings.Contains(doc, "api_key") || strings.Contains(doc, legacyTokenA) || strings.Contains(doc, legacyTokenB) {
-			t.Fatalf("%s still carries an earlier key or value after the re-save", filepath.Base(filepath.Dir(p))+"/"+filepath.Base(p))
-		}
+	for _, tc := range []struct{ name, profile, envOverlay string }{
+		{"legacy profile key", "base_url = \"" + defaultBase + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n", ""},
+		{"legacy profile key under an env overlay", "base_url = \"" + defaultBase + "\"\nbearer_auth = \"" + legacyTokenA + "\"\n", currentToken},
+		{"mixed profile with an older access token", "base_url = \"" + defaultBase + "\"\naccess_token = \"OLD-ACCESS-SECRET-7777\"\napi_key = \"" + legacyTokenB + "\"\n", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			isolateLegacyAuth(t)
+			configPath, credsPath := profilePaths(t)
+			writeOwnerOnly(t, credsPath, tc.profile)
+			writeOwnerOnly(t, globalCredsPath(t), "base_url = \""+defaultBase+"\"\napi_key = \""+legacyTokenB+"\"\n")
+			if tc.envOverlay != "" {
+				t.Setenv("CONDUYT_CRM_BEARER_AUTH", tc.envOverlay)
+			}
+			cfg, err := Load(configPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg.AuthHeaderVal = ""
+			if err := cfg.SaveBearerToken(rotated); err != nil { // what auth set-token does
+				t.Fatal(err)
+			}
+			setOrUnset(t, "CONDUYT_CRM_BEARER_AUTH", "")
+			after, err := Load(configPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if after.AuthHeader() != "Bearer "+rotated {
+				t.Fatal("after the re-save the new token is not the one sent")
+			}
+			raw, _ := os.ReadFile(credsPath)
+			if !strings.Contains(string(raw), rotated) {
+				t.Fatal("the profile credentials file was not given crm_bearer_auth")
+			}
+			for _, key := range []string{"bearer_auth = ", "api_key = ", "access_token = "} {
+				if strings.Contains(tc.profile, "\n"+key) && !strings.Contains(string(raw), key) {
+					t.Fatalf("the re-save removed %q from the profile file; only crm_bearer_auth may change", key)
+				}
+			}
+		})
 	}
 }
 
-// Codex r8 P1 #2 (logout): logout clears the explicit profile's credentials file as well as the global one, so the
-// next load finds no credential, legacy or current.
-func TestLegacyAuthLogoutClearsTheProfileAndGlobalFiles(t *testing.T) {
+// Codex r8 P1 #2 (logout): logout writes crm_bearer_auth = "" (explicitly cleared) into the explicit profile's file;
+// the old keys stay in it but are unreachable, so the next load finds no credential. No file is deleted.
+func TestLegacyAuthLogoutClearsWithoutDeleting(t *testing.T) {
 	isolateLegacyAuth(t)
 	configPath, credsPath := profilePaths(t)
-	writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\nbearer_auth = \""+legacyTokenA+"\"\n")
-	writeOwnerOnly(t, globalCredsPath(t), "base_url = \""+defaultBase+"\"\ncrm_bearer_auth = \""+currentToken+"\"\n")
+	writeOwnerOnly(t, credsPath, "base_url = \""+defaultBase+"\"\nbearer_auth = \""+legacyTokenA+"\"\napi_key = \""+legacyTokenB+"\"\n")
 	cfg, err := Load(configPath)
 	if err != nil {
 		t.Fatal(err)
@@ -494,20 +502,28 @@ func TestLegacyAuthLogoutClearsTheProfileAndGlobalFiles(t *testing.T) {
 	if after.AuthHeader() != "" || after.ConduytCrmBearerAuth != "" {
 		t.Fatal("a credential survived logout")
 	}
-	for _, p := range []string{credsPath, globalCredsPath(t)} {
-		if _, err := os.Stat(p); !os.IsNotExist(err) {
-			t.Fatalf("%s survived logout", p)
-		}
+	raw, err := os.ReadFile(credsPath)
+	if err != nil {
+		t.Fatalf("the profile credentials file was deleted: %v", err)
+	}
+	doc := string(raw)
+	if !strings.Contains(doc, "crm_bearer_auth = ''") && !strings.Contains(doc, "crm_bearer_auth = \"\"") || !strings.Contains(doc, legacyTokenA) || !strings.Contains(doc, legacyTokenB) {
+		t.Fatal("logout must only set crm_bearer_auth to \"\" and leave the rest of the file as it is")
+	}
+	if err := cliutil.VerifyCredsPerms(credsPath); err != nil {
+		t.Fatalf("rewritten profile file is not owner-only: %v", err)
 	}
 }
 
-// Logout never follows a symlinked profile data directory (the loader refuses it too).
+// Logout never follows a symlinked profile data directory (the loader refuses it too), and leaves an unsafe profile
+// file alone (the loader refuses it and suppresses the global fallback).
 func TestLegacyAuthLogoutDoesNotFollowASymlinkedProfileDataDir(t *testing.T) {
 	isolateLegacyAuth(t)
 	configPath, credsPath := profilePaths(t)
 	elsewhere := filepath.Join(t.TempDir(), "data")
 	target := filepath.Join(elsewhere, filepath.Base(credsPath))
-	writeOwnerOnly(t, target, "base_url = \""+defaultBase+"\"\ncrm_bearer_auth = \""+currentToken+"\"\n")
+	body := "base_url = \"" + defaultBase + "\"\ncrm_bearer_auth = \"" + currentToken + "\"\n"
+	writeOwnerOnly(t, target, body)
 	if err := os.MkdirAll(filepath.Dir(filepath.Dir(credsPath)), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -521,7 +537,25 @@ func TestLegacyAuthLogoutDoesNotFollowASymlinkedProfileDataDir(t *testing.T) {
 	if err := cfg.ClearTokens(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(target); err != nil {
-		t.Fatal("logout removed a file through a symlinked profile data directory")
+	if raw, err := os.ReadFile(target); err != nil || string(raw) != body {
+		t.Fatal("logout wrote or removed a file through a symlinked profile data directory")
+	}
+}
+
+// The auth-compat code has no file deletion path: no os.Remove / RemoveAll anywhere in it, and the profile writer's
+// only unlink is of its own temp file.
+func TestLegacyAuthHasNoFileDeletionPath(t *testing.T) {
+	for _, f := range []string{"legacy_auth.go", "../cliutil/creds_profile_write_unix.go", "../cliutil/creds_profile_write_windows.go"} {
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(src)
+		if strings.Contains(text, "os.Remove(") || strings.Contains(text, "os.RemoveAll(") || strings.Contains(text, "RemoveCredentials(") {
+			t.Fatalf("%s has a file deletion path", f)
+		}
+		if n := strings.Count(text, "Unlinkat("); n != strings.Count(text, "Unlinkat(dirfd, tmpName, 0)") {
+			t.Fatalf("%s unlinks something other than its own temp file", f)
+		}
 	}
 }

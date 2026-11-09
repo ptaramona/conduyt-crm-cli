@@ -14,17 +14,30 @@ import (
 )
 
 func TestAuthLogoutReportsLegacyEnvNames(t *testing.T) {
-	for _, name := range []string{"CONDUYT_BEARER_AUTH", "CONDUYT_API_KEY"} {
-		t.Run(name, func(t *testing.T) {
+	const placeholder = "${user_config.conduyt_crm_bearer_auth}"
+	for _, tc := range []struct {
+		name string
+		env  map[string]string // "" value = set to blank
+		want string            // "" = no env var still supplies a token
+	}{
+		{"current", map[string]string{"CONDUYT_CRM_BEARER_AUTH": "CURRENT-ENV-SECRET-6666"}, "CONDUYT_CRM_BEARER_AUTH"},
+		{"bearer auth", map[string]string{"CONDUYT_BEARER_AUTH": "LEGACY-ENV-SECRET-6666"}, "CONDUYT_BEARER_AUTH"},
+		{"api key", map[string]string{"CONDUYT_API_KEY": "LEGACY-ENV-SECRET-6666"}, "CONDUYT_API_KEY"},
+		{"current placeholder, bearer auth set", map[string]string{"CONDUYT_CRM_BEARER_AUTH": placeholder, "CONDUYT_BEARER_AUTH": "LEGACY-ENV-SECRET-6666"}, "CONDUYT_BEARER_AUTH"},
+		{"current placeholder, api key set", map[string]string{"CONDUYT_CRM_BEARER_AUTH": placeholder, "CONDUYT_API_KEY": "LEGACY-ENV-SECRET-6666"}, "CONDUYT_API_KEY"},
+		{"current placeholder only", map[string]string{"CONDUYT_CRM_BEARER_AUTH": placeholder}, ""},
+		{"blank current blocks a legacy name", map[string]string{"CONDUYT_CRM_BEARER_AUTH": "", "CONDUYT_BEARER_AUTH": "LEGACY-ENV-SECRET-6666"}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			for _, asJSON := range []bool{true, false} {
 				testenv.Isolate(t)
-				t.Setenv("CONDUYT_CRM_BEARER_AUTH", "")
-				_ = os.Unsetenv("CONDUYT_CRM_BEARER_AUTH")
-				t.Setenv("CONDUYT_BEARER_AUTH", "")
-				_ = os.Unsetenv("CONDUYT_BEARER_AUTH")
-				t.Setenv("CONDUYT_API_KEY", "")
-				_ = os.Unsetenv("CONDUYT_API_KEY")
-				t.Setenv(name, "LEGACY-ENV-SECRET-6666")
+				for _, n := range []string{"CONDUYT_CRM_BEARER_AUTH", "CONDUYT_BEARER_AUTH", "CONDUYT_API_KEY"} {
+					t.Setenv(n, "")
+					_ = os.Unsetenv(n)
+				}
+				for n, v := range tc.env {
+					t.Setenv(n, v)
+				}
 				args := []string{"auth", "logout"}
 				if asJSON {
 					args = append(args, "--json")
@@ -40,10 +53,13 @@ func TestAuthLogoutReportsLegacyEnvNames(t *testing.T) {
 				if err != nil {
 					t.Fatalf("%v: %v", args, err)
 				}
-				if !strings.Contains(out, name+" env var is still set") || strings.Contains(out, "Logged out. Credentials cleared.") {
-					t.Fatalf("%v: output %q does not name %s as still set", args, out, name)
+				if tc.want != "" && (!strings.Contains(out, tc.want+" env var is still set") || strings.Contains(out, "Logged out. Credentials cleared.")) {
+					t.Fatalf("%v: output %q does not name %s as still set", args, out, tc.want)
 				}
-				if strings.Contains(out+stderr, "LEGACY-ENV-SECRET-6666") {
+				if tc.want == "" && strings.Contains(out, "env var is still set") {
+					t.Fatalf("%v: output %q names an env var although none supplies a token", args, out)
+				}
+				if strings.Contains(out+stderr, "ENV-SECRET-6666") {
 					t.Fatalf("%v leaks the env value", args)
 				}
 			}

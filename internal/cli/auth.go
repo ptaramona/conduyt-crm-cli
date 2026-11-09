@@ -6,7 +6,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 
@@ -185,7 +184,9 @@ func newAuthSetTokenCmd(flags *rootFlags) *cobra.Command {
 			// log line): a masked-tail variant could leak token bytes through
 			// scripted dogfood that captures stderr.
 			cfg.AuthHeaderVal = ""
-			if err := cfg.SaveTokens("", "", token, "", cfg.TokenExpiry); err != nil {
+			// PATCH(novel1219-auth-compat): saved as crm_bearer_auth, the key AuthHeader ranks above access_token, so
+			// no earlier bearer (current or legacy) shadows the re-saved token.
+			if err := cfg.SaveBearerToken(token); err != nil {
 				return configErr(fmt.Errorf("saving token: %w", err))
 			}
 
@@ -237,14 +238,9 @@ func newAuthLogoutCmd(flags *rootFlags) *cobra.Command {
 
 			// Identify which (if any) auth env var is still exported so the
 			// JSON envelope and the human prose can both surface it.
-			envStillSet := ""
-			if envStillSet == "" && os.Getenv("CONDUYT_CRM_BEARER_AUTH") != "" {
-				envStillSet = "CONDUYT_CRM_BEARER_AUTH"
-			}
-			if envStillSet == "" {
-				// PATCH(novel1219-auth-compat): the legacy env names supply a token too, and logout cannot clear them.
-				envStillSet = config.LegacyAuthEnvInEffect()
-			}
+			// PATCH(novel1219-auth-compat): the env var Load actually takes the token from (current or legacy name,
+			// MCP placeholders not counted), which logout cannot clear.
+			envStillSet := config.EffectiveAuthEnv()
 
 			// JSON envelope: {cleared: true, note?: "<env_var> env var is still set"}.
 			if flags.asJSON {

@@ -13,7 +13,10 @@ package config
 //     file is refused and that refusal suppresses the global fallback exactly as for crm_bearer_auth. A document
 //     that carries crm_bearer_auth uses it only; within a document the normal field precedence (auth_header, then
 //     the bearer token, then the OAuth token) is unchanged.
-//   - Nothing is ever rewritten. One notice names the file and the command that re-saves the token.
+//   - Load never writes. The existing writers write only the current key: auth set-token (SaveBearerToken) writes
+//     crm_bearer_auth = <token> and auth logout (ClearTokens) writes crm_bearer_auth = "" into the files the loader
+//     reads for the scope; the earlier keys stay where they are and become unreachable. No file is ever deleted by
+//     this code. One notice names the file and the re-save command.
 //   - No secret value is ever printed.
 
 import (
@@ -86,7 +89,7 @@ func (c *Config) noteLegacyKey() {
 		c.legacyKey = nil
 		return
 	}
-	legacyAuthNotice("key:"+src.Path, "%s saves the token under the earlier key %s; it is used as is. Re-save it under crm_bearer_auth with '%s' (the CLI does not rewrite the file)", src.Path, src.Key, legacyResaveCommand)
+	legacyAuthNotice("key:"+src.Path, "%s saves the token under the earlier key %s; it is used as is. Re-save it with '%s' (that writes crm_bearer_auth, after which the earlier key is ignored)", src.Path, src.Key, legacyResaveCommand)
 }
 
 // envNameDecides reports whether an env var is set to a real value, including an empty or blank one: a set name
@@ -129,43 +132,34 @@ func (c *Config) applyLegacyEnvBearer() {
 	legacyAuthNotice("env:"+name, "%s is deprecated; set CONDUYT_CRM_BEARER_AUTH instead (the value is used for now)", name)
 }
 
-// dropLegacyBearer runs at the start of SaveTokens: when the bearer in effect came from an earlier saved key, it is
-// cleared so the newly saved token is the one sent, and the earlier value is never persisted as crm_bearer_auth.
-func (c *Config) dropLegacyBearer() {
-	if c.legacyKey == nil || c.ConduytCrmBearerAuth != c.legacyKey.Token {
-		return
-	}
-	c.ConduytCrmBearerAuth = ""
+// SaveBearerToken is what auth set-token saves: the token as crm_bearer_auth, the top bearer key, through the existing
+// saver (global credentials file, config document), and, for an explicit profile whose own credentials file exists,
+// into that file too (cliutil.SetProfileBearer), since the loader reads it first. The file-layer snapshot and the
+// env override marker are updated directly, so an env overlay never makes the save persist the old value. Earlier
+// keys are not removed: a present crm_bearer_auth makes them unreachable.
+func (c *Config) SaveBearerToken(token string) error {
+	c.ConduytCrmBearerAuth = token
+	delete(c.envOverrides, "ConduytCrmBearerAuth")
 	c.updateFileConfigField("ConduytCrmBearerAuth")
 	c.legacyKey = nil
-}
-
-// scrubLegacyCredentialFiles runs after a successful SaveTokens: the earlier keys are removed from the explicit
-// profile's credentials file and the global one, through cliutil's checked-descriptor read and private writer (the
-// config document drops them on every save already, since only current fields are marshalled).
-func (c *Config) scrubLegacyCredentialFiles() error {
-	if c.AgentcookieManagedByExternalStore() {
-		return nil
+	if err := c.saveCredentialsThenConfig(); err != nil {
+		return err
 	}
-	if c.explicitConfig {
-		if path, err := cliutil.CredentialsFilePathForConfig(c.Path); err == nil {
-			if err := cliutil.ScrubLegacyCredentialKeys(path, true); err != nil {
-				return err
-			}
-		}
-	}
-	if path, err := cliutil.CredentialsFilePath(); err == nil {
-		if err := cliutil.ScrubLegacyCredentialKeys(path, false); err != nil {
-			return err
-		}
+	if c.explicitConfig && !c.AgentcookieManagedByExternalStore() {
+		return cliutil.SetProfileBearer(c.Path, token)
 	}
 	return nil
 }
 
-// LegacyAuthEnvInEffect names the legacy env var that supplies the token (the same rule Load applies), or "".
-// Logout reports it like CONDUYT_CRM_BEARER_AUTH: an env credential cannot be removed by logout.
-func LegacyAuthEnvInEffect() string {
+// EffectiveAuthEnv names the env var that supplies the token under Load's own rules, or "" when none does:
+// CONDUYT_CRM_BEARER_AUTH decides when it is set (an unresolved MCP placeholder does not count as set) and supplies a
+// token when its effective value is non-empty; otherwise the first set legacy name decides. Logout reports exactly
+// this name.
+func EffectiveAuthEnv() string {
 	if envNameDecides("CONDUYT_CRM_BEARER_AUTH") {
+		if cliutil.EnvOverride("CONDUYT_CRM_BEARER_AUTH") != "" {
+			return "CONDUYT_CRM_BEARER_AUTH"
+		}
 		return ""
 	}
 	name, _ := legacyEnvBearer()

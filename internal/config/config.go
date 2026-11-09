@@ -899,7 +899,6 @@ func (c *Config) MarkCredentialsExplicit(clientID, clientSecret bool) {
 }
 
 func (c *Config) SaveTokens(clientID, clientSecret, accessToken, refreshToken string, expiry time.Time) error {
-	c.dropLegacyBearer() // PATCH(novel1219-auth-compat): a re-save is never shadowed by, nor persists, an earlier key
 	c.ClientID = clientID
 	c.ClientSecret = clientSecret
 	c.AccessToken = accessToken
@@ -913,10 +912,7 @@ func (c *Config) SaveTokens(clientID, clientSecret, accessToken, refreshToken st
 	c.updateFileConfigField("AccessToken")
 	c.updateFileConfigField("RefreshToken")
 	c.updateFileConfigField("TokenExpiry")
-	if err := c.saveCredentialsThenConfig(); err != nil {
-		return err
-	}
-	return c.scrubLegacyCredentialFiles() // PATCH(novel1219-auth-compat)
+	return c.saveCredentialsThenConfig()
 }
 
 func (c *Config) ClearTokens() error {
@@ -958,9 +954,9 @@ func (c *Config) ClearTokens() error {
 		return err
 	}
 	// PATCH(novel1219-auth-compat): an explicit profile's own credentials file is loaded before the global one, so
-	// logout removes it too; otherwise the next invocation authenticates again from it.
+	// logout also writes its current key as explicitly cleared (""); every earlier key there becomes unreachable.
 	if c.explicitConfig {
-		if err := cliutil.RemoveProfileCredentials(c.Path); err != nil {
+		if err := cliutil.SetProfileBearer(c.Path, ""); err != nil {
 			return err
 		}
 	}
