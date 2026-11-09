@@ -641,6 +641,7 @@ func syncResource(ctx context.Context, c interface {
 	flatReconcilable := resourceIsFlatReconcilable(reconcileMode)
 	outcome := partitionOutcome{}
 	var seenIDs []string
+	pageVisits := syncPageVisits{} // PATCH(novel1219-activities-list-page-number)
 
 	for {
 		params := map[string]string{}
@@ -655,6 +656,13 @@ func syncResource(ctx context.Context, c interface {
 				params[pageSize.limitParam] = strconv.Itoa(pageSize.limit)
 			}
 			cursor = seedSyncPageCursor(params, pageSize, cursor)
+			if err := pageVisits.visit(pageSize, cursor); err != nil {
+				err = fmt.Errorf("syncing %s: %w", resource, err)
+				if !humanFriendly {
+					fmt.Fprintln(syncEvents, syncErrorJSON(resource, "", err))
+				}
+				return syncResult{Resource: resource, Count: totalCount, Err: err, Duration: time.Since(started)}
+			}
 		}
 
 		// Set since filter
@@ -1988,23 +1996,53 @@ func seedSyncPageCursor(params map[string]string, pageSize paginationDefaults, c
 	return cursor
 }
 
-// nextSyncPageNumber advances a page-number cursor by one. An empty cursor
-// means page one was implicit, so the next request is page 2. Numeric 0
-// advances to 1 so a zero-based first page is not skipped.
 // normalizePageContinuation is the one page-numbered continuation rule shared by the flat sync loop and the
-// dependent (per-parent) loop. For page pagination any non-empty body continuation proves there is a next page, so
-// the walk goes on whatever the page's length (provedMore lets the short-page end checks skip it). A numeric
-// continuation is the next page number as is; a non-numeric one (GET /activities returns an opaque
-// meta.next_cursor) is never sent as page= (a 500) and is replaced by the next page number.
+// dependent (per-parent) loop. A non-numeric body continuation (GET /activities returns an opaque meta.next_cursor)
+// proves a next page and is replaced by the next page number, because it is never sent as page= (a 500). A numeric
+// continuation proves a next page only when it advances past the page just fetched; one that points back or at the
+// same page proves nothing, and if the walk follows it anyway syncPageVisits ends the walk with an error.
+// provedMore lets the short-page end checks skip a page that carried a real continuation.
 // PATCH(novel1219-activities-list-page-number)
 func normalizePageContinuation(pageSize paginationDefaults, cursor, nextCursor string, hasMore bool) (string, bool, bool) {
 	if pageSize.cursorType != "page" || nextCursor == "" {
 		return nextCursor, hasMore, false
 	}
 	if !isSyncPageNumber(nextCursor) {
-		nextCursor = nextSyncPageNumber(cursor)
+		return nextSyncPageNumber(cursor), true, true
 	}
-	return nextCursor, true, true
+	if n, _ := strconv.Atoi(nextCursor); n > syncCurrentPage(pageSize, cursor) {
+		return nextCursor, true, true
+	}
+	return nextCursor, hasMore, false
+}
+
+// syncCurrentPage is the page number a page-numbered request just asked for: the cursor, else the declared first
+// page, else the implicit page one. PATCH(novel1219-activities-list-page-number)
+func syncCurrentPage(pageSize paginationDefaults, cursor string) int {
+	for _, v := range []string{cursor, pageSize.initialCursor} {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+	}
+	return 1
+}
+
+// syncPageVisits is the per-walk set of page numbers a page-numbered sync has requested, shared by the flat and the
+// dependent loops. Requesting a page twice in one walk means the API's continuation went backwards or in a circle;
+// the walk ends with an error instead of looping (--max-pages is unlimited by default).
+// PATCH(novel1219-activities-list-page-number)
+type syncPageVisits map[int]bool
+
+func (v syncPageVisits) visit(pageSize paginationDefaults, cursor string) error {
+	if pageSize.cursorType != "page" {
+		return nil
+	}
+	page := syncCurrentPage(pageSize, cursor)
+	if v[page] {
+		return fmt.Errorf("page-numbered pagination asked for page %d twice in one walk: the API's continuation went backwards, so sync stopped instead of looping", page)
+	}
+	v[page] = true
+	return nil
 }
 
 // isSyncPageNumber reports whether a page-numbered cursor is a usable page number (a non-negative integer; 0 is a
@@ -2014,6 +2052,9 @@ func isSyncPageNumber(cursor string) bool {
 	return err == nil && n >= 0
 }
 
+// nextSyncPageNumber advances a page-number cursor by one. An empty cursor
+// means page one was implicit, so the next request is page 2. Numeric 0
+// advances to 1 so a zero-based first page is not skipped.
 func nextSyncPageNumber(cursor string) string {
 	currentPage, err := strconv.Atoi(cursor)
 	if err != nil {
@@ -4268,6 +4309,7 @@ func syncOneParent(
 
 	outcome := partitionOutcome{scopeVal: parentID}
 	var seenIDs []string
+	pageVisits := syncPageVisits{} // PATCH(novel1219-activities-list-page-number)
 
 	for {
 		params := map[string]string{}
@@ -4281,6 +4323,16 @@ func syncOneParent(
 				params[pageSize.limitParam] = strconv.Itoa(pageSize.limit)
 			}
 			cursor = seedSyncPageCursor(params, pageSize, cursor)
+			if err := pageVisits.visit(pageSize, cursor); err != nil {
+				outcome.reason = "page_revisited"
+				rep.failure = fmt.Errorf("%s parent %s: %w", dep.Name, parentID, err)
+				if humanFriendly {
+					fmt.Fprintf(os.Stderr, "\n  %s: %v\n", dep.Name, rep.failure)
+				} else {
+					fmt.Fprintln(syncEvents, syncErrorJSON(dep.Name, parentID, rep.failure))
+				}
+				break
+			}
 		}
 		if depSinceTS != "" {
 			params[depSinceParam] = depSinceTS

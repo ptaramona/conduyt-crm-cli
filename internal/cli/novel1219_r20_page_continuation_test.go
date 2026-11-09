@@ -5,9 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/ptaramona/conduyt-crm-cli/internal/client"
@@ -127,6 +130,9 @@ func TestNovel1219NormalizePageContinuation(t *testing.T) {
 		{"1", "2", false, "2", true, true},
 		{"1", "", false, "", false, false},
 		{"1", "", true, "", true, false},
+		{"2", "1", true, "1", true, false},
+		{"2", "2", false, "2", false, false},
+		{"", "1", true, "1", true, false},
 	}
 	for _, tc := range cases {
 		next, more, proved := normalizePageContinuation(page, tc.cursor, tc.next, tc.hasMore)
@@ -137,5 +143,116 @@ func TestNovel1219NormalizePageContinuation(t *testing.T) {
 	cursorType := paginationDefaults{cursorParam: "cursor", cursorType: "cursor"}
 	if next, more, proved := normalizePageContinuation(cursorType, "", novel1219Keyset, true); next != novel1219Keyset || !more || proved {
 		t.Errorf("cursor pagination must pass its token through unchanged; got %q %v %v", next, more, proved)
+	}
+}
+
+// PATCH(novel1219-activities-list-page-number): Codex novel1219-r20 (1 P2). A page API that answers page=1 with a
+// next of "2" and page=2 with a next of "1" must not alternate forever: a numeric continuation proves more only when it
+// advances, and syncPageVisits ends a walk that asks for a page twice.
+
+// novel1219CycleAPI serves rows per page and a numeric next that points page 2 back at page 1.
+type novel1219CycleAPI struct {
+	rows  int
+	pages []string
+}
+
+// page returns the rows and the next token for a requested page: page 2 points back at "1", any other page at "2".
+func (a *novel1219CycleAPI) page(p string) (rows, next string) {
+	next, page := `"2"`, 1
+	if p == "2" {
+		next, page = `"1"`, 2
+	}
+	out := make([]string, a.rows)
+	for i := range out {
+		out[i] = `{"id":"row-` + strconv.Itoa(page) + `-` + strconv.Itoa(i) + `","createdAt":"2026-11-0` + strconv.Itoa(9-page) + `T00:00:00Z"}`
+	}
+	return "[" + strings.Join(out, ",") + "]", next
+}
+
+func (a *novel1219CycleAPI) Get(_ context.Context, _ string, params map[string]string) (json.RawMessage, error) {
+	a.pages = append(a.pages, params["page"])
+	if len(a.pages) > 6 {
+		return nil, &client.APIError{Method: "GET", Path: "/cycle", StatusCode: 599, Body: "test: the walk looped"}
+	}
+	rows, next := a.page(params["page"])
+	return json.RawMessage(`{"data":` + rows + `,"meta":{"next_cursor":` + next + `}}`), nil
+}
+
+func (a *novel1219CycleAPI) RateLimit() float64 { return 0 }
+
+func novel1219RunDependentCycle(t *testing.T, api *novel1219CycleAPI) parentReport {
+	t.Helper()
+	db, err := store.Open(filepath.Join(t.TempDir(), "d.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	dep := dependentResourceDef{Name: "activities", ParentTable: "parents", PathTemplate: "/parents/{id}/children", PathParams: []dependentPathParamDef{{Param: "id", Field: "id"}}}
+	pageSize := paginationDefaults{cursorParam: "page", cursorType: "page", initialCursor: "1", limitParam: "per_page", limit: 3}
+	return syncOneParent(context.Background(), api, db, dep, map[string]string{"id": "p1"}, dep.PathParams, pageSize, "", "", 0, false, false, nil, io.Discard, "")
+}
+
+// Short A/B pages: page 2's backward "1" proves nothing, so the short page ends the walk after two requests.
+func TestNovel1219DependentBackwardNumericTokenOnShortPageEnds(t *testing.T) {
+	api := &novel1219CycleAPI{rows: 1}
+	rep := novel1219RunDependentCycle(t, api)
+	if len(api.pages) != 2 || rep.failure != nil || !rep.complete || rep.stored != 2 {
+		t.Fatalf("pages %q stored %d complete %v failure %v; want page one, page=2, then the end", api.pages, rep.stored, rep.complete, rep.failure)
+	}
+}
+
+// Full A/B pages: following page 2's "1" would revisit page one; the walk ends with an error instead of looping.
+func TestNovel1219DependentRevisitedPageEndsWithAnError(t *testing.T) {
+	api := &novel1219CycleAPI{rows: 3}
+	rep := novel1219RunDependentCycle(t, api)
+	if len(api.pages) != 2 || rep.failure == nil || rep.complete || !strings.Contains(rep.failure.Error(), "twice") {
+		t.Fatalf("pages %q complete %v failure %v; want two requests and a revisit error", api.pages, rep.complete, rep.failure)
+	}
+}
+
+func novel1219FlatCycle(t *testing.T, rows int) (pages []string, out string, err error) {
+	t.Helper()
+	api := &novel1219CycleAPI{rows: rows}
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		p := r.URL.Query().Get("page")
+		pages = append(pages, p)
+		w.Header().Set("Content-Type", "application/json")
+		if len(pages) > 6 {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = io.WriteString(w, `{"error":"test: the walk looped"}`)
+			return
+		}
+		rows, next := api.page(p)
+		_, _ = io.WriteString(w, `{"data":{"data":`+rows+`,"meta":{"per_page":50,"next_cursor":`+next+`}}}`)
+	}))
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
+	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
+	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(dir, "config.toml"))
+	t.Setenv("CONDUYT_CRM_NO_LEARN", "true")
+	t.Setenv("HOME", dir)
+	out, err = novel1219Sync(t, filepath.Join(dir, "a.db"), "--full")
+	mu.Lock()
+	defer mu.Unlock()
+	return append([]string(nil), pages...), out, err
+}
+
+// Flat loop, short A/B pages (activities sync pages 50 at a time): two requests, then the end.
+func TestNovel1219SyncBackwardNumericTokenOnShortPageEnds(t *testing.T) {
+	pages, out, err := novel1219FlatCycle(t, 1)
+	if err != nil || len(pages) != 2 || !strings.Contains(out, `"total_records": 2`) {
+		t.Fatalf("pages %q err %v; want page one, page=2, then the end with 2 records: %s", pages, err, out)
+	}
+}
+
+// Flat loop, full A/B pages: the revisit of page one ends the sync with an error after two requests.
+func TestNovel1219SyncRevisitedPageEndsWithAnError(t *testing.T) {
+	pages, out, err := novel1219FlatCycle(t, 50)
+	if err == nil || len(pages) != 2 {
+		t.Fatalf("pages %q err %v; want two requests and a revisit error: %s", pages, err, out)
 	}
 }
