@@ -50,9 +50,12 @@ type Config struct {
 	ConduytCrmBearerAuth string          `toml:"crm_bearer_auth"`
 	// legacyKey is the earlier entry's saved key that supplied the token, if any. PATCH(novel1219-auth-compat)
 	legacyKey *legacyKeySource
-	// explicitConfig records an explicit --config / CONDUYT_CRM_CONFIG load, whose profile credentials file the
-	// loader reads before the global one. PATCH(novel1219-auth-compat)
-	explicitConfig bool
+	// legacyConfigToken holds a config document's earlier-key token until every current source has been read; it is
+	// used only when no current credential of any kind exists. PATCH(novel1219-auth-compat)
+	legacyConfigToken *legacyKeySource
+	legacyGlobalToken *legacyKeySource
+	// legacyToken is the earlier-key token in use; AuthHeader sends it only when no current credential exists.
+	legacyToken string
 }
 
 func Load(configPath string) (*Config, error) {
@@ -66,7 +69,6 @@ func Load(configPath string) (*Config, error) {
 		return nil, err
 	}
 	cfg.Path = path
-	cfg.explicitConfig = explicitConfigFile // PATCH(novel1219-auth-compat)
 
 	if explicitConfigFile {
 		// Keep non-secret settings from a readable config even when its
@@ -86,9 +88,11 @@ func Load(configPath string) (*Config, error) {
 		}
 	}
 	cfg.Path = path
+	cfg.deferLegacyConfigToken() // PATCH(novel1219-auth-compat): an earlier config key waits below every current source
 	if err := cfg.applyStoredCredentials(explicitConfigFile, path); err != nil {
 		return nil, err
 	}
+	cfg.resolveLegacyTokens() // PATCH(novel1219-auth-compat): used only when no current credential of any kind exists
 	// Label credentials that arrived from the config or credentials file
 	// before env overrides, so an env value still replaces them.
 	if cfg.AuthSource == "" && cfg.hasCredentialFields() {
@@ -593,6 +597,11 @@ func (c *Config) AuthHeader() string {
 		c.stampAuthSource("oauth2", true)
 		return "Bearer " + c.AccessToken
 	}
+	// PATCH(novel1219-auth-compat): an earlier saved key, last of all; held outside every persisted field, so no save
+	// ever writes it back.
+	if c.legacyToken != "" {
+		return "Bearer " + c.legacyToken
+	}
 	return ""
 }
 
@@ -761,9 +770,9 @@ func (c *Config) applyCredentials(creds *cliutil.Credentials) {
 	}
 	if c.ConduytCrmBearerAuth == "" {
 		c.ConduytCrmBearerAuth = creds.ConduytCrmBearerAuth
-		if creds.LegacyKey != "" && creds.ConduytCrmBearerAuth != "" { // PATCH(novel1219-auth-compat)
-			c.legacyKey = &legacyKeySource{Path: creds.LegacyPath, Key: creds.LegacyKey, Token: creds.ConduytCrmBearerAuth}
-		}
+	}
+	if creds.LegacyToken != "" && c.legacyGlobalToken == nil { // PATCH(novel1219-auth-compat): held, not applied
+		c.legacyGlobalToken = &legacyKeySource{Path: creds.LegacyPath, Key: creds.LegacyKey, Token: creds.LegacyToken}
 	}
 }
 
@@ -953,14 +962,6 @@ func (c *Config) ClearTokens() error {
 	if err := cliutil.RemoveCredentials(); err != nil {
 		return err
 	}
-	// PATCH(novel1219-auth-compat): an explicit profile's own credentials file is loaded before the global one, so
-	// logout also writes its current key as explicitly cleared (""); every earlier key there becomes unreachable.
-	if c.explicitConfig {
-		if err := cliutil.SetProfileBearer(c.Path, ""); err != nil {
-			return err
-		}
-	}
-	c.legacyKey = nil
 	return c.save()
 }
 

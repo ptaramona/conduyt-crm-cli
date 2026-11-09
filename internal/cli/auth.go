@@ -184,9 +184,7 @@ func newAuthSetTokenCmd(flags *rootFlags) *cobra.Command {
 			// log line): a masked-tail variant could leak token bytes through
 			// scripted dogfood that captures stderr.
 			cfg.AuthHeaderVal = ""
-			// PATCH(novel1219-auth-compat): saved as crm_bearer_auth, the key AuthHeader ranks above access_token, so
-			// no earlier bearer (current or legacy) shadows the re-saved token.
-			if err := cfg.SaveBearerToken(token); err != nil {
+			if err := cfg.SaveTokens("", "", token, "", cfg.TokenExpiry); err != nil {
 				return configErr(fmt.Errorf("saving token: %w", err))
 			}
 

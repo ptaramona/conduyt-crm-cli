@@ -7,6 +7,7 @@ package cliutil
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -37,30 +38,28 @@ type Credentials struct {
 	ClientSecret         string    `toml:"client_secret"`
 	ConduytCrmBearerAuth string    `toml:"crm_bearer_auth"`
 	// PATCH(novel1219-auth-compat): the earlier library entry saved the token as bearer_auth / api_key. They are
-	// read from the same checked-descriptor bytes as every other field, count as credentials for the trust and
-	// refusal rules, and are never written (saves build a fresh Credentials without them).
+	// decoded from the same checked-descriptor bytes as every other field and never written (credentialsFileFrom
+	// skips them). decodeCredentialsDocument turns them into LegacyToken, or blanks them.
 	LegacyBearerAuth string `toml:"bearer_auth,omitempty"`
 	LegacyAPIKey     string `toml:"api_key,omitempty"`
-	// LegacyKey names the earlier key that supplied ConduytCrmBearerAuth after loading ("" when none did).
-	LegacyKey string `toml:"-"`
+	// LegacyToken / LegacyKey: the earlier key's token, set only for the GLOBAL credentials file and only when the
+	// document holds no current credential of any kind (crm_bearer_auth present even empty, auth_header,
+	// access_token, refresh_token, client_id, client_secret). The config layer uses it only when no current
+	// credential exists anywhere, so it ranks below every current kind.
+	LegacyToken string `toml:"-"`
+	LegacyKey   string `toml:"-"`
 	// LegacyPath is the file LegacyKey was read from.
 	LegacyPath string `toml:"-"`
 }
 
-// ApplyLegacyKeys fills ConduytCrmBearerAuth from an earlier key when the document has no current key: bearer_auth
-// first, then api_key. A document that carries crm_bearer_auth (even empty) uses it only: decodeCredentialsDocument
-// clears the earlier keys first. PATCH(novel1219-auth-compat)
-func (c *Credentials) ApplyLegacyKeys() {
-	if c == nil || c.ConduytCrmBearerAuth != "" {
-		return
-	}
-	switch {
-	case strings.TrimSpace(c.LegacyBearerAuth) != "":
-		c.ConduytCrmBearerAuth, c.LegacyKey = c.LegacyBearerAuth, "bearer_auth"
-	case strings.TrimSpace(c.LegacyAPIKey) != "":
-		c.ConduytCrmBearerAuth, c.LegacyKey = c.LegacyAPIKey, "api_key"
-	}
-}
+// LegacyNoticeWriter receives the one-line notice for an earlier key in a profile credentials file, which is not
+// honoured. Tests replace it. PATCH(novel1219-auth-compat)
+var LegacyNoticeWriter io.Writer = os.Stderr
+
+var legacyNoticeOnce sync.Map
+
+// LegacyResaveCommand is the generated command that saves a token under the current keys.
+const LegacyResaveCommand = "conduyt-crm-pp-cli auth set-token"
 
 // CredentialsPermissionError means the credentials bytes were published but
 // the landed file failed the platform-specific private-file guard.
@@ -259,7 +258,7 @@ func loadCredentialsWithStatus(path string, explicit bool) (*Credentials, Creden
 		}
 		return nil, status, nil
 	}
-	creds, err := decodeCredentialsDocument(data) // PATCH(novel1219-auth-compat): same trusted bytes, same document
+	creds, err := decodeCredentialsDocument(data, !explicit) // PATCH(novel1219-auth-compat): global file only
 	if err != nil {
 		warnCredentialsIssue(path, "parse", err)
 		if explicit {
@@ -269,6 +268,11 @@ func loadCredentialsWithStatus(path string, explicit bool) (*Credentials, Creden
 	}
 	if creds.LegacyKey != "" {
 		creds.LegacyPath = path
+	}
+	if ignored := ignoredLegacyKey(data); explicit && ignored != "" { // PATCH(novel1219-auth-compat)
+		if _, seen := legacyNoticeOnce.LoadOrStore(path, true); !seen {
+			fmt.Fprintf(LegacyNoticeWriter, "notice: %s keeps a token under the earlier key %s, which profile credentials files no longer honour; save the token again with '%s'\n", path, ignored, LegacyResaveCommand)
+		}
 	}
 	status.Loaded = true
 	return &creds, status, nil
@@ -303,37 +307,73 @@ func (c *Credentials) HasValues() bool {
 		c.ClientID != "" ||
 		c.ClientSecret != "" ||
 		c.ConduytCrmBearerAuth != "" ||
-		c.LegacyBearerAuth != "" || // PATCH(novel1219-auth-compat): a legacy-only document holds a credential
-		c.LegacyAPIKey != ""
+		c.LegacyToken != "" // PATCH(novel1219-auth-compat): an honoured earlier key (global file only)
 }
 
 func credentialsBytesHaveValues(data []byte) bool {
 	if strings.TrimSpace(string(data)) == "" {
 		return false
 	}
-	creds, err := decodeCredentialsDocument(data) // PATCH(novel1219-auth-compat): presence follows the same rule
+	creds, err := decodeCredentialsDocument(data, false) // PATCH(novel1219-auth-compat): earlier keys never count here
 	if err != nil {
 		return true
 	}
 	return creds.HasValues()
 }
 
-// decodeCredentialsDocument parses one credentials document. When the document has the crm_bearer_auth key at all,
-// even empty (an explicitly cleared token), the earlier entry's bearer_auth / api_key are ignored entirely; otherwise
-// the first of them fills the bearer. PATCH(novel1219-auth-compat)
-func decodeCredentialsDocument(data []byte) (Credentials, error) {
+// decodeCredentialsDocument parses one credentials document. The earlier entry's bearer_auth / api_key become
+// LegacyToken only when allowLegacy (the global credentials file) and the document holds no current credential of any
+// kind; crm_bearer_auth present even empty counts as current (an explicitly cleared token). The raw legacy fields are
+// always blanked, so they never count or travel further. PATCH(novel1219-auth-compat)
+func decodeCredentialsDocument(data []byte, allowLegacy bool) (Credentials, error) {
 	var creds Credentials
 	if err := toml.Unmarshal(data, &creds); err != nil {
 		return creds, err
 	}
-	var keys map[string]any
-	if toml.Unmarshal(data, &keys) == nil {
-		if _, present := keys["crm_bearer_auth"]; present {
-			creds.LegacyBearerAuth, creds.LegacyAPIKey = "", ""
-		}
+	bearer, apiKey := creds.LegacyBearerAuth, creds.LegacyAPIKey
+	creds.LegacyBearerAuth, creds.LegacyAPIKey = "", ""
+	if !allowLegacy || documentHasCurrentCredential(data, &creds) {
+		return creds, nil
 	}
-	creds.ApplyLegacyKeys()
+	switch {
+	case strings.TrimSpace(bearer) != "":
+		creds.LegacyToken, creds.LegacyKey = bearer, "bearer_auth"
+	case strings.TrimSpace(apiKey) != "":
+		creds.LegacyToken, creds.LegacyKey = apiKey, "api_key"
+	}
 	return creds, nil
+}
+
+// documentHasCurrentCredential reports any current credential kind in a document, the crm_bearer_auth key counting
+// when present at all.
+func documentHasCurrentCredential(data []byte, creds *Credentials) bool {
+	if creds.AuthHeaderVal != "" || creds.AccessToken != "" || creds.RefreshToken != "" || creds.ClientID != "" || creds.ClientSecret != "" || creds.ConduytCrmBearerAuth != "" {
+		return true
+	}
+	var keys map[string]any
+	if toml.Unmarshal(data, &keys) != nil {
+		return true
+	}
+	_, present := keys["crm_bearer_auth"]
+	return present
+}
+
+// ignoredLegacyKey names an earlier key with a value in a document ("" when none), for the profile-file notice.
+func ignoredLegacyKey(data []byte) string {
+	var doc struct {
+		BearerAuth string `toml:"bearer_auth"`
+		APIKey     string `toml:"api_key"`
+	}
+	if toml.Unmarshal(data, &doc) != nil {
+		return ""
+	}
+	switch {
+	case strings.TrimSpace(doc.BearerAuth) != "":
+		return "bearer_auth"
+	case strings.TrimSpace(doc.APIKey) != "":
+		return "api_key"
+	}
+	return ""
 }
 
 // NormalizeCredentialOrigin returns a scheme/host/port/path key for raw.
