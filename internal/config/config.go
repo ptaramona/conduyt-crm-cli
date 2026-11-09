@@ -777,10 +777,10 @@ func (c *Config) applyCredentials(creds *cliutil.Credentials) {
 	if c.ConduytCrmBearerAuth == "" {
 		c.ConduytCrmBearerAuth = creds.ConduytCrmBearerAuth
 	}
-	if creds.CurrentKeyDeclared { // PATCH(novel1219-auth-compat): a trusted file declared the current key
+	if creds.CurrentKeyDeclared || c.hasCredentialFields() { // PATCH(novel1219-auth-compat): a trusted file declared a current credential
 		c.legacyDisabled = true
 	}
-	if creds.LegacyToken != "" && c.legacyGlobalToken == nil && !c.legacyDisabled { // PATCH(novel1219-auth-compat): held, not applied
+	if creds.LegacyToken != "" && c.legacyGlobalToken == nil && c.legacyAllowed() { // PATCH(novel1219-auth-compat): held, not applied
 		c.legacyGlobalToken = &legacyKeySource{Path: creds.LegacyPath, Key: creds.LegacyKey, Token: creds.LegacyToken}
 	}
 }

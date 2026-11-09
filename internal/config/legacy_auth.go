@@ -16,6 +16,11 @@ package config
 //     when no current credential of any kind was found anywhere: below auth_header, crm_bearer_auth, access_token and
 //     refresh/client credentials. After the generated set-token the saved current token outranks them; after the
 //     generated logout they are gone with the files.
+//   - THE RULE (one place: legacyAllowed): earlier keys and earlier env names are considered only when NO current
+//     credential of any kind was declared by any trusted source (config document, profile file, global file, env);
+//     otherwise never. A declaration is any current field with a value (auth_header, crm_bearer_auth, access_token,
+//     refresh_token, client_id, client_secret), crm_bearer_auth present even empty, or CONDUYT_CRM_BEARER_AUTH set
+//     even blank. Once declared, legacyDisabled stays set for the rest of the resolution.
 //   - Earlier keys inside a PROFILE credentials file are not honoured: the loader prints one notice naming the file
 //     and the generated re-save command.
 //   - No secret value is ever printed.
@@ -62,21 +67,21 @@ type legacyKeySource struct {
 // acceptOpenedConfig's permission refusal and untrusted-routing drop apply to it as to any credential;
 // deferLegacyConfigToken then moves it out of the way of every current source.
 func (c *Config) applyLegacyConfigKey(data []byte, path string) {
-	if c.hasCredentialFields() {
+	// The declaration check runs FIRST, before any early return: a document holding any current credential (a
+	// non-empty current field, or crm_bearer_auth present even empty) declares, and once it is accepted as trusted
+	// deferLegacyConfigToken turns that into legacyDisabled for every source, env names included.
+	var keys map[string]any
+	keysErr := toml.Unmarshal(data, &keys)
+	_, bearerPresent := keys["crm_bearer_auth"]
+	if c.hasCredentialFields() || bearerPresent || keysErr != nil {
+		c.currentKeyDeclared = c.hasCredentialFields() || bearerPresent
 		return
 	}
 	var doc struct {
 		BearerAuth string `toml:"bearer_auth"`
 		APIKey     string `toml:"api_key"`
 	}
-	var keys map[string]any
-	if toml.Unmarshal(data, &doc) != nil || toml.Unmarshal(data, &keys) != nil {
-		return
-	}
-	if _, present := keys["crm_bearer_auth"]; present {
-		// the current key is present (even empty, an explicitly cleared token): earlier keys are ignored here and,
-		// once the document is accepted as trusted, everywhere (deferLegacyConfigToken sets legacyDisabled)
-		c.currentKeyDeclared = true
+	if toml.Unmarshal(data, &doc) != nil {
 		return
 	}
 	key, token := "", ""
@@ -108,13 +113,21 @@ func (c *Config) deferLegacyConfigToken() {
 	c.legacyConfigToken = src
 }
 
+// legacyAllowed is the single rule every earlier-key and earlier-env-name use goes through: true only while no
+// trusted source has declared a current credential of any kind. legacyDisabled records the declarations seen while
+// reading the config document and the credentials files (sticky); CONDUYT_CRM_BEARER_AUTH set (even blank) and any
+// current field holding a value are declarations too.
+func (c *Config) legacyAllowed() bool {
+	return !c.legacyDisabled && !envNameDecides("CONDUYT_CRM_BEARER_AUTH") && !c.hasCredentialFields()
+}
+
 // resolveLegacyTokens runs after the credentials files: an earlier-key token (the config document's first, then the
 // global credentials file's, as the earlier entry read them) is used only when no current credential of any kind was
 // found, so it ranks below auth_header, crm_bearer_auth, access_token and refresh/client credentials.
 func (c *Config) resolveLegacyTokens() {
 	cfgSrc, globalSrc := c.legacyConfigToken, c.legacyGlobalToken
 	c.legacyConfigToken, c.legacyGlobalToken = nil, nil
-	if c.legacyDisabled || envNameDecides("CONDUYT_CRM_BEARER_AUTH") || c.hasCredentialFields() {
+	if !c.legacyAllowed() {
 		return
 	}
 	// The token is held in legacyToken, never in a persisted field, so the generated set-token and logout saves can
@@ -166,7 +179,7 @@ func legacyEnvBearer() (name, value string) {
 // applyLegacyEnvBearer is the env fallback: CONDUYT_CRM_BEARER_AUTH (applied by Load) wins; otherwise
 // CONDUYT_BEARER_AUTH, then CONDUYT_API_KEY, each with a one-line deprecation notice.
 func (c *Config) applyLegacyEnvBearer() {
-	if envNameDecides("CONDUYT_CRM_BEARER_AUTH") || c.legacyDisabled { // the current name, or a declared current key, decides
+	if !c.legacyAllowed() { // a declared current credential of any kind, from any trusted source or the env, decides
 		return
 	}
 	name, v := legacyEnvBearer()

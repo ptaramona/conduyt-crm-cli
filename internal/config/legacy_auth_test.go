@@ -508,3 +508,61 @@ func TestLegacyAuthDeclaredCurrentKeyDisablesEveryLegacySource(t *testing.T) {
 		}
 	})
 }
+
+// Codex novel1219-r12 P1: a config document holding another current credential must still declare, so a legacy env
+// name is never installed over it. The rule lives in one place (legacyAllowed).
+func TestLegacyAuthCurrentCredentialInDocumentDisablesLegacyEnv(t *testing.T) {
+	cases := []struct {
+		name, doc, env, want string
+	}{
+		{"config access_token + CONDUYT_BEARER_AUTH", "access_token = \"" + currentToken + "\"\n", "CONDUYT_BEARER_AUTH", currentToken},
+		{"config crm_bearer_auth set + CONDUYT_BEARER_AUTH", "crm_bearer_auth = \"" + currentToken + "\"\n", "CONDUYT_BEARER_AUTH", currentToken},
+		{"config auth_header + CONDUYT_API_KEY", "auth_header = \"" + headerToken + "\"\n", "CONDUYT_API_KEY", headerToken},
+		{"config crm_bearer_auth empty + CONDUYT_API_KEY", "crm_bearer_auth = \"\"\n", "CONDUYT_API_KEY", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			isolateLegacyAuth(t)
+			path := filepath.Join(t.TempDir(), "config.toml")
+			writeOwnerOnly(t, path, tc.doc)
+			setOrUnset(t, tc.env, legacyTokenB)
+			cfg, err := Load(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := cfg.AuthHeader()
+			if strings.Contains(got, legacyTokenB) || strings.HasPrefix(cfg.AuthSource, "env:") {
+				t.Fatalf("%s was used over a declared current credential (source %q)", tc.env, cfg.AuthSource)
+			}
+			if tc.want == "" && got != "" {
+				t.Fatal("a cleared current key still produced a credential")
+			}
+			if tc.want != "" && !strings.Contains(got, tc.want) {
+				t.Fatal("the declared current credential was not used")
+			}
+		})
+	}
+	t.Run("global file access_token + CONDUYT_BEARER_AUTH", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		writeOwnerOnly(t, globalCredsPath(t), "base_url = \""+defaultBase+"\"\naccess_token = \""+currentToken+"\"\n")
+		setOrUnset(t, "CONDUYT_BEARER_AUTH", legacyTokenB)
+		cfg, err := Load(filepath.Join(t.TempDir(), "config.toml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := cfg.AuthHeader(); strings.Contains(got, legacyTokenB) || !strings.Contains(got, currentToken) {
+			t.Fatal("a legacy env name was used over the global file's current credential")
+		}
+	})
+	t.Run("no current credential anywhere: legacy env used", func(t *testing.T) {
+		isolateLegacyAuth(t)
+		setOrUnset(t, "CONDUYT_BEARER_AUTH", legacyTokenB)
+		cfg, err := Load(filepath.Join(t.TempDir(), "config.toml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.AuthHeader() != "Bearer "+legacyTokenB || cfg.AuthSource != "env:CONDUYT_BEARER_AUTH" {
+			t.Fatal("with no current credential the legacy env name was not used")
+		}
+	})
+}
