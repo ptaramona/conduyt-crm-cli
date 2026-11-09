@@ -40,14 +40,14 @@ Reach for this CLI whenever an agent or operator works Conduyt CRM data: contact
 These capabilities aren't available in any other tool for this API.
 
 ### Kloudi-grade send safety
-- **`send-check`** — Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's delivery side effects).
+- **`send-check`** — Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's side effects).
 
   _Run it before acting on any 'text this list' instruction — it is the anti-Kloudi gate._
 
   ```bash
   conduyt-crm-pp-cli send-check --tag kloudi-july --agent
   ```
-- **`imports blame`** — For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).
+- **`imports blame`** — For one import job: every error row grouped by reason, plus the job-scoped side effects (queued, retryable, exhausted, held).
 
   _Answers 'which rows of the Tuesday import failed, and are its side effects still queued or held?' in one call after any bulk push._
 
@@ -1274,7 +1274,7 @@ Watch an import job to completion, then render the outcome recap and verify the 
 conduyt-crm-pp-cli imports blame "$JOB" --agent --select row_outcomes,errors_by_reason
 ```
 
-Group an import's error rows by reason and read its job-scoped delivery side effects (queued, retryable, exhausted, held).
+Group an import's error rows by reason and read its job-scoped side effects (queued, retryable, exhausted, held).
 
 ### Segment safety audit
 

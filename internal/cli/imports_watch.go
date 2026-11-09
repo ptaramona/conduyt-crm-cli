@@ -307,7 +307,7 @@ type watchSideEffects struct {
 
 // noJobSideEffects reports a job that recorded no side effects at all: every counter present and zero. The route
 // answers isComplete=false for total 0 (its "complete" means "all recorded work drained"), so a job with nothing
-// to deliver is not an unfinished one; any queued, retryable, exhausted, failed or held send still is.
+// to fire is not an unfinished one; any queued, retryable, exhausted, failed or held send still is.
 // sideEffectCounts is the job-scoped side-effect summary GET /imports/{id}/side-effects emits. The route counts
 // queue rows by status into total = pending + processing + completed + skippedInactive + failed (held rows are
 // counted apart and excluded from total), queued = pending + processing, failed = retryableFailed + exhaustedFailed.

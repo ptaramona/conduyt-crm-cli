@@ -25,7 +25,9 @@ func newNovelDripsAuditCmd(flags *rootFlags) *cobra.Command {
 		Example: strings.Trim(`
   conduyt-crm-pp-cli drips audit --since 2026-07-01
   conduyt-crm-pp-cli drips audit 9b8c7d6e-0000-0000-0000-000000000000 --json`, "\n"),
-		Annotations: map[string]string{"mcp:read-only": "true", "pp:typed-exit-codes": "0,2"},
+		// PATCH(novel1219-drips-audit) r4: the runtime annotation matches the pp:data-source comment, so root rejects
+		// --data-source live before any store access instead of reading SQLite anyway.
+		Annotations: map[string]string{"mcp:read-only": "true", "pp:typed-exit-codes": "0,2", "pp:data-source": "local"},
 		Args: func(cmd *cobra.Command, args []string) error {
 			// PATCH(gocli1219-live-gate-defects): one optional campaign UUID; a junk value is a usage error, not an audit of nothing
 			if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {

@@ -379,16 +379,24 @@ func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smar
 		view.Hint = verifySyncHint(dbPath)
 		return view, []string{"no local contacts mirror"}, nil
 	} else if err != nil {
-		return view, nil, fmt.Errorf("checking local mirror: %w", err)
+		return view, []string{"the local mirror cannot be read: " + err.Error()}, nil
+	}
+	// PATCH(novel1219-verify-line-type) r4: every local read stage (open, sync state, attempt state, query, scan,
+	// iteration, close) funnels into one "mirror unusable" reason: auto then counts live, local is a lower bound
+	// with exit 5. What was counted before the failure is never reported as the estimate under auto.
+	unusable := func(stage string, err error) (verifyEstimate, []string, error) {
+		v := verifyEstimate{UnitCostUSD: verifyLineTypeUnitCostUSD, Synced: view.Synced, Total: view.Total}
+		return v, []string{"the local mirror is unusable (" + stage + ": " + err.Error() + ")"}, nil
 	}
 	db, err := store.OpenWithContext(cmd.Context(), dbPath)
 	if err != nil {
-		return view, nil, fmt.Errorf("opening local mirror: %w", err)
+		return unusable("opening", err)
 	}
 	defer db.Close()
+	reader := newMirrorReader(db.DB())
 	_, syncedAt, total, err := db.GetSyncState("contacts")
 	if err != nil {
-		return view, nil, fmt.Errorf("checking contacts sync state: %w", err)
+		return unusable("reading sync state", err)
 	}
 	view.Synced = !syncedAt.IsZero()
 	if !view.Synced {
@@ -398,9 +406,9 @@ func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smar
 	view.Total = &total
 	reasons := make([]string, 0)
 	// PATCH(novel1219-verify-line-type) r3: an interrupted, aborted or in-progress sync attempt is not a mirror.
-	attemptComplete, err := contactsMirrorAttemptComplete(cmd.Context(), db.DB())
+	attemptComplete, err := contactsMirrorAttemptComplete(cmd.Context(), reader)
 	if err != nil {
-		return view, nil, err
+		return unusable("reading sync attempt state", err)
 	}
 	if !attemptComplete {
 		reasons = append(reasons, "the last contacts sync attempt did not finish")
@@ -408,36 +416,24 @@ func verifyEstimateFromMirror(cmd *cobra.Command, flags *rootFlags, dbPath, smar
 	if hintIfStale(cmd, db, "contacts", flags.maxAge) {
 		reasons = append(reasons, "local contacts mirror is older than --max-age")
 	}
-	qr, err := db.DB().QueryContext(cmd.Context(), `SELECT id,data FROM resources WHERE resource_type='contacts'`)
+	rows, err := readMirrorRows(cmd.Context(), reader, `SELECT id,data FROM resources WHERE resource_type='contacts'`)
 	if err != nil {
-		return view, nil, fmt.Errorf("reading contacts mirror: %w", err)
+		return unusable("reading contacts", err)
 	}
-	for qr.Next() {
-		var id string
-		var raw []byte
-		if err = qr.Scan(&id, &raw); err != nil {
-			_ = qr.Close()
-			return view, nil, err
-		}
+	for _, row := range rows {
 		var m map[string]any
-		if decodeErr := json.Unmarshal(raw, &m); decodeErr != nil {
-			reasons = append(reasons, fmt.Sprintf("decoding mirrored contact %s: %v", id, decodeErr))
+		if decodeErr := json.Unmarshal(row.Data, &m); decodeErr != nil {
+			reasons = append(reasons, fmt.Sprintf("decoding mirrored contact %s: %v", row.ID, decodeErr))
 			continue
 		}
 		view.Checked++
 		phone := strings.TrimSpace(strAny(m, "phone"))
 		if _, ok := normalizePhoneIdentity(phone); phone != "" && !ok {
 			view.Partial = true
-			view.Failures = append(view.Failures, fmt.Sprintf("contact %s has an unmappable phone identity", id))
+			view.Failures = append(view.Failures, fmt.Sprintf("contact %s has an unmappable phone identity", row.ID))
 		} else if phone != "" && contactLineType(m) == "" {
 			view.Unverified++
 		}
-	}
-	if err = qr.Close(); err != nil {
-		return view, nil, err
-	}
-	if err = qr.Err(); err != nil {
-		return view, nil, err
 	}
 	if view.Checked != total {
 		reasons = append(reasons, fmt.Sprintf("local contacts mirror contains %d decoded rows but sync state reports total %d", view.Checked, total))

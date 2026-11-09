@@ -6,6 +6,8 @@ package cli
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -860,6 +862,161 @@ func TestNovel1219NoSMSDeliveryClaimsForImportCommands(t *testing.T) {
 			if strings.Contains(string(raw), claim) {
 				t.Fatalf("%s still claims %q", f, claim)
 			}
+		}
+	}
+}
+
+// ---- Codex novel1219-r3 regressions (r4) ----
+
+// faultyMirror wraps the real mirror reader and fails at one stage.
+type faultyMirror struct {
+	inner         mirrorReader
+	stage         string // "query", "scan", "iterate", "close", "count-capped"
+	cappedCountOn string
+}
+
+type faultyRows struct {
+	mirrorRows
+	stage string
+}
+
+func (r faultyRows) Scan(dest ...any) error {
+	if r.stage == "scan" {
+		return fmt.Errorf("injected scan failure")
+	}
+	return r.mirrorRows.Scan(dest...)
+}
+func (r faultyRows) Err() error {
+	if r.stage == "iterate" {
+		return fmt.Errorf("injected iteration failure")
+	}
+	return r.mirrorRows.Err()
+}
+func (r faultyRows) Close() error {
+	err := r.mirrorRows.Close()
+	if r.stage == "close" {
+		return fmt.Errorf("injected close failure")
+	}
+	return err
+}
+
+func (f faultyMirror) Query(ctx context.Context, q string, args ...any) (mirrorRows, error) {
+	if f.stage == "query" && strings.Contains(q, "FROM resources") {
+		return nil, fmt.Errorf("injected query failure")
+	}
+	rows, err := f.inner.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	return faultyRows{mirrorRows: rows, stage: f.stage}, nil
+}
+
+func (f faultyMirror) Count(ctx context.Context, q string, args ...any) (int, error) {
+	if f.stage == "count-capped" && strings.Contains(q, f.cappedCountOn) {
+		return 0, fmt.Errorf("injected count failure")
+	}
+	return f.inner.Count(ctx, q, args...)
+}
+
+func injectMirrorFault(t *testing.T, stage string) {
+	t.Helper()
+	orig := newMirrorReader
+	newMirrorReader = func(db *sql.DB) mirrorReader {
+		return faultyMirror{inner: orig(db), stage: stage, cappedCountOn: "' AND "}
+	}
+	t.Cleanup(func() { newMirrorReader = orig })
+}
+
+// Codex r3 P2: a failure at any local read stage makes the mirror unusable: send-check auto reads live, local exits 5;
+// the estimate counts live under auto and is a lower bound (exit 5) under local. The capped-audience count is covered
+// with --limit 1 over a two-contact tag.
+func TestNovel1219EveryLocalReadStageFailureFallsBackLive(t *testing.T) {
+	mirrorRows := map[string]string{
+		"local-1": `{"id":"local-1","phone":"+12125550102","lineType":"mobile","tags":[{"id":"t1","name":"leads"}]}`,
+		"local-2": `{"id":"local-2","phone":"+12125550103","lineType":"mobile","tags":[{"id":"t1","name":"leads"}]}`,
+	}
+	for _, stage := range []string{"query", "scan", "iterate", "close", "count-capped"} {
+		t.Run(stage, func(t *testing.T) {
+			testenv.Isolate(t)
+			db := syncedContactsMirror(t, mirrorRows)
+			injectMirrorFault(t, stage)
+			var reads atomic.Int32
+			out, _, err := runNovel(t, []string{"send-check", "--tag", "leads", "--limit", "1", "--db", db, "--json"}, sendCheckLiveHandler(t, &reads))
+			if err != nil || reads.Load() == 0 || !strings.Contains(out, "live-1") {
+				t.Fatalf("send-check auto: err=%v reads=%d out=%s", err, reads.Load(), out)
+			}
+			testenv.Isolate(t)
+			reads.Store(0)
+			out, _, err = runNovel(t, []string{"send-check", "--tag", "leads", "--limit", "1", "--db", db, "--data-source", "local", "--json"}, sendCheckLiveHandler(t, &reads))
+			if ExitCode(err) != 5 || reads.Load() != 0 || !strings.Contains(out, "the local mirror is unusable") {
+				t.Fatalf("send-check local: err=%v reads=%d out=%s", err, reads.Load(), out)
+			}
+			if stage == "count-capped" {
+				return // the estimate has no capped count
+			}
+			testenv.Isolate(t)
+			reads.Store(0)
+			out, _, err = runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", db, "--json"}, func(w http.ResponseWriter, r *http.Request) {
+				reads.Add(1)
+				_, _ = w.Write([]byte(`{"data":[{"id":"x1","phone":"+12125550111"},{"id":"x2","phone":"+12125550112"},{"id":"x3","phone":"+12125550113"}],"meta":{"total":3}}`))
+			})
+			if err != nil || reads.Load() == 0 || !strings.Contains(compactTestJSON(out), `"unverified":3`) {
+				t.Fatalf("estimate auto: err=%v reads=%d out=%s", err, reads.Load(), out)
+			}
+			testenv.Isolate(t)
+			out, _, err = runNovel(t, []string{"contacts", "verify-line-type", "--estimate", "--db", db, "--data-source", "local", "--json"}, nil)
+			if ExitCode(err) != 5 || !strings.Contains(out, "the local mirror is unusable") || !strings.Contains(compactTestJSON(out), `"partial":true`) {
+				t.Fatalf("estimate local: err=%v out=%s", err, out)
+			}
+		})
+	}
+}
+
+// Codex r3 P2: drips audit declares pp:data-source local, so root rejects --data-source live before any store access.
+func TestNovel1219DripsAuditRejectsDataSourceLiveBeforeTheStore(t *testing.T) {
+	testenv.Isolate(t)
+	dir := t.TempDir()
+	dbPath := dir + "/never-created.db"
+	_, _, err := runNovel(t, []string{"drips", "audit", "--db", dbPath, "--data-source", "live", "--json"}, nil)
+	if err == nil || !strings.Contains(err.Error(), "data-source") {
+		t.Fatalf("err=%v, want the --data-source live refusal", err)
+	}
+	if _, statErr := os.Stat(dbPath); !os.IsNotExist(statErr) {
+		t.Fatalf("drips audit touched the store before refusing --data-source live (stat err=%v)", statErr)
+	}
+	if got := findCommandPath(newRootCmd(&rootFlags{}), "drips audit").Annotations["pp:data-source"]; got != "local" {
+		t.Fatalf("drips audit pp:data-source = %q, want local", got)
+	}
+}
+
+// Codex r3 P3: blame's rendered output (JSON and table) makes no delivery claim: side_effects_completed and the
+// provider note, no delivered field or DELIVERED column.
+func TestNovel1219ImportsBlameRenderedOutputMakesNoDeliveryClaim(t *testing.T) {
+	testenv.Isolate(t)
+	out, _, err := runNovel(t, []string{"imports", "blame", "job", "--json"}, blameHandler(t, "", "", ""))
+	c := compactTestJSON(out)
+	if err != nil || !strings.Contains(c, `"side_effects_completed":1`) || !strings.Contains(c, "provider delivery is not available from this data") || strings.Contains(c, `"delivered"`) || strings.Contains(c, "delivery_correlation") {
+		t.Fatalf("json: err=%v out=%s", err, c)
+	}
+	testenv.Isolate(t)
+	table, _, err := runNovel(t, []string{"imports", "blame", "job", "--human-friendly"}, blameHandler(t, "", "", ""))
+	if err != nil || !strings.Contains(table, "SIDE EFFECTS COMPLETED") || !strings.Contains(table, "provider delivery is not available from this data") || strings.Contains(table, "DELIVERED") {
+		t.Fatalf("table: err=%v out=%s", err, table)
+	}
+}
+
+// Codex r3 P3: the rendered help of every novel command and subcommand (its own Short, Long, Example and flags;
+// the inherited global --deliver output-routing flag is not a delivery claim) never uses delivered / delivery.
+func TestNovel1219NovelCommandHelpNeverClaimsDelivery(t *testing.T) {
+	root := newRootCmd(&rootFlags{})
+	for _, path := range []string{"send-check", "imports blame", "imports watch", "contacts verify-line-type", "contacts verify-line-type run", "drips audit"} {
+		cmd := findCommandPath(root, path)
+		if cmd == nil {
+			t.Fatalf("%s not found", path)
+		}
+		text := strings.ToLower(cmd.Short + "\n" + cmd.Long + "\n" + cmd.Example + "\n" + cmd.LocalNonPersistentFlags().FlagUsages())
+		if strings.Contains(text, "deliver") {
+			t.Fatalf("%s help mentions delivery:\n%s", path, text)
 		}
 	}
 }

@@ -33,7 +33,7 @@
     {
       "name": "Send-safety check",
       "command": "send-check",
-      "description": "Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's delivery side effects).",
+      "description": "Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's side effects).",
       "rationale": "Requires joining local contacts, DNC records, and delivery outcomes — no single API call returns the composite verdict.",
       "example": "conduyt-crm-pp-cli send-check --tag kloudi-july --agent",
       "why_it_matters": "Run it before acting on any 'text this list' instruction — it is the anti-Kloudi gate.",
@@ -42,7 +42,7 @@
     {
       "name": "Import delivery blame",
       "command": "imports blame",
-      "description": "For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).",
+      "description": "For one import job: every error row grouped by reason, plus the job-scoped side effects (queued, retryable, exhausted, held).",
       "rationale": "Reads an import's error rows and its job-scoped side-effect counters from the API; the app shows each piece on a different screen.",
       "example": "conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --json",
       "why_it_matters": "Answers 'which rows of the Tuesday import failed, and are its side effects still queued or held?' in one call after any bulk push.",
@@ -98,7 +98,7 @@
     {
       "name": "Send-safety check",
       "command": "send-check",
-      "description": "Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's delivery side effects).",
+      "description": "Go/no-go verdict on a list, tag, or contact before any SMS or drip: phone present, Twilio-verified line type, Twilio validity, and DNC status in one table (see imports blame for an import's side effects).",
       "rationale": "Requires joining local contacts, DNC records, and delivery outcomes — no single API call returns the composite verdict.",
       "example": "conduyt-crm-pp-cli send-check --tag kloudi-july --agent",
       "why_it_matters": "Run it before acting on any 'text this list' instruction — it is the anti-Kloudi gate.",
@@ -107,7 +107,7 @@
     {
       "name": "Import delivery blame",
       "command": "imports blame",
-      "description": "For one import job: every error row grouped by reason, plus the job-scoped delivery side effects (queued, retryable, exhausted, held).",
+      "description": "For one import job: every error row grouped by reason, plus the job-scoped side effects (queued, retryable, exhausted, held).",
       "rationale": "Reads an import's error rows and its job-scoped side-effect counters from the API; the app shows each piece on a different screen.",
       "example": "conduyt-crm-pp-cli imports blame 3f2a9c1e-0000-0000-0000-000000000000 --json",
       "why_it_matters": "Answers 'which rows of the Tuesday import failed, and are its side effects still queued or held?' in one call after any bulk push.",
@@ -205,7 +205,7 @@
       {
         "title": "Blame a bad blast",
         "command": "conduyt-crm-pp-cli imports blame \"$JOB\" --agent --select row_outcomes,errors_by_reason",
-        "explanation": "Group an import's error rows by reason and read its job-scoped delivery side effects (queued, retryable, exhausted, held)."
+        "explanation": "Group an import's error rows by reason and read its job-scoped side effects (queued, retryable, exhausted, held)."
       },
       {
         "title": "Segment safety audit",

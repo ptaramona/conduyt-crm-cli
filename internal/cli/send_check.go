@@ -3,7 +3,6 @@ package cli
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/ptaramona/conduyt-crm-cli/internal/store"
 	"github.com/spf13/cobra"
@@ -541,22 +540,35 @@ func sendCheckLocalAudience(cmd *cobra.Command, flags *rootFlags, dbPath, list, 
 		return out, nil
 	}
 	if _, err := os.Stat(dbPath); err != nil {
-		if !os.IsNotExist(err) {
-			return out, fmt.Errorf("checking local mirror: %w", err)
+		if os.IsNotExist(err) {
+			out.reason = "no local mirror at " + dbPath
+		} else {
+			out.reason = "the local mirror cannot be read: " + err.Error()
 		}
-		out.reason = "no local mirror at " + dbPath
 		return out, nil
+	}
+	// PATCH(novel1219-send-check) r4: every local read stage (open, sync state, count, query, scan, iteration,
+	// close, the capped count) funnels into one "mirror unusable" result: auto then reads live, local exits 5.
+	unusable := func(stage string, err error) (sendLocalResult, error) {
+		return sendLocalResult{failures: make([]string, 0), reason: "the local mirror is unusable (" + stage + ": " + err.Error() + ")"}, nil
 	}
 	db, err := store.OpenWithContext(ctx, dbPath)
 	if err != nil {
-		return out, fmt.Errorf("opening local mirror: %w", err)
+		return unusable("opening", err)
 	}
 	defer db.Close()
-	_, syncedAt, syncTotal, stateErr := db.GetSyncState("contacts")
-	count, countErr := db.Count("contacts")
-	attemptComplete, attemptErr := contactsMirrorAttemptComplete(ctx, db.DB())
-	if stateErr != nil || countErr != nil || attemptErr != nil {
-		return out, fmt.Errorf("checking contacts mirror state: %w", errors.Join(stateErr, countErr, attemptErr))
+	reader := newMirrorReader(db.DB())
+	_, syncedAt, syncTotal, err := db.GetSyncState("contacts")
+	if err != nil {
+		return unusable("reading sync state", err)
+	}
+	count, err := reader.Count(ctx, `SELECT COUNT(*) FROM resources WHERE resource_type = 'contacts'`)
+	if err != nil {
+		return unusable("counting contacts", err)
+	}
+	attemptComplete, err := contactsMirrorAttemptComplete(ctx, reader)
+	if err != nil {
+		return unusable("reading sync attempt state", err)
 	}
 	if syncedAt.IsZero() || count == 0 {
 		out.reason = "contacts were never synced"
@@ -576,39 +588,16 @@ func sendCheckLocalAudience(cmd *cobra.Command, flags *rootFlags, dbPath, list, 
 		out.reason = "the contacts mirror is older than --max-age"
 		return out, nil
 	}
-	qr, err := db.DB().QueryContext(ctx, query, queryArgs...)
+	rows, err := readMirrorRows(ctx, reader, query, queryArgs...)
 	if err != nil {
-		// A mirror that cannot be read (for example a malformed row the scope filter trips on) is not an answer.
-		out.reason = "the mirror read failed: " + err.Error()
-		return out, nil
+		return unusable("reading the audience", err)
 	}
-	for qr.Next() {
-		var id string
-		var raw []byte
-		if err = qr.Scan(&id, &raw); err != nil {
-			_ = qr.Close()
-			return out, err
-		}
+	for _, row := range rows {
 		var m map[string]any
-		if decodeErr := json.Unmarshal(raw, &m); decodeErr != nil {
-			out.partial = true
-			out.failures = append(out.failures, fmt.Sprintf("decoding mirrored contact %s: %v", id, decodeErr))
-			continue
+		if decodeErr := json.Unmarshal(row.Data, &m); decodeErr != nil {
+			return unusable("decoding mirrored contact "+row.ID, decodeErr)
 		}
-		out.rows = append(out.rows, decodeSendContact(m, id))
-	}
-	if rowsErr := qr.Err(); rowsErr != nil {
-		out.partial = true
-		out.failures = append(out.failures, fmt.Sprintf("reading contacts mirror: %v", rowsErr))
-	}
-	if err = qr.Close(); err != nil {
-		return out, err
-	}
-	if out.partial {
-		// PATCH(novel1219-send-check) r3: a local read with decode or iteration failures is not an answer; auto
-		// reads the audience live instead of reporting from the partial set, local reports it as inconclusive.
-		out.reason = "the mirror read was incomplete: " + strings.Join(out.failures, "; ")
-		return out, nil
+		out.rows = append(out.rows, decodeSendContact(m, row.ID))
 	}
 	if len(out.rows) == 0 {
 		// Zero local matches cannot prove an empty audience (a tag added after the sync, an unsynced contact).
@@ -616,12 +605,13 @@ func sendCheckLocalAudience(cmd *cobra.Command, flags *rootFlags, dbPath, list, 
 		return out, nil
 	}
 	if len(out.rows) > limit {
-		out.partial = true
+		// A deliberate --limit cap: the local answer stands, partial, with the full audience size.
 		countQuery, countArgs, _ := sendLocalCountQuery(list, contact, tags)
-		var n int
-		if err = db.DB().QueryRowContext(ctx, countQuery, countArgs...).Scan(&n); err != nil {
-			return out, fmt.Errorf("counting contacts mirror audience: %w", err)
+		n, err := reader.Count(ctx, countQuery, countArgs...)
+		if err != nil {
+			return unusable("counting the capped audience", err)
 		}
+		out.partial = true
 		out.total = &n
 		out.rows = out.rows[:limit]
 	}

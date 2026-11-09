@@ -124,7 +124,7 @@ func TestImportsBlameRendersIsCompleteTrue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"job_id":"job","row_outcomes":{"status":"completed","total":3,"created":2,"updated":0,"skipped":0,"duplicates":0,"errors":1},"error_rows":1,"partial":false,"checked":1,"total":1,"delivered":1,"delivery_correlation":"none","delivery_correlation_reason":"GET /reports/sms-delivery returns aggregate totals only (no per-message import, message or contact keys), so delivery is read from the job-scoped side-effect counters","errors_by_reason":{"invalid phone":1},"side_effects":{"queued":0,"retryable":0,"exhausted":0,"total":1,"completed":1,"failed":0,"held":0,"action_required":false,"is_complete":true,"skipped_inactive":0,"pending":0,"processing":0},"row_tabs":{"all":1,"error":1,"success":0,"warning":0},"rows_unavailable":false,"fetch_failures":0}`
+	want := `{"job_id":"job","row_outcomes":{"status":"completed","total":3,"created":2,"updated":0,"skipped":0,"duplicates":0,"errors":1},"error_rows":1,"partial":false,"checked":1,"total":1,"side_effects_completed":1,"note":"provider delivery is not available from this data; side_effects_completed counts the import's side effects that fired","errors_by_reason":{"invalid phone":1},"side_effects":{"queued":0,"retryable":0,"exhausted":0,"total":1,"completed":1,"failed":0,"held":0,"action_required":false,"is_complete":true,"skipped_inactive":0,"pending":0,"processing":0},"row_tabs":{"all":1,"error":1,"success":0,"warning":0},"rows_unavailable":false,"fetch_failures":0}`
 	if got := compactTestJSON(out); got != want {
 		t.Fatalf("output mismatch\nwant: %s\n got: %s", want, got)
 	}
@@ -280,7 +280,7 @@ func TestImportsBlameReadsSideEffectsForDelivery(t *testing.T) {
 		t.Fatalf("err=%v code=%d", err, ExitCode(err))
 	}
 	out = compactTestJSON(out)
-	for _, want := range []string{`"job_id":"job"`, `"error_rows":2`, `"delivered":0`, `"delivery_correlation":"none"`, `"landline":1`, `"invalid_phone":1`, `"queued":2`, `"retryable":1`, `"exhausted":3`, `"action_required":true`} {
+	for _, want := range []string{`"job_id":"job"`, `"error_rows":2`, `"side_effects_completed":0`, `"note":"provider delivery is not available from this data`, `"landline":1`, `"invalid_phone":1`, `"queued":2`, `"retryable":1`, `"exhausted":3`, `"action_required":true`} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %s in %s", want, out)
 		}
@@ -459,7 +459,7 @@ func TestImportsBlameNeverClaimsReportCorrelation(t *testing.T) {
 		t.Fatal(err)
 	}
 	out = compactTestJSON(out)
-	if !strings.Contains(out, `"delivery_correlation":"none"`) || !strings.Contains(out, "aggregate totals only") {
+	if !strings.Contains(out, "provider delivery is not available from this data") || strings.Contains(out, `"delivered"`) {
 		t.Fatalf("output=%s", out)
 	}
 	for _, p := range paths {

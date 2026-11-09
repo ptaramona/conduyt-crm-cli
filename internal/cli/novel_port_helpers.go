@@ -140,16 +140,73 @@ func hoistPaginatedEnvelope(raw json.RawMessage) (json.RawMessage, bool) {
 // contactsMirrorAttemptComplete reports whether the last contacts sync attempt finished. An interrupted or
 // in-progress sync keeps the previous last_synced_at but clears last_attempt_complete, so a timestamp alone never
 // proves a complete mirror. PATCH(novel1219-helpers) r3.
-func contactsMirrorAttemptComplete(ctx context.Context, db interface {
-	QueryRowContext(context.Context, string, ...any) *sql.Row
-}) (bool, error) {
-	var complete sql.NullInt64
-	err := db.QueryRowContext(ctx, `SELECT last_attempt_complete FROM sync_state WHERE resource_type = 'contacts'`).Scan(&complete)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
+func contactsMirrorAttemptComplete(ctx context.Context, r mirrorReader) (bool, error) {
+	n, err := r.Count(ctx, `SELECT COALESCE(MAX(last_attempt_complete), 0) FROM sync_state WHERE resource_type = 'contacts'`)
 	if err != nil {
 		return false, fmt.Errorf("reading contacts sync attempt state: %w", err)
 	}
-	return complete.Valid && complete.Int64 == 1, nil
+	return n == 1, nil
+}
+
+// ---- PATCH(novel1219-helpers) r4: one local-read path for the mirror-reading novel commands ----
+
+// mirrorRows is the row cursor of a mirror query (satisfied by *sql.Rows).
+type mirrorRows interface {
+	Next() bool
+	Scan(...any) error
+	Err() error
+	Close() error
+}
+
+// mirrorReader is the read surface of the local mirror the novel commands use. Production wraps *sql.DB; tests
+// swap newMirrorReader to inject a failure at any stage.
+type mirrorReader interface {
+	Query(ctx context.Context, query string, args ...any) (mirrorRows, error)
+	Count(ctx context.Context, query string, args ...any) (int, error)
+}
+
+type sqlMirrorReader struct{ db *sql.DB }
+
+func (r sqlMirrorReader) Query(ctx context.Context, query string, args ...any) (mirrorRows, error) {
+	return r.db.QueryContext(ctx, query, args...)
+}
+
+func (r sqlMirrorReader) Count(ctx context.Context, query string, args ...any) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&n)
+	return n, err
+}
+
+var newMirrorReader = func(db *sql.DB) mirrorReader { return sqlMirrorReader{db} }
+
+// mirrorRow is one stored resource: its id and raw JSON.
+type mirrorRow struct {
+	ID   string
+	Data []byte
+}
+
+// readMirrorRows runs one (id, data) query to the end. Any failure at query, scan, iteration or close is returned
+// as one error, so a caller can treat the whole read as unusable instead of answering from part of it.
+func readMirrorRows(ctx context.Context, r mirrorReader, query string, args ...any) ([]mirrorRow, error) {
+	rows, err := r.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("querying the mirror: %w", err)
+	}
+	out := make([]mirrorRow, 0)
+	for rows.Next() {
+		var row mirrorRow
+		if err := rows.Scan(&row.ID, &row.Data); err != nil {
+			_ = rows.Close()
+			return nil, fmt.Errorf("scanning a mirror row: %w", err)
+		}
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, fmt.Errorf("iterating the mirror: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("closing the mirror read: %w", err)
+	}
+	return out, nil
 }

@@ -212,7 +212,7 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 			errorsByReason[reason]++
 		}
 
-		// 3) The job-scoped side effects (delivery state of the import's sends).
+		// 3) The job-scoped side effects (what the import's events fired; provider delivery is not in this data).
 		side := blameSideEffects{}
 		sideRaw, e := c.Get(ctx, "/imports/"+jobID+"/side-effects", nil)
 		if e != nil {
@@ -302,22 +302,21 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 			}
 		}
 		view := blameView{
-			JobID:                     jobID,
-			RowOutcomes:               outcomes,
-			ErrorRows:                 len(rows),
-			Partial:                   failures > 0 || capped,
-			Checked:                   len(rows),
-			Total:                     total,
-			Delivered:                 side.Completed,
-			DeliveryCorrelation:       "none",
-			DeliveryCorrelationReason: "GET /reports/sms-delivery returns aggregate totals only (no per-message import, message or contact keys), so delivery is read from the job-scoped side-effect counters",
-			ErrorsByReason:            errorsByReason,
-			SideEffects:               side,
-			RowTabs:                   rowTabs,
-			RowsUnavailable:           rowsUnavailable,
-			RowsNote:                  rowsNote,
-			FetchFailures:             failures,
-			Failures:                  failureReasons,
+			JobID:                jobID,
+			RowOutcomes:          outcomes,
+			ErrorRows:            len(rows),
+			Partial:              failures > 0 || capped,
+			Checked:              len(rows),
+			Total:                total,
+			SideEffectsCompleted: side.Completed,
+			Note:                 blameProviderNote,
+			ErrorsByReason:       errorsByReason,
+			SideEffects:          side,
+			RowTabs:              rowTabs,
+			RowsUnavailable:      rowsUnavailable,
+			RowsNote:             rowsNote,
+			FetchFailures:        failures,
+			Failures:             failureReasons,
 		}
 		if failures > 0 {
 			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %d import blame read(s) failed or were incomplete\n", failures)
@@ -336,7 +335,7 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 		if side.ActionRequired != nil {
 			actionRequired = strconv.FormatBool(*side.ActionRequired)
 		}
-		fmt.Fprintf(tw, "JOB\tSTATUS\tERROR ROWS\tDELIVERED\tQUEUED\tRETRYABLE\tEXHAUSTED\tHELD\tACTION REQUIRED\n%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", view.JobID, outcomes.Status, view.ErrorRows, view.Delivered, side.Queued, side.Retryable, side.Exhausted, side.Held, actionRequired)
+		fmt.Fprintf(tw, "JOB\tSTATUS\tERROR ROWS\tSIDE EFFECTS COMPLETED\tQUEUED\tRETRYABLE\tEXHAUSTED\tHELD\tACTION REQUIRED\n%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", view.JobID, outcomes.Status, view.ErrorRows, view.SideEffectsCompleted, side.Queued, side.Retryable, side.Exhausted, side.Held, actionRequired)
 		reasons := make([]string, 0, len(errorsByReason))
 		for reason := range errorsByReason {
 			reasons = append(reasons, reason)
@@ -345,6 +344,7 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 		for _, reason := range reasons {
 			fmt.Fprintf(tw, "ERROR\t%s\t%d\n", reason, errorsByReason[reason])
 		}
+		fmt.Fprintf(tw, "NOTE\t%s\n", blameProviderNote)
 		if e := tw.Flush(); e != nil {
 			return e
 		}
@@ -356,6 +356,11 @@ func newNovelImportsBlameCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&latest, "latest", false, "Use the account's most recent import job instead of a jobId")
 	return cmd
 }
+
+// blameProviderNote is printed with every blame result. PATCH(novel1219-imports-blame) r4: a completed side effect
+// confirms the import's event fired, not that a provider delivered a message, and the account-wide
+// /reports/sms-delivery report carries no per-import key, so blame makes no delivery claim.
+const blameProviderNote = "provider delivery is not available from this data; side_effects_completed counts the import's side effects that fired"
 
 func blameExit(view blameView, fetchErr error) error {
 	if !view.Partial {
@@ -415,22 +420,21 @@ type blameSideEffects struct {
 	Processing      *int `json:"processing,omitempty"`
 }
 type blameView struct {
-	JobID                     string           `json:"job_id"`
-	RowOutcomes               blameRowOutcomes `json:"row_outcomes"`
-	ErrorRows                 int              `json:"error_rows"`
-	Partial                   bool             `json:"partial"`
-	Checked                   int              `json:"checked"`
-	Total                     *int             `json:"total,omitempty"`
-	Delivered                 int              `json:"delivered"`
-	DeliveryCorrelation       string           `json:"delivery_correlation"`
-	DeliveryCorrelationReason string           `json:"delivery_correlation_reason"`
-	ErrorsByReason            map[string]int   `json:"errors_by_reason"`
-	SideEffects               blameSideEffects `json:"side_effects"`
-	RowTabs                   map[string]int   `json:"row_tabs,omitempty"`
-	RowsUnavailable           bool             `json:"rows_unavailable"`
-	RowsNote                  string           `json:"rows_note,omitempty"`
-	FetchFailures             int              `json:"fetch_failures"`
-	Failures                  []string         `json:"failures,omitempty"`
+	JobID                string           `json:"job_id"`
+	RowOutcomes          blameRowOutcomes `json:"row_outcomes"`
+	ErrorRows            int              `json:"error_rows"`
+	Partial              bool             `json:"partial"`
+	Checked              int              `json:"checked"`
+	Total                *int             `json:"total,omitempty"`
+	SideEffectsCompleted int              `json:"side_effects_completed"`
+	Note                 string           `json:"note"`
+	ErrorsByReason       map[string]int   `json:"errors_by_reason"`
+	SideEffects          blameSideEffects `json:"side_effects"`
+	RowTabs              map[string]int   `json:"row_tabs,omitempty"`
+	RowsUnavailable      bool             `json:"rows_unavailable"`
+	RowsNote             string           `json:"rows_note,omitempty"`
+	FetchFailures        int              `json:"fetch_failures"`
+	Failures             []string         `json:"failures,omitempty"`
 }
 
 func importRowTabs(raw json.RawMessage) map[string]int {
