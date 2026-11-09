@@ -1920,6 +1920,13 @@ func (c *Client) PostMultipartWithHeaders(ctx context.Context, path string, fiel
 	return c.do(ctx, "POST", path, nil, multipartRequestBody{Fields: fields, FileFields: fileFields}, headers)
 }
 
+// PostQueryMultipartWithParamsAndHeaders is the read-intent multipart POST, mirroring
+// PutQueryMultipartWithParamsAndHeaders (gocli1219 r5: the code-orchestration read path needs a Query sibling for
+// every write-method shape it dispatches).
+func (c *Client) PostQueryMultipartWithParamsAndHeaders(ctx context.Context, path string, params map[string]string, fields map[string]string, fileFields map[string]string, headers map[string]string) (json.RawMessage, int, error) {
+	return c.doRead(ctx, "POST", path, params, multipartRequestBody{Fields: fields, FileFields: fileFields}, headers)
+}
+
 func (c *Client) PostMultipartWithParamsAndHeaders(ctx context.Context, path string, params map[string]string, fields map[string]string, fileFields map[string]string, headers map[string]string) (json.RawMessage, int, error) {
 	return c.do(ctx, "POST", path, params, multipartRequestBody{Fields: fields, FileFields: fileFields}, headers)
 }

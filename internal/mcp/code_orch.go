@@ -13382,54 +13382,25 @@ func codeOrchInvoke(ctx context.Context, req mcplib.CallToolRequest, executeTool
 		} else {
 			data, _, err = c.DeleteWithParams(ctx, path, query)
 		}
-	case "POST":
+	case "POST", "PUT", "PATCH":
+		// gocli1219 r5: a call that is not gated is a read by intent (NeedsConfirm is the generator's read-command
+		// classifier, the same one that makes the direct CLI emit PostQueryWithParams; the resolved-path check can only
+		// raise it to gated). Reads go through the *Query* client methods so doInternal sees readOnlyIntent=true: not
+		// verify-mode short-circuited, safe retries kept, the reusable transport, no cache invalidation. Gated calls
+		// (mutations by intent) keep the mutation methods unchanged.
+		var multipart *codeOrchMultipartBody
+		var body any
 		if ep.Multipart {
 			fields, files, cleanupUploads, uploadErr := codeOrchMultipartParts(ep, params)
 			if uploadErr != nil {
 				return mcpToolError(uploadErr.Error()), nil
 			}
 			defer cleanupUploads()
-			data, _, err = c.PostMultipartWithHeaders(ctx, path, fields, files, hdrs)
-			break
-		}
-		body := writeBody()
-		if len(hdrs) > 0 {
-			data, _, err = c.PostWithHeaders(ctx, path, body, hdrs)
+			multipart = &codeOrchMultipartBody{fields: fields, files: files}
 		} else {
-			data, _, err = c.Post(ctx, path, body)
+			body = writeBody()
 		}
-	case "PUT":
-		if ep.Multipart {
-			fields, files, cleanupUploads, uploadErr := codeOrchMultipartParts(ep, params)
-			if uploadErr != nil {
-				return mcpToolError(uploadErr.Error()), nil
-			}
-			defer cleanupUploads()
-			data, _, err = c.PutMultipartWithHeaders(ctx, path, fields, files, hdrs)
-			break
-		}
-		body := writeBody()
-		if len(hdrs) > 0 {
-			data, _, err = c.PutWithHeaders(ctx, path, body, hdrs)
-		} else {
-			data, _, err = c.Put(ctx, path, body)
-		}
-	case "PATCH":
-		if ep.Multipart {
-			fields, files, cleanupUploads, uploadErr := codeOrchMultipartParts(ep, params)
-			if uploadErr != nil {
-				return mcpToolError(uploadErr.Error()), nil
-			}
-			defer cleanupUploads()
-			data, _, err = c.PatchMultipartWithHeaders(ctx, path, fields, files, hdrs)
-			break
-		}
-		body := writeBody()
-		if len(hdrs) > 0 {
-			data, _, err = c.PatchWithHeaders(ctx, path, body, hdrs)
-		} else {
-			data, _, err = c.Patch(ctx, path, body)
-		}
+		data, err = codeOrchSendWrite(ctx, c, method, !gated, path, body, multipart, hdrs)
 	default:
 		return mcplib.NewToolResultError(fmt.Sprintf("unsupported method %q", method)), nil
 	}
@@ -13451,6 +13422,93 @@ func codeOrchInvoke(ctx context.Context, req mcplib.CallToolRequest, executeTool
 		text = bound.WithMetadata(text, platformSession.OutputMetadata())
 	}
 	return mcplib.NewToolResultText(text), nil
+}
+
+// codeOrchMultipartBody carries the resolved form fields and file parts of a multipart call (gocli1219 r5).
+type codeOrchMultipartBody struct {
+	fields map[string]string
+	files  map[string]string
+}
+
+// codeOrchWriteSender is the slice of *client.Client the POST/PUT/PATCH dispatch uses, so the read-intent routing is
+// testable for every endpoint without HTTP (gocli1219 r5).
+type codeOrchWriteSender interface {
+	Post(ctx context.Context, path string, body any) (json.RawMessage, int, error)
+	PostWithHeaders(ctx context.Context, path string, body any, headers map[string]string) (json.RawMessage, int, error)
+	PostQueryWithParams(ctx context.Context, path string, params map[string]string, body any) (json.RawMessage, int, error)
+	PostQueryWithParamsAndHeaders(ctx context.Context, path string, params map[string]string, body any, headers map[string]string) (json.RawMessage, int, error)
+	PostMultipartWithHeaders(ctx context.Context, path string, fields, fileFields, headers map[string]string) (json.RawMessage, int, error)
+	PostQueryMultipartWithParamsAndHeaders(ctx context.Context, path string, params, fields, fileFields, headers map[string]string) (json.RawMessage, int, error)
+	Put(ctx context.Context, path string, body any) (json.RawMessage, int, error)
+	PutWithHeaders(ctx context.Context, path string, body any, headers map[string]string) (json.RawMessage, int, error)
+	PutQueryWithParams(ctx context.Context, path string, params map[string]string, body any) (json.RawMessage, int, error)
+	PutQueryWithParamsAndHeaders(ctx context.Context, path string, params map[string]string, body any, headers map[string]string) (json.RawMessage, int, error)
+	PutMultipartWithHeaders(ctx context.Context, path string, fields, fileFields, headers map[string]string) (json.RawMessage, int, error)
+	PutQueryMultipartWithParamsAndHeaders(ctx context.Context, path string, params, fields, fileFields, headers map[string]string) (json.RawMessage, int, error)
+	Patch(ctx context.Context, path string, body any) (json.RawMessage, int, error)
+	PatchWithHeaders(ctx context.Context, path string, body any, headers map[string]string) (json.RawMessage, int, error)
+	PatchQueryWithParams(ctx context.Context, path string, params map[string]string, body any) (json.RawMessage, int, error)
+	PatchQueryWithParamsAndHeaders(ctx context.Context, path string, params map[string]string, body any, headers map[string]string) (json.RawMessage, int, error)
+	PatchMultipartWithHeaders(ctx context.Context, path string, fields, fileFields, headers map[string]string) (json.RawMessage, int, error)
+	PatchQueryMultipartWithParamsAndHeaders(ctx context.Context, path string, params, fields, fileFields, headers map[string]string) (json.RawMessage, int, error)
+}
+
+// codeOrchSendWrite sends a POST/PUT/PATCH code-orchestration call (gocli1219 r5). readIntent selects the *Query*
+// methods (doRead: readOnlyIntent=true), as the direct CLI does for an mcp:read-only command; otherwise the mutation
+// methods exactly as before. The path already carries the query string, so the Query methods get no params map.
+func codeOrchSendWrite(ctx context.Context, c codeOrchWriteSender, method string, readIntent bool, path string, body any, multipart *codeOrchMultipartBody, hdrs map[string]string) (json.RawMessage, error) {
+	var data json.RawMessage
+	var err error
+	switch method {
+	case "POST":
+		switch {
+		case multipart != nil && readIntent:
+			data, _, err = c.PostQueryMultipartWithParamsAndHeaders(ctx, path, nil, multipart.fields, multipart.files, hdrs)
+		case multipart != nil:
+			data, _, err = c.PostMultipartWithHeaders(ctx, path, multipart.fields, multipart.files, hdrs)
+		case readIntent && len(hdrs) > 0:
+			data, _, err = c.PostQueryWithParamsAndHeaders(ctx, path, nil, body, hdrs)
+		case readIntent:
+			data, _, err = c.PostQueryWithParams(ctx, path, nil, body)
+		case len(hdrs) > 0:
+			data, _, err = c.PostWithHeaders(ctx, path, body, hdrs)
+		default:
+			data, _, err = c.Post(ctx, path, body)
+		}
+	case "PUT":
+		switch {
+		case multipart != nil && readIntent:
+			data, _, err = c.PutQueryMultipartWithParamsAndHeaders(ctx, path, nil, multipart.fields, multipart.files, hdrs)
+		case multipart != nil:
+			data, _, err = c.PutMultipartWithHeaders(ctx, path, multipart.fields, multipart.files, hdrs)
+		case readIntent && len(hdrs) > 0:
+			data, _, err = c.PutQueryWithParamsAndHeaders(ctx, path, nil, body, hdrs)
+		case readIntent:
+			data, _, err = c.PutQueryWithParams(ctx, path, nil, body)
+		case len(hdrs) > 0:
+			data, _, err = c.PutWithHeaders(ctx, path, body, hdrs)
+		default:
+			data, _, err = c.Put(ctx, path, body)
+		}
+	case "PATCH":
+		switch {
+		case multipart != nil && readIntent:
+			data, _, err = c.PatchQueryMultipartWithParamsAndHeaders(ctx, path, nil, multipart.fields, multipart.files, hdrs)
+		case multipart != nil:
+			data, _, err = c.PatchMultipartWithHeaders(ctx, path, multipart.fields, multipart.files, hdrs)
+		case readIntent && len(hdrs) > 0:
+			data, _, err = c.PatchQueryWithParamsAndHeaders(ctx, path, nil, body, hdrs)
+		case readIntent:
+			data, _, err = c.PatchQueryWithParams(ctx, path, nil, body)
+		case len(hdrs) > 0:
+			data, _, err = c.PatchWithHeaders(ctx, path, body, hdrs)
+		default:
+			data, _, err = c.Patch(ctx, path, body)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported method %q", method)
+	}
+	return data, err
 }
 
 // codeOrchMultipartParts splits params into form fields and file parts. Each
