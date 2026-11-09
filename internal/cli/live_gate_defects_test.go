@@ -144,12 +144,14 @@ func asString(v any) string {
 
 func TestImportsLatestResolvesTheNewestJob(t *testing.T) {
 	const job = "0f911935-c98a-450a-8e24-93bf21016bfd"
+	// novel1219: blame and watch now read the job's counters, its launch monitor and its job-scoped side effects
+	// (the public entry's behaviour), so the fake API answers those routes too.
 	routes := map[string]string{
-		"/imports":                   `{"data":[{"id":"` + job + `","status":"completed"}],"meta":{}}`,
-		"/imports/" + job:            `{"data":{"id":"` + job + `","status":"completed","totalRows":1,"errorRows":0}}`,
-		"/imports/" + job + "/rows":  `{"data":[]}`,
-		"/reports/sms-delivery":      `{"data":{"totals":{}}}`,
-		"/imports/" + job + "/stats": `{"data":{}}`,
+		"/imports":                            `{"data":[{"id":"` + job + `","status":"completed"}],"meta":{}}`,
+		"/imports/" + job:                     `{"data":{"id":"` + job + `","status":"completed","totalRows":1,"createdRows":1,"updatedRows":0,"skippedRows":0,"duplicateRows":0,"errorRows":0}}`,
+		"/imports/" + job + "/rows":           `{"data":{"rows":[],"meta":{"page":1,"per_page":100,"total":0},"tabs":{"all":1,"success":1,"error":0,"warning":0}}}`,
+		"/imports/" + job + "/launch-monitor": `{"data":{"stage":"complete"}}`,
+		"/imports/" + job + "/side-effects":   `{"data":{"total":1,"completed":1,"failed":0,"retryableFailed":0,"exhaustedFailed":0,"queued":0,"held":0,"actionRequired":false,"isComplete":true}}`,
 	}
 	for _, cmd := range [][]string{{"imports", "blame"}, {"imports", "watch"}} {
 		out, srv, err := runLiveGateRoot(t, routes, append(cmd, "--latest", "--json")...)
@@ -174,21 +176,23 @@ func TestImportsLatestResolvesTheNewestJob(t *testing.T) {
 }
 
 func TestVerifyLineTypeEstimateUnderDryRunCarriesTheMarker(t *testing.T) {
+	// novel1219: the estimate falls back to a live count when the mirror is missing (the public entry's behaviour),
+	// so --dry-run answers the dry_run object without any request, and a plain estimate reads /contacts.
 	db := filepath.Join(t.TempDir(), "data.db")
 	out, srv, err := runLiveGateRoot(t, nil, "contacts", "verify-line-type", "--estimate", "--db", db, "--dry-run", "--json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var got map[string]any
-	if json.Unmarshal([]byte(out), &got) != nil || got["dry_run"] != true || got["unverifiedContacts"] == nil {
-		t.Fatalf("estimate under --dry-run = %q, want the estimate with dry_run true", out)
+	if json.Unmarshal([]byte(out), &got) != nil || got["dry_run"] != true || got["action"] != "contacts verify-line-type" {
+		t.Fatalf("estimate under --dry-run = %q, want the dry_run object", out)
 	}
 	if len(srv.seen()) != 0 {
-		t.Fatal("--estimate must not call the API")
+		t.Fatal("--estimate --dry-run must not call the API")
 	}
-	out, _, err = runLiveGateRoot(t, nil, "contacts", "verify-line-type", "--estimate", "--db", db, "--json")
-	if err != nil || strings.Contains(out, "dry_run") {
-		t.Fatalf("plain estimate: err=%v out=%q, want no dry_run marker", err, out)
+	out, _, err = runLiveGateRoot(t, map[string]string{"/contacts": `{"data":[],"meta":{"total":0}}`}, "contacts", "verify-line-type", "--estimate", "--db", db, "--json")
+	if err != nil || strings.Contains(out, "dry_run") || !strings.Contains(compactTestJSON(out), `"unverified":0`) {
+		t.Fatalf("plain estimate: err=%v out=%q, want the estimate without a dry_run marker", err, out)
 	}
 }
 

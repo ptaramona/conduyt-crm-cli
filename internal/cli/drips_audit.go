@@ -63,15 +63,16 @@ func newNovelDripsAuditCmd(flags *rootFlags) *cobra.Command {
 				where += ` AND json_extract(data, '$.campaignId') = ?`
 				params = append(params, args[0])
 			}
+			// PATCH(novel1219-drips-audit): a double send is the SAME full body to the same contact; the 80-character
+			// head is display only, so two messages sharing an introduction are never grouped as one.
 			rows, err := db.DB().QueryContext(cmd.Context(), `
-				SELECT json_extract(data, '$.contactId') AS contact_id,
-				       substr(COALESCE(json_extract(data, '$.body'),''), 1, 80) AS body_head,
+				SELECT COALESCE(json_extract(data, '$.contactId'), '') AS contact_id,
+				       substr(MIN(body), 1, 80) AS body_head,
 				       COUNT(*) AS n
-				FROM resources
-				WHERE `+where+`
-				GROUP BY contact_id, body_head
+				FROM (SELECT data, COALESCE(json_extract(data, '$.body'), '') AS body FROM resources WHERE `+where+`)
+				GROUP BY contact_id, body
 				HAVING COUNT(*) > 1
-				ORDER BY n DESC
+				ORDER BY n DESC, contact_id
 				LIMIT 500`, params...)
 			if err != nil {
 				return fmt.Errorf("audit query: %w", err)

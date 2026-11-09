@@ -200,17 +200,17 @@
       {
         "title": "Kloudi-safe bulk import",
         "command": "conduyt-crm-pp-cli imports watch \"$JOB\" --verify",
-        "explanation": "Watch an import job to completion, then render the outcome recap and delivery report with typed exit codes (preflight the file first via imports post-preflight --stdin)."
+        "explanation": "Watch an import job to completion, then render the outcome recap and verify the job-scoped side effects, with typed exit codes (preflight the file first via imports post-preflight --stdin)."
       },
       {
         "title": "Blame a bad blast",
-        "command": "conduyt-crm-pp-cli imports blame \"$JOB\" --agent --select rowOutcomes,smsDelivery.rejectionReasons",
-        "explanation": "Group an import's contacts by delivery outcome or skip reason to see exactly where the texts went."
+        "command": "conduyt-crm-pp-cli imports blame \"$JOB\" --agent --select row_outcomes,errors_by_reason",
+        "explanation": "Group an import's error rows by reason and read its job-scoped delivery side effects (queued, retryable, exhausted, held)."
       },
       {
         "title": "Segment safety audit",
         "command": "conduyt-crm-pp-cli send-check --tag q3-cohort --agent --select summary",
-        "explanation": "Bounded agent-shaped go/no-go summary; drill in with --select verdicts.status,verdicts.reason."
+        "explanation": "Bounded agent-shaped go/no-go summary; drill in with --select verdicts.contact_id,verdicts.verdict."
       }
     ],
     "trigger_phrases": [

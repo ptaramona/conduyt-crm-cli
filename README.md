@@ -209,15 +209,15 @@ These capabilities aren't available in any other tool for this API.
 conduyt-crm-pp-cli imports watch "$JOB" --verify
 ```
 
-Watch an import job to completion, then render the outcome recap and delivery report with typed exit codes (preflight the file first via imports post-preflight --stdin).
+Watch an import job to completion, then render the outcome recap and verify the job-scoped side effects, with typed exit codes (preflight the file first via imports post-preflight --stdin).
 
 ### Blame a bad blast
 
 ```bash
-conduyt-crm-pp-cli imports blame "$JOB" --agent --select rowOutcomes,smsDelivery.rejectionReasons
+conduyt-crm-pp-cli imports blame "$JOB" --agent --select row_outcomes,errors_by_reason
 ```
 
-Group an import's contacts by delivery outcome or skip reason to see exactly where the texts went.
+Group an import's error rows by reason and read its job-scoped delivery side effects (queued, retryable, exhausted, held).
 
 ### Segment safety audit
 
@@ -225,7 +225,7 @@ Group an import's contacts by delivery outcome or skip reason to see exactly whe
 conduyt-crm-pp-cli send-check --tag q3-cohort --agent --select summary
 ```
 
-Bounded agent-shaped go/no-go summary; drill in with --select verdicts.status,verdicts.reason.
+Bounded agent-shaped go/no-go summary; drill in with --select verdicts.contact_id,verdicts.verdict.
 
 ## Usage
 
