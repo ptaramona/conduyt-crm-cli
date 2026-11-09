@@ -970,7 +970,7 @@ func syncResource(ctx context.Context, c interface {
 		// guard so cap-hit takes precedence; checked BEFORE the natural-end
 		// check below because the natural-end check would not catch a sticky
 		// non-empty cursor on its own.
-		if nextCursor != "" && nextCursor == lastNextCursor {
+		if nextCursor != "" && nextCursor == lastNextCursor && !syncPageIsProvenShortEnd(pageSize, pageTokenProvedMore, fetchedThisPage) {
 			// Abnormal: a non-advancing cursor means we cannot prove the partition
 			// was fully enumerated — leave outcome.complete=false (reconcile SKIPS).
 			outcome.reason = "stuck_cursor"
@@ -2014,6 +2014,15 @@ func normalizePageContinuation(pageSize paginationDefaults, cursor, nextCursor s
 		return nextCursor, true, true
 	}
 	return nextCursor, hasMore, false
+}
+
+// syncPageIsProvenShortEnd reports a page-numbered page that is a proven natural end: short, and its continuation (if
+// any) proved nothing because it did not advance (normalizePageContinuation). The sticky-cursor detectors in the flat
+// and dependent loops skip such a page, so a short last page that repeats the previous next ("2" after "2") completes
+// normally (reconcile and watermark run) instead of stopping as stuck_cursor. Other paginators are unchanged.
+// PATCH(novel1219-activities-list-page-number)
+func syncPageIsProvenShortEnd(pageSize paginationDefaults, provedMore bool, fetched int) bool {
+	return pageSize.cursorType == "page" && !provedMore && shortPageEndsPagination(pageSize.cursorType, fetched, pageSize.limit)
 }
 
 // syncCurrentPage is the page number a page-numbered request just asked for: the cursor, else the declared first
@@ -4548,7 +4557,7 @@ func syncOneParent(
 		// Sticky-cursor detector: see syncResource for rationale. Same shape
 		// here so dependent-resource page loops cannot burn the budget on a
 		// non-advancing next cursor.
-		if nextCursor != "" && nextCursor == lastNextCursor {
+		if nextCursor != "" && nextCursor == lastNextCursor && !syncPageIsProvenShortEnd(pageSize, pageTokenProvedMore, len(items)) {
 			outcome.reason = "stuck_cursor"
 			if humanFriendly {
 				fmt.Fprintf(os.Stderr, "\n  %s: API returned the same next cursor across two pages for parent %s; aborting to prevent budget waste.\n", dep.Name, parentID)

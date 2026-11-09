@@ -256,3 +256,96 @@ func TestNovel1219SyncRevisitedPageEndsWithAnError(t *testing.T) {
 		t.Fatalf("pages %q err %v; want two requests and a revisit error: %s", pages, err, out)
 	}
 }
+
+// PATCH(novel1219-activities-list-page-number): Codex novel1219-r21 (1 P2). Page 1 is full with next "2"; page 2 is
+// short and repeats next "2". The repeat does not advance, so it proves nothing, and the short page is a natural end:
+// the walk completes (reconcile and watermark run) instead of stopping as stuck_cursor.
+
+type novel1219SelfAPI struct {
+	limit int
+	pages []string
+}
+
+func (a *novel1219SelfAPI) page(p string) string {
+	n, page := a.limit, 1
+	if p == "2" {
+		n, page = 1, 2
+	}
+	out := make([]string, n)
+	for i := range out {
+		out[i] = `{"id":"self-` + strconv.Itoa(page) + `-` + strconv.Itoa(i) + `","createdAt":"2026-11-0` + strconv.Itoa(9-page) + `T00:00:00Z"}`
+	}
+	return "[" + strings.Join(out, ",") + "]"
+}
+
+func (a *novel1219SelfAPI) Get(_ context.Context, _ string, params map[string]string) (json.RawMessage, error) {
+	a.pages = append(a.pages, params["page"])
+	if len(a.pages) > 6 {
+		return nil, &client.APIError{Method: "GET", Path: "/self", StatusCode: 599, Body: "test: the walk looped"}
+	}
+	return json.RawMessage(`{"data":` + a.page(params["page"]) + `,"meta":{"next_cursor":"2"}}`), nil
+}
+
+func (a *novel1219SelfAPI) RateLimit() float64 { return 0 }
+
+func TestNovel1219DependentShortPageRepeatingItsNextCompletes(t *testing.T) {
+	api := &novel1219SelfAPI{limit: 3}
+	db, err := store.Open(filepath.Join(t.TempDir(), "d.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	dep := dependentResourceDef{Name: "activities", ParentTable: "parents", PathTemplate: "/parents/{id}/children", PathParams: []dependentPathParamDef{{Param: "id", Field: "id"}}}
+	pageSize := paginationDefaults{cursorParam: "page", cursorType: "page", initialCursor: "1", limitParam: "per_page", limit: 3}
+	rep := syncOneParent(context.Background(), api, db, dep, map[string]string{"id": "p1"}, dep.PathParams, pageSize, "", "", 0, false, false, nil, io.Discard, "")
+	if len(api.pages) != 2 || rep.failure != nil || !rep.complete || rep.reason != "" || rep.stored != 4 {
+		t.Fatalf("pages %q stored %d complete %v reason %q failure %v; want two requests, 4 rows, complete", api.pages, rep.stored, rep.complete, rep.reason, rep.failure)
+	}
+}
+
+func TestNovel1219SyncShortPageRepeatingItsNextCompletes(t *testing.T) {
+	api := &novel1219SelfAPI{limit: 50}
+	var mu sync.Mutex
+	var pages []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		p := r.URL.Query().Get("page")
+		pages = append(pages, p)
+		w.Header().Set("Content-Type", "application/json")
+		if len(pages) > 6 {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = io.WriteString(w, `{"error":"test: the walk looped"}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"data":{"data":`+api.page(p)+`,"meta":{"per_page":50,"next_cursor":"2"}}}`)
+	}))
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	t.Setenv("CONDUYT_CRM_BASE_URL", srv.URL+"/api/v1")
+	t.Setenv("CONDUYT_CRM_BEARER_AUTH", "test-token")
+	t.Setenv("CONDUYT_CRM_CONFIG", filepath.Join(dir, "config.toml"))
+	t.Setenv("CONDUYT_CRM_NO_LEARN", "true")
+	t.Setenv("HOME", dir)
+	var events strings.Builder
+	root := newRootCmd(&rootFlags{})
+	root.SetArgs([]string{"sync", "--resources", "activities", "--full", "--db", filepath.Join(dir, "a.db"), "--json"})
+	root.SetOut(&events)
+	root.SetErr(&events)
+	err := root.Execute()
+	mu.Lock()
+	defer mu.Unlock()
+	out := events.String()
+	if err != nil || len(pages) != 2 || !strings.Contains(out, `"total_records": 51`) || strings.Contains(out, "stuck_pagination") {
+		t.Fatalf("pages %q err %v; want two requests, 51 records, no stuck_pagination: %s", pages, err, out)
+	}
+	db, err := store.Open(filepath.Join(dir, "a.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var complete int
+	if err := db.DB().QueryRow(`SELECT last_attempt_complete FROM sync_state WHERE resource_type = 'activities'`).Scan(&complete); err != nil || complete != 1 {
+		t.Fatalf("sync_state last_attempt_complete = %d (err %v), want 1: the walk must finish as a natural end", complete, err)
+	}
+}
