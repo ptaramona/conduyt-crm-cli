@@ -48,6 +48,8 @@ type Config struct {
 	envOverrides         map[string]bool `toml:"-"`
 	fileConfig           *Config         `toml:"-"`
 	ConduytCrmBearerAuth string          `toml:"crm_bearer_auth"`
+	// legacyAuth is the earlier entry's saved key that supplied the token, if any. PATCH(novel1219-auth-compat)
+	legacyAuth *legacyAuthSource
 }
 
 func Load(configPath string) (*Config, error) {
@@ -61,8 +63,6 @@ func Load(configPath string) (*Config, error) {
 		return nil, err
 	}
 	cfg.Path = path
-	// PATCH(novel1219-auth-compat): saved legacy bearer_auth / api_key keys are rewritten to crm_bearer_auth once.
-	unmigratedLegacy := migrateLegacyAuthFiles(legacyAuthFileCandidates(path, explicitConfigFile))
 
 	if explicitConfigFile {
 		// Keep non-secret settings from a readable config even when its
@@ -82,11 +82,16 @@ func Load(configPath string) (*Config, error) {
 		}
 	}
 	cfg.Path = path
+	// PATCH(novel1219-auth-compat): a legacy key in the profile's credentials file comes before the global file.
+	if err := cfg.applyLegacyProfileCredentials(explicitConfigFile, path); err != nil {
+		return nil, err
+	}
 	if err := cfg.applyStoredCredentials(explicitConfigFile, path); err != nil {
 		return nil, err
 	}
-	if cfg.ConduytCrmBearerAuth == "" && unmigratedLegacy != "" && !cfg.credentialRouteBlocked() {
-		cfg.ConduytCrmBearerAuth = unmigratedLegacy // PATCH(novel1219-auth-compat): honoured even when the rewrite failed
+	// PATCH(novel1219-auth-compat): then a legacy key in the global credentials file, with the global-origin check.
+	if err := cfg.applyLegacyGlobalCredentials(explicitConfigFile); err != nil {
+		return nil, err
 	}
 	// Label credentials that arrived from the config or credentials file
 	// before env overrides, so an env value still replaces them.
@@ -163,6 +168,7 @@ func Load(configPath string) (*Config, error) {
 	if v := cliutil.EnvOverride("CONDUYT_CRM_BASE_URL"); v != "" {
 		cfg.BaseURL = v
 	}
+	cfg.finishLegacyAuth() // PATCH(novel1219-auth-compat): migrate the one legacy source that supplied the token
 	return cfg, nil
 }
 
@@ -200,6 +206,7 @@ func parseConfigData(data []byte, cfg *Config, path string, owner string) error 
 	if err := toml.Unmarshal(data, cfg); err != nil {
 		return fmt.Errorf("parsing %s %s: %w", owner, path, err)
 	}
+	cfg.applyLegacyConfigKey(data, path) // PATCH(novel1219-auth-compat): bearer_auth / api_key read through the normal trust path
 	cfg.configOwner = owner
 	return nil
 }
