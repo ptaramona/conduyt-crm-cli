@@ -21,10 +21,11 @@ import (
 // app/api/v1/activities/route.ts: a non-integer page is a 500.
 
 type novel1219SyncServer struct {
-	mu        sync.Mutex
-	reqs      []string
-	firstRows int
-	token     bool
+	mu           sync.Mutex
+	reqs         []string
+	firstRows    int
+	token        bool
+	numericToken bool
 }
 
 func (s *novel1219SyncServer) handler(t *testing.T) http.HandlerFunc {
@@ -51,6 +52,9 @@ func (s *novel1219SyncServer) handler(t *testing.T) http.HandlerFunc {
 		next := `null`
 		if s.token {
 			next = `"WyIyMDI2LTExLTA5VDE3OjQwOjQ5LjI1NVoiLCJhY3QtcDEtMCJd"`
+			if s.numericToken {
+				next = `"2"`
+			}
 		}
 		switch q.Get("page") {
 		case "", "1":

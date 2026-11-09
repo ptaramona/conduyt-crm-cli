@@ -560,12 +560,6 @@ func syncResource(ctx context.Context, c interface {
 
 	cursor := existingCursor
 	pageSize := determinePaginationDefaults(resource)
-	// PATCH(novel1219-activities-list-page-number): a checkpoint written by an earlier build (r16 cursor paging, or
-	// the r17 page paging that stored meta.next_cursor) can hold an opaque cursor for a resource that now pages by
-	// number. Resuming it would send page=<cursor> (a 500 on GET /activities), so the walk restarts at page one.
-	if pageSize.cursorType == "page" && cursor != "" && !isSyncPageNumber(cursor) {
-		cursor = ""
-	}
 	sortParam := syncResourceSortParam(resource)
 	sortValue := syncResourceSortValue(resource)
 	sortField := syncResourceSortField(resource)
@@ -736,16 +730,8 @@ func syncResource(ctx context.Context, c interface {
 			}
 		}
 
-		// PATCH(novel1219-activities-list-page-number): a page-numbered request parameter takes only a page number. A
-		// body cursor found by name (GET /activities returns an opaque meta.next_cursor) is not one; sending it as
-		// page= gets a 500. The token still proves there is a next page, so the walk advances by number whatever the
-		// page's length; a short page with a continuation token is not the end.
-		pageTokenProvedMore := false
-		if pageSize.cursorType == "page" && nextCursor != "" && !isSyncPageNumber(nextCursor) {
-			nextCursor = nextSyncPageNumber(cursor)
-			hasMore = true
-			pageTokenProvedMore = true
-		}
+		var pageTokenProvedMore bool
+		nextCursor, hasMore, pageTokenProvedMore = normalizePageContinuation(pageSize, cursor, nextCursor, hasMore)
 
 		// Page-int paginator fallback: when the API paginates by integer
 		// ?page=N and emits no body cursor, treat a full page as a signal
@@ -1986,6 +1972,13 @@ func seedSyncPageCursor(params map[string]string, pageSize paginationDefaults, c
 	if pageSize.cursorParam == "" {
 		return cursor
 	}
+	// PATCH(novel1219-activities-list-page-number): a checkpoint written by an earlier build (r16 cursor paging, or
+	// the r17 page paging that stored meta.next_cursor) can hold an opaque cursor for a resource that now pages by
+	// number. Sending it would be page=<cursor> (a 500 on GET /activities), so the walk restarts at the first page.
+	// Every flat and dependent request, and the required-param preflight, seed through here.
+	if pageSize.cursorType == "page" && cursor != "" && !isSyncPageNumber(cursor) {
+		cursor = ""
+	}
 	if cursor == "" {
 		cursor = pageSize.initialCursor
 	}
@@ -1998,6 +1991,22 @@ func seedSyncPageCursor(params map[string]string, pageSize paginationDefaults, c
 // nextSyncPageNumber advances a page-number cursor by one. An empty cursor
 // means page one was implicit, so the next request is page 2. Numeric 0
 // advances to 1 so a zero-based first page is not skipped.
+// normalizePageContinuation is the one page-numbered continuation rule shared by the flat sync loop and the
+// dependent (per-parent) loop. For page pagination any non-empty body continuation proves there is a next page, so
+// the walk goes on whatever the page's length (provedMore lets the short-page end checks skip it). A numeric
+// continuation is the next page number as is; a non-numeric one (GET /activities returns an opaque
+// meta.next_cursor) is never sent as page= (a 500) and is replaced by the next page number.
+// PATCH(novel1219-activities-list-page-number)
+func normalizePageContinuation(pageSize paginationDefaults, cursor, nextCursor string, hasMore bool) (string, bool, bool) {
+	if pageSize.cursorType != "page" || nextCursor == "" {
+		return nextCursor, hasMore, false
+	}
+	if !isSyncPageNumber(nextCursor) {
+		nextCursor = nextSyncPageNumber(cursor)
+	}
+	return nextCursor, true, true
+}
+
 // isSyncPageNumber reports whether a page-numbered cursor is a usable page number (a non-negative integer; 0 is a
 // zero-based first page). PATCH(novel1219-activities-list-page-number)
 func isSyncPageNumber(cursor string) bool {
@@ -4341,6 +4350,9 @@ func syncOneParent(
 			break
 		}
 
+		var pageTokenProvedMore bool
+		nextCursor, hasMore, pageTokenProvedMore = normalizePageContinuation(pageSize, cursor, nextCursor, hasMore)
+
 		// Page-int paginator fallback: mirrors syncResource so dependent
 		// resources on integer ?page=N APIs also advance past page 1.
 		// Guard on cursorType to cover every canonical spelling. A declared
@@ -4502,7 +4514,7 @@ func syncOneParent(
 			outcome.reason = "cursor_unavailable"
 			break
 		}
-		if !hasMore || shortPageEndsPagination(pageSize.cursorType, len(items), pageSize.limit) {
+		if !hasMore || (!pageTokenProvedMore && shortPageEndsPagination(pageSize.cursorType, len(items), pageSize.limit)) {
 			outcome.complete = true
 			break
 		}
