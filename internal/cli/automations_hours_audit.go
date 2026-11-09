@@ -386,6 +386,7 @@ func fetchHoursAuditAutomations(ctx context.Context, c interface {
 	const perPage = 50
 	items := make([]map[string]any, 0)
 	var reported *int
+	var totalPresent, totalValid bool
 	var failures []string
 	progress := newPaginationProgressGuard()
 	seen := make(map[string]struct{})
@@ -405,12 +406,23 @@ func fetchHoursAuditAutomations(ctx context.Context, c interface {
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("decoding automations page %d: %w", page, err)
 		}
-		if n, ok := responseTotal(raw); ok {
-			if reported != nil && *reported != n {
-				failures = append(failures, fmt.Sprintf("response metadata total changed from %d to %d", *reported, n))
-				break
+		// As in the public entry's paginatedGet: the first page fixes the total's state (missing, invalid or a value)
+		// and any later page whose state differs, a total that appears, disappears, turns malformed or changes, is
+		// truncation. PATCH(novel1219-hours-audit) r15
+		n, present, valid := hoursAuditPageTotal(raw)
+		if page == 1 {
+			totalPresent, totalValid = present, valid
+			if present && valid {
+				first := n
+				reported = &first
 			}
-			reported = &n
+		} else if present != totalPresent || valid != totalValid || (present && valid && reported != nil && n != *reported) {
+			prior := 0
+			if reported != nil {
+				prior = *reported
+			}
+			failures = append(failures, fmt.Sprintf("response metadata total changed from %s to %s", formatHoursAuditTotal(prior, totalPresent, totalValid), formatHoursAuditTotal(n, present, valid)))
+			break
 		}
 		repeated := ""
 		for _, id := range objectPaginationIDs(pageItems) {
@@ -438,4 +450,63 @@ func fetchHoursAuditAutomations(ctx context.Context, c interface {
 		}
 	}
 	return items, reported, failures, nil
+}
+
+// hoursAuditPageTotal reads a page's total the way the public entry's reportedCollectionTotal does: total,
+// total_count, totalCount, TotalCount, totalResults or Total at the root, or inside meta, pagination, paging or
+// metadata (two levels at most), after hoisting a {data:{data,meta}} envelope. present reports the key exists; valid
+// that it is a non-negative integer. PATCH(novel1219-hours-audit) r15
+func hoursAuditPageTotal(raw json.RawMessage) (n int, present, valid bool) {
+	if hoisted, ok := hoistPaginatedEnvelope(raw); ok {
+		raw = hoisted
+	}
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return 0, false, false
+	}
+	return hoursAuditTotalAtDepth(obj, 0)
+}
+
+func hoursAuditTotalAtDepth(obj map[string]json.RawMessage, depth int) (int, bool, bool) {
+	if obj == nil || depth > 2 {
+		return 0, false, false
+	}
+	for _, key := range []string{"total", "total_count", "totalCount", "TotalCount", "totalResults", "Total"} {
+		raw, ok := obj[key]
+		if !ok {
+			continue
+		}
+		var n json.Number
+		if json.Unmarshal(raw, &n) != nil {
+			return 0, true, false
+		}
+		if v, err := n.Int64(); err == nil && v >= 0 {
+			return int(v), true, true
+		}
+		return 0, true, false
+	}
+	for _, wrap := range []string{"meta", "pagination", "paging", "metadata"} {
+		raw, ok := obj[wrap]
+		if !ok {
+			continue
+		}
+		var inner map[string]json.RawMessage
+		if json.Unmarshal(raw, &inner) != nil {
+			continue
+		}
+		if n, present, valid := hoursAuditTotalAtDepth(inner, depth+1); present {
+			return n, present, valid
+		}
+	}
+	return 0, false, false
+}
+
+func formatHoursAuditTotal(total int, present, valid bool) string {
+	if !present {
+		return "missing"
+	}
+	if !valid {
+		return "invalid"
+	}
+	return strconv.Itoa(total)
 }

@@ -88,6 +88,15 @@ func automationsPage(ids []string, total int) []byte {
 	return body
 }
 
+func automationsPageWithMeta(ids []string, meta map[string]any) []byte {
+	rows := make([]map[string]any, len(ids))
+	for i, id := range ids {
+		rows[i] = map[string]any{"id": id, "name": "A " + id, "actions": map[string]any{"nodes": []any{}}}
+	}
+	body, _ := json.Marshal(map[string]any{"data": rows, "meta": meta})
+	return body
+}
+
 func automationIDs(prefix string, n int) []string {
 	ids := make([]string, n)
 	for i := range ids {
@@ -130,6 +139,36 @@ func TestNovel1219HoursAuditLivePageWalk(t *testing.T) {
 			}
 			_, _ = w.Write(automationsPage(automationIDs("b", 50), 90))
 		}, true, 50, "total changed from 120 to 90"},
+		// r15 (Codex novel1219-r14 P2): a total that disappears, turns malformed or appears after page 1 is truncation,
+		// as in the public entry's paginatedGet.
+		{"a total that disappears on a later page", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("page") == "1" {
+				_, _ = w.Write(automationsPage(automationIDs("a", 50), 100))
+				return
+			}
+			_, _ = w.Write(automationsPageWithMeta(automationIDs("b", 50), map[string]any{"page": 2}))
+		}, true, 50, "total changed from 100 to missing"},
+		{"a total that turns malformed on a later page", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("page") == "1" {
+				_, _ = w.Write(automationsPage(automationIDs("a", 50), 100))
+				return
+			}
+			_, _ = w.Write(automationsPageWithMeta(automationIDs("b", 50), map[string]any{"total": "one hundred"}))
+		}, true, 50, "total changed from 100 to invalid"},
+		{"a negative total on a later page", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("page") == "1" {
+				_, _ = w.Write(automationsPage(automationIDs("a", 50), 100))
+				return
+			}
+			_, _ = w.Write(automationsPageWithMeta(automationIDs("b", 50), map[string]any{"total": -1}))
+		}, true, 50, "total changed from 100 to invalid"},
+		{"a total that appears after a page without one", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("page") == "1" {
+				_, _ = w.Write(automationsPageWithMeta(automationIDs("a", 50), map[string]any{"page": 1}))
+				return
+			}
+			_, _ = w.Write(automationsPage(automationIDs("b", 20), 70))
+		}, true, 50, "total changed from missing to 70"},
 		{"a page that repeats an earlier automation", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write(automationsPage(automationIDs("a", 50), 120))
 		}, true, 50, "repeated automation"},
